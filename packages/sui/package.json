@@ -1,0 +1,73 @@
+{
+  "name": "@sweepay/sui",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Sui-native x402 protocol implementation for SweePay",
+  "license": "MIT",
+  "author": "Danny Devs",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      },
+      "default": "./dist/index.mjs"
+    },
+    "./exact/client": {
+      "import": {
+        "types": "./dist/exact/client/index.d.mts",
+        "default": "./dist/exact/client/index.mjs"
+      },
+      "default": "./dist/exact/client/index.mjs"
+    },
+    "./exact/server": {
+      "import": {
+        "types": "./dist/exact/server/index.d.mts",
+        "default": "./dist/exact/server/index.mjs"
+      },
+      "default": "./dist/exact/server/index.mjs"
+    },
+    "./exact/facilitator": {
+      "import": {
+        "types": "./dist/exact/facilitator/index.d.mts",
+        "default": "./dist/exact/facilitator/index.mjs"
+      },
+      "default": "./dist/exact/facilitator/index.mjs"
+    },
+    "./ptb": {
+      "import": {
+        "types": "./dist/ptb/index.d.mts",
+        "default": "./dist/ptb/index.mjs"
+      },
+      "default": "./dist/ptb/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "demo": "tsx examples/demo.ts",
+    "test": "SKIP_DRYRUN=1 vitest run",
+    "test:offline": "SKIP_DRYRUN=1 vitest run",
+    "test:live": "SWEEPAY_LIVE_TESTNET=1 vitest run test/integration/dryrun.test.ts",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sweepay/core": "workspace:*",
+    "@mysten/sui": "^1.20.0"
+  },
+  "devDependencies": {
+    "tsdown": "^0.20.3",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vite": "^6.2.6",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^3.0.5"
+  }
+}

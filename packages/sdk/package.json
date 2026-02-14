@@ -1,0 +1,68 @@
+{
+  "name": "@sweepay/sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "High-level SDK for adding agentic payments to any app — 3 lines of code",
+  "license": "MIT",
+  "author": "Danny Devs",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./client": {
+      "import": {
+        "types": "./dist/client/index.d.mts",
+        "default": "./dist/client/index.mjs"
+      },
+      "default": "./dist/client/index.mjs"
+    },
+    "./server": {
+      "import": {
+        "types": "./dist/server/index.d.mts",
+        "default": "./dist/server/index.mjs"
+      },
+      "default": "./dist/server/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@mysten/sui": "^1.20.0",
+    "@sweepay/core": "workspace:*",
+    "@sweepay/sui": "workspace:*",
+    "@x402/fetch": "^2.3.0",
+    "@x402/hono": "^2.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.4",
+    "hono": "^4.0.0",
+    "tsdown": "^0.20.3",
+    "typescript": "^5.7.3",
+    "vite": "^6.2.6",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^3.0.5"
+  },
+  "peerDependencies": {
+    "hono": ">=4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "hono": {
+      "optional": true
+    }
+  }
+}

@@ -1,0 +1,15 @@
+[package]
+name = "sweepay"
+edition = "2024.beta"
+version = "0.1.0"
+authors = ["Danny Devs"]
+
+[dependencies]
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "mainnet-v1.62.1" }
+
+[addresses]
+sweepay = "0x0"
+
+[dev-dependencies]
+
+[dev-addresses]

@@ -1,0 +1,72 @@
+{
+  "name": "@sweepay/core",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Shared types, client factories, error hierarchy for SweePay",
+  "license": "MIT",
+  "author": "Danny Devs",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "default": "./dist/index.mjs"
+    },
+    "./types": {
+      "import": {
+        "types": "./dist/x402/types.d.mts",
+        "default": "./dist/x402/types.mjs"
+      },
+      "default": "./dist/x402/types.mjs"
+    },
+    "./client": {
+      "import": {
+        "types": "./dist/x402/client.d.mts",
+        "default": "./dist/x402/client.mjs"
+      },
+      "default": "./dist/x402/client.mjs"
+    },
+    "./server": {
+      "import": {
+        "types": "./dist/x402/server.d.mts",
+        "default": "./dist/x402/server.mjs"
+      },
+      "default": "./dist/x402/server.mjs"
+    },
+    "./facilitator": {
+      "import": {
+        "types": "./dist/x402/facilitator.d.mts",
+        "default": "./dist/x402/facilitator.mjs"
+      },
+      "default": "./dist/x402/facilitator.mjs"
+    },
+    "./s402": {
+      "import": {
+        "types": "./dist/s402/index.d.mts",
+        "default": "./dist/s402/index.mjs"
+      },
+      "default": "./dist/s402/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@mysten/seal": "^0.2.0",
+    "@mysten/sui": "^1.20.0",
+    "@mysten/walrus": "^1.0.0",
+    "@x402/core": "^2.3.0"
+  },
+  "devDependencies": {
+    "tsdown": "^0.20.3",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.5"
+  }
+}

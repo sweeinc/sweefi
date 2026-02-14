@@ -1,0 +1,22 @@
+{
+  "name": "sweepay",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Open-source agentic payment infrastructure for Sui",
+  "author": "Danny Devs",
+  "license": "MIT",
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "test:offline": "pnpm -r test",
+    "test:live": "pnpm -r --if-present test:integration && pnpm --filter @sweepay/sui test:live",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "pnpm -r exec rm -rf dist node_modules",
+    "codex:load": "bash scripts/codex-load.sh",
+    "codex:shutdown": "bash scripts/codex-shutdown.sh"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  }
+}

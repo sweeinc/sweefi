@@ -1,0 +1,24 @@
+{
+  "name": "@sweepay/agent-demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Live agent demo: AI agent auto-pays s402-gated API on Sui testnet",
+  "scripts": {
+    "demo": "tsx demo.ts",
+    "server": "tsx server.ts",
+    "agent": "tsx agent.ts"
+  },
+  "dependencies": {
+    "@mysten/sui": "^1.45.2",
+    "@sweepay/core": "workspace:*",
+    "@sweepay/sdk": "workspace:*",
+    "@sweepay/sui": "workspace:*",
+    "hono": "^4.7.0",
+    "@hono/node-server": "^1.14.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.5.0"
+  }
+}
