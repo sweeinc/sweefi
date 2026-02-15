@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { PrepaidSuiScheme as FacilitatorPrepaidScheme } from "../../src/prepaid/facilitator/scheme";
 import { PrepaidSuiScheme as ServerPrepaidScheme } from "../../src/prepaid/server/scheme";
 import type { FacilitatorSuiSigner } from "../../src/signer";
@@ -11,6 +11,36 @@ import { USDC_MAINNET, SUI_MAINNET_CAIP2 } from "../../src/constants";
 
 const MOCK_PAYER = "0x" + "b".repeat(64);
 const MOCK_PAYTO = "0x" + "c".repeat(64);
+const MOCK_PACKAGE_ID = "0x" + "d".repeat(64);
+
+function createMockDepositEvent(overrides: Partial<{
+  provider: string;
+  agent: string;
+  amount: string;
+  rate_per_call: string;
+  max_calls: string;
+}> = {}) {
+  return {
+    id: { txDigest: "mock-digest", eventSeq: "0" },
+    packageId: MOCK_PACKAGE_ID,
+    transactionModule: "prepaid",
+    sender: MOCK_PAYER,
+    type: `${MOCK_PACKAGE_ID}::prepaid::PrepaidDeposited`,
+    parsedJson: {
+      balance_id: "0x" + "e".repeat(64),
+      agent: overrides.agent ?? MOCK_PAYER,
+      provider: overrides.provider ?? MOCK_PAYTO,
+      amount: overrides.amount ?? "10000000",
+      rate_per_call: overrides.rate_per_call ?? "1000000",
+      max_calls: overrides.max_calls ?? "100",
+      token_type: USDC_MAINNET,
+      timestamp_ms: "1700000000000",
+    },
+    bcs: "",
+    bcsEncoding: "base64" as const,
+    timestampMs: "1700000000000",
+  };
+}
 
 function createMockFacilitatorSigner(
   overrides: Partial<FacilitatorSuiSigner> = {},
@@ -26,18 +56,21 @@ function createMockFacilitatorSigner(
 }
 
 function createSuccessfulDryRun(
-  balanceChanges: Array<{
-    owner: { AddressOwner: string } | string;
-    coinType: string;
-    amount: string;
-  }> = [],
+  overrides: {
+    events?: Array<ReturnType<typeof createMockDepositEvent>>;
+    balanceChanges?: Array<{
+      owner: { AddressOwner: string } | string;
+      coinType: string;
+      amount: string;
+    }>;
+  } = {},
 ): DryRunTransactionBlockResponse {
   return {
     effects: {
       status: { status: "success" },
     },
-    balanceChanges,
-    events: [],
+    balanceChanges: overrides.balanceChanges ?? [],
+    events: overrides.events ?? [createMockDepositEvent()],
     input: {} as any,
     objectChanges: [],
   } as unknown as DryRunTransactionBlockResponse;
@@ -55,10 +88,25 @@ function createFailedDryRun(error: string): DryRunTransactionBlockResponse {
   } as unknown as DryRunTransactionBlockResponse;
 }
 
-function createMockPrepaidPayload(network = SUI_MAINNET_CAIP2) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mocks don't need strict x402 types
+function createMockPrepaidPayload(network = SUI_MAINNET_CAIP2): any {
   return {
     x402Version: 2,
-    accepted: { scheme: "prepaid", network },
+    resource: { url: "https://api.example.com/resource", description: "test", mimeType: "application/json" },
+    accepted: {
+      scheme: "prepaid",
+      network,
+      asset: USDC_MAINNET,
+      amount: "10000000",
+      payTo: MOCK_PAYTO,
+      maxTimeoutSeconds: 3600,
+      extra: {
+        ratePerCall: "1000000",
+        maxCalls: "100",
+        minDeposit: "10000000",
+        withdrawalDelayMs: "3600000",
+      },
+    },
     payload: {
       signature: "mock-signature-base64",
       transaction: "mock-transaction-base64",
@@ -68,7 +116,8 @@ function createMockPrepaidPayload(network = SUI_MAINNET_CAIP2) {
   };
 }
 
-function createMockPrepaidRequirements(overrides: Record<string, unknown> = {}) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mocks don't need strict x402 types
+function createMockPrepaidRequirements(overrides: Record<string, unknown> = {}): any {
   return {
     scheme: "prepaid",
     network: SUI_MAINNET_CAIP2,
@@ -87,15 +136,16 @@ function createMockPrepaidRequirements(overrides: Record<string, unknown> = {}) 
 }
 
 // ─────────────────────────────────────────────────
-// Facilitator Prepaid Scheme Tests
+// Facilitator Prepaid Scheme Tests (x402 compat)
 // ─────────────────────────────────────────────────
 
-describe("PrepaidSuiFacilitatorScheme", () => {
+describe("PrepaidSuiFacilitatorScheme (x402 compat)", () => {
   describe("verify", () => {
     it("should reject non-prepaid scheme", async () => {
       const signer = createMockFacilitatorSigner();
       const scheme = new FacilitatorPrepaidScheme(signer);
-      const payload = { ...createMockPrepaidPayload(), accepted: { scheme: "exact", network: SUI_MAINNET_CAIP2 } };
+      const base = createMockPrepaidPayload();
+      const payload = { ...base, accepted: { ...base.accepted, scheme: "exact" } };
       const result = await scheme.verify(payload, createMockPrepaidRequirements());
       expect(result.isValid).toBe(false);
       expect(result.invalidReason).toBe("unsupported_scheme");
@@ -134,7 +184,7 @@ describe("PrepaidSuiFacilitatorScheme", () => {
       const signer = createMockFacilitatorSigner();
       const scheme = new FacilitatorPrepaidScheme(signer);
       const payload = createMockPrepaidPayload();
-      payload.payload.ratePerCall = "999999"; // doesn't match requirements
+      payload.payload.ratePerCall = "999999";
       const result = await scheme.verify(payload, createMockPrepaidRequirements());
       expect(result.isValid).toBe(false);
       expect(result.invalidReason).toContain("rate_mismatch");
@@ -144,7 +194,7 @@ describe("PrepaidSuiFacilitatorScheme", () => {
       const signer = createMockFacilitatorSigner();
       const scheme = new FacilitatorPrepaidScheme(signer);
       const payload = createMockPrepaidPayload();
-      payload.payload.maxCalls = "50"; // doesn't match requirements
+      payload.payload.maxCalls = "50";
       const result = await scheme.verify(payload, createMockPrepaidRequirements());
       expect(result.isValid).toBe(false);
       expect(result.invalidReason).toContain("max_calls_mismatch");
@@ -174,7 +224,6 @@ describe("PrepaidSuiFacilitatorScheme", () => {
       const scheme = new FacilitatorPrepaidScheme(signer);
       const result = await scheme.verify(createMockPrepaidPayload(), createMockPrepaidRequirements());
       expect(result.isValid).toBe(true);
-      // Both should be called (order may vary due to Promise.all)
       expect(verifyOrder).toContain("verify");
       expect(verifyOrder).toContain("simulate");
     });
@@ -190,16 +239,41 @@ describe("PrepaidSuiFacilitatorScheme", () => {
       expect(result.payer).toBe(MOCK_PAYER);
     });
 
-    it("should reject deposit below minimum", async () => {
+    // ── Event-based verification tests (F-01, F-02, F-04) ──
+
+    it("should reject when deposit targets wrong provider (F-01: free-service attack)", async () => {
+      const ATTACKER = "0x" + "f".repeat(64);
       const signer = createMockFacilitatorSigner({
         simulateTransaction: async () =>
-          createSuccessfulDryRun([
-            {
-              owner: { AddressOwner: MOCK_PAYER },
-              coinType: USDC_MAINNET,
-              amount: "-5000000", // 5 USDC, but min is 10
-            },
-          ]),
+          createSuccessfulDryRun({
+            events: [createMockDepositEvent({ provider: ATTACKER })],
+          }),
+      });
+      const scheme = new FacilitatorPrepaidScheme(signer);
+      const result = await scheme.verify(createMockPrepaidPayload(), createMockPrepaidRequirements());
+      expect(result.isValid).toBe(false);
+      expect(result.invalidReason).toContain("provider_mismatch");
+    });
+
+    it("should reject when deposit targets self as provider (F-01: self-refund attack)", async () => {
+      const signer = createMockFacilitatorSigner({
+        simulateTransaction: async () =>
+          createSuccessfulDryRun({
+            events: [createMockDepositEvent({ provider: MOCK_PAYER })],
+          }),
+      });
+      const scheme = new FacilitatorPrepaidScheme(signer);
+      const result = await scheme.verify(createMockPrepaidPayload(), createMockPrepaidRequirements());
+      expect(result.isValid).toBe(false);
+      expect(result.invalidReason).toContain("provider_mismatch");
+    });
+
+    it("should reject deposit below minimum via event amount (F-02)", async () => {
+      const signer = createMockFacilitatorSigner({
+        simulateTransaction: async () =>
+          createSuccessfulDryRun({
+            events: [createMockDepositEvent({ amount: "5000000" })],
+          }),
       });
       const scheme = new FacilitatorPrepaidScheme(signer);
       const result = await scheme.verify(createMockPrepaidPayload(), createMockPrepaidRequirements());
@@ -207,20 +281,27 @@ describe("PrepaidSuiFacilitatorScheme", () => {
       expect(result.invalidReason).toContain("deposit_below_minimum");
     });
 
-    it("should accept deposit at exactly minimum", async () => {
+    it("should accept deposit at exactly minimum via event amount", async () => {
       const signer = createMockFacilitatorSigner({
         simulateTransaction: async () =>
-          createSuccessfulDryRun([
-            {
-              owner: { AddressOwner: MOCK_PAYER },
-              coinType: USDC_MAINNET,
-              amount: "-10000000", // exactly 10 USDC min
-            },
-          ]),
+          createSuccessfulDryRun({
+            events: [createMockDepositEvent({ amount: "10000000" })],
+          }),
       });
       const scheme = new FacilitatorPrepaidScheme(signer);
       const result = await scheme.verify(createMockPrepaidPayload(), createMockPrepaidRequirements());
       expect(result.isValid).toBe(true);
+    });
+
+    it("should reject when no PrepaidDeposited event found (F-04: fail closed)", async () => {
+      const signer = createMockFacilitatorSigner({
+        simulateTransaction: async () =>
+          createSuccessfulDryRun({ events: [] }),
+      });
+      const scheme = new FacilitatorPrepaidScheme(signer);
+      const result = await scheme.verify(createMockPrepaidPayload(), createMockPrepaidRequirements());
+      expect(result.isValid).toBe(false);
+      expect(result.invalidReason).toContain("no_deposit_event");
     });
 
     it("should handle signature verification failure gracefully", async () => {
@@ -257,7 +338,6 @@ describe("PrepaidSuiFacilitatorScheme", () => {
       });
       const scheme = new FacilitatorPrepaidScheme(signer);
       await scheme.settle(createMockPrepaidPayload(), createMockPrepaidRequirements());
-      // verify is called during settle (re-verify), which calls verifySignature
       expect(verifyCalls.length).toBeGreaterThanOrEqual(1);
     });
 
@@ -269,6 +349,18 @@ describe("PrepaidSuiFacilitatorScheme", () => {
       const result = await scheme.settle(createMockPrepaidPayload(), createMockPrepaidRequirements());
       expect(result.success).toBe(false);
       expect(result.errorReason).toBeTruthy();
+    });
+
+    it("should fail settlement if provider mismatch on re-verify", async () => {
+      const signer = createMockFacilitatorSigner({
+        simulateTransaction: async () =>
+          createSuccessfulDryRun({
+            events: [createMockDepositEvent({ provider: MOCK_PAYER })],
+          }),
+      });
+      const scheme = new FacilitatorPrepaidScheme(signer);
+      const result = await scheme.settle(createMockPrepaidPayload(), createMockPrepaidRequirements());
+      expect(result.success).toBe(false);
     });
 
     it("should handle execution failure gracefully", async () => {
@@ -319,10 +411,10 @@ describe("PrepaidSuiFacilitatorScheme", () => {
 });
 
 // ─────────────────────────────────────────────────
-// Server Prepaid Scheme Tests
+// Server Prepaid Scheme Tests (x402 compat)
 // ─────────────────────────────────────────────────
 
-describe("PrepaidSuiServerScheme", () => {
+describe("PrepaidSuiServerScheme (x402 compat)", () => {
   it("should parse USDC price correctly", async () => {
     const scheme = new ServerPrepaidScheme({
       ratePerCall: "1000000",
@@ -372,7 +464,8 @@ describe("PrepaidSuiServerScheme", () => {
         amount: "10000000",
         payTo: MOCK_PAYTO,
         maxTimeoutSeconds: 30,
-      },
+        extra: {},
+      } as any,
       { x402Version: 2, scheme: "prepaid", network: SUI_MAINNET_CAIP2 },
       [],
     );

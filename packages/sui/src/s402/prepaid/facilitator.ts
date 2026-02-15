@@ -83,29 +83,41 @@ export class PrepaidSuiFacilitatorScheme implements s402FacilitatorScheme {
         };
       }
 
+      // Event-based verification: the PrepaidDeposited event emitted by the Move
+      // contract is the authoritative source for deposit parameters. This is superior
+      // to balance-change inspection because:
+      //   1. Events contain the exact deposit amount (no gas fee confusion)
+      //   2. Events contain the provider address (enables provider verification)
+      //   3. Events are emitted by the contract itself (single source of truth)
+      const depositEvent = extractDepositEvent(dryRunResult.events ?? []);
+
+      if (!depositEvent) {
+        return {
+          valid: false,
+          invalidReason: 'No PrepaidDeposited event found in simulation',
+          payerAddress,
+        };
+      }
+
+      // Verify deposit targets the correct provider (prevents free-service attack
+      // where client sets provider=self, gets access, then claims back their deposit)
+      if (depositEvent.provider !== requirements.payTo) {
+        return {
+          valid: false,
+          invalidReason: `Provider mismatch: deposit targets ${depositEvent.provider}, expected ${requirements.payTo}`,
+          payerAddress,
+        };
+      }
+
       // Verify deposit amount meets minimum
-      // The deposit PTB moves funds from the agent's wallet into the PrepaidBalance.
-      // In dry-run, the agent's balance decreases by the deposit amount.
-      // We verify the decrease is at least the minDeposit.
-      const balanceChanges = dryRunResult.balanceChanges ?? [];
-
-      // The payer's balance should decrease by at least minDeposit
-      const payerChange = balanceChanges.find(
-        bc =>
-          extractAddress(bc.owner) === payerAddress &&
-          BigInt(bc.amount) < 0n,
-      );
-
-      if (payerChange) {
-        const depositedAmount = -BigInt(payerChange.amount);
-        const minDeposit = BigInt(reqPrepaid.minDeposit);
-        if (depositedAmount < minDeposit) {
-          return {
-            valid: false,
-            invalidReason: `Deposit ${depositedAmount} below minimum ${minDeposit}`,
-            payerAddress,
-          };
-        }
+      const depositedAmount = BigInt(depositEvent.amount);
+      const minDeposit = BigInt(reqPrepaid.minDeposit);
+      if (depositedAmount < minDeposit) {
+        return {
+          valid: false,
+          invalidReason: `Deposit ${depositedAmount} below minimum ${minDeposit}`,
+          payerAddress,
+        };
       }
 
       return { valid: true, payerAddress };
@@ -144,9 +156,12 @@ export class PrepaidSuiFacilitatorScheme implements s402FacilitatorScheme {
 
       const finalityMs = Date.now() - startMs;
 
-      // The PrepaidBalance object ID is created by the transaction.
-      // The server should query the transaction effects to get it,
-      // or the facilitator can extract it from the created objects.
+      // TODO(F-05): Extract balanceId from transaction effects.
+      // The PrepaidBalance object ID is in the created objects of the settled tx.
+      // Requires extending FacilitatorSuiSigner with getTransactionBlock() or
+      // changing executeTransaction to return objectChanges. For now, the server
+      // should query the transaction effects using the txDigest to get the
+      // PrepaidBalance ID it needs for claim tracking.
       return {
         success: true,
         txDigest,
@@ -161,10 +176,30 @@ export class PrepaidSuiFacilitatorScheme implements s402FacilitatorScheme {
   }
 }
 
-function extractAddress(owner: unknown): string {
-  if (typeof owner === 'string') return '';
-  if (owner && typeof owner === 'object' && 'AddressOwner' in owner) {
-    return (owner as { AddressOwner: string }).AddressOwner;
-  }
-  return '';
+/** Fields from the PrepaidDeposited Move event (snake_case per Move convention) */
+interface DepositEventData {
+  balance_id: string;
+  agent: string;
+  provider: string;
+  amount: string;
+  rate_per_call: string;
+  max_calls: string;
+  token_type: string;
+  timestamp_ms: string;
+}
+
+/**
+ * Extract PrepaidDeposited event from dry-run or execution results.
+ *
+ * Uses event data instead of balance changes for verification because:
+ *   1. Events contain the exact deposit amount (no gas fee confusion with coin type)
+ *   2. Events contain the provider address (enables provider verification)
+ *   3. Events are emitted by the Move contract itself (authoritative source)
+ */
+function extractDepositEvent(
+  events: Array<{ type: string; parsedJson?: unknown }>,
+): DepositEventData | null {
+  const event = events.find(e => e.type.endsWith('::prepaid::PrepaidDeposited'));
+  if (!event?.parsedJson || typeof event.parsedJson !== 'object') return null;
+  return event.parsedJson as DepositEventData;
 }

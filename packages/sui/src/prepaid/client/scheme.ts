@@ -40,8 +40,8 @@ export class PrepaidSuiScheme implements SchemeNetworkClient {
       ratePerCall: BigInt(ratePerCall),
       maxCalls: maxCalls ? BigInt(maxCalls) : undefined,
       withdrawalDelayMs: BigInt(withdrawalDelayMs),
-      feeBps: 0, // Protocol fees are handled separately
-      feeRecipient: payTo,
+      feeBps: extra.protocolFeeBps ? Number(extra.protocolFeeBps) : 0,
+      feeRecipient: extra.protocolFeeAddress ?? payTo,
     });
 
     const { signature, bytes } = await this.signer.signTransaction(tx);
@@ -64,4 +64,6 @@ interface PrepaidRequirementsExtra {
   maxCalls?: string;
   minDeposit?: string;
   withdrawalDelayMs?: string;
+  protocolFeeBps?: string | number;
+  protocolFeeAddress?: string;
 }

@@ -107,25 +107,42 @@ export class PrepaidSuiScheme implements SchemeNetworkFacilitator {
         };
       }
 
-      // Verify deposit amount meets minimum (from balance changes)
-      if (reqExtra?.minDeposit) {
-        const balanceChanges = dryRunResult.balanceChanges ?? [];
-        const payerChange = balanceChanges.find(
-          bc =>
-            this.extractAddress(bc.owner) === payer &&
-            BigInt(bc.amount) < 0n,
-        );
+      // Event-based verification: the PrepaidDeposited event emitted by the Move
+      // contract is the authoritative source for deposit parameters. This is superior
+      // to balance-change inspection because:
+      //   1. Events contain the exact deposit amount (no gas fee confusion)
+      //   2. Events contain the provider address (enables provider verification)
+      //   3. Events are emitted by the contract itself (single source of truth)
+      const depositEvent = this.extractDepositEvent(dryRunResult.events ?? []);
 
-        if (payerChange) {
-          const depositedAmount = -BigInt(payerChange.amount);
-          const minDeposit = BigInt(reqExtra.minDeposit);
-          if (depositedAmount < minDeposit) {
-            return {
-              isValid: false,
-              invalidReason: "invalid_prepaid_payload_deposit_below_minimum",
-              payer,
-            };
-          }
+      if (!depositEvent) {
+        return {
+          isValid: false,
+          invalidReason: "invalid_prepaid_payload_no_deposit_event",
+          payer,
+        };
+      }
+
+      // Verify deposit targets the correct provider (prevents free-service attack
+      // where client sets provider=self, gets access, then claims back their deposit)
+      if (depositEvent.provider !== requirements.payTo) {
+        return {
+          isValid: false,
+          invalidReason: "invalid_prepaid_payload_provider_mismatch",
+          payer,
+        };
+      }
+
+      // Verify deposit amount meets minimum
+      if (reqExtra?.minDeposit) {
+        const depositedAmount = BigInt(depositEvent.amount);
+        const minDeposit = BigInt(reqExtra.minDeposit);
+        if (depositedAmount < minDeposit) {
+          return {
+            isValid: false,
+            invalidReason: "invalid_prepaid_payload_deposit_below_minimum",
+            payer,
+          };
         }
       }
     } catch (error) {
@@ -203,13 +220,25 @@ export class PrepaidSuiScheme implements SchemeNetworkFacilitator {
     }
   }
 
-  private extractAddress(owner: unknown): string {
-    if (typeof owner === "string") return "";
-    if (owner && typeof owner === "object") {
-      if ("AddressOwner" in owner) return (owner as { AddressOwner: string }).AddressOwner;
-    }
-    return "";
+  private extractDepositEvent(
+    events: Array<{ type: string; parsedJson?: unknown }>,
+  ): DepositEventData | null {
+    const event = events.find(e => e.type.endsWith("::prepaid::PrepaidDeposited"));
+    if (!event?.parsedJson || typeof event.parsedJson !== "object") return null;
+    return event.parsedJson as DepositEventData;
   }
+}
+
+/** Fields from the PrepaidDeposited Move event (snake_case per Move convention) */
+interface DepositEventData {
+  balance_id: string;
+  agent: string;
+  provider: string;
+  amount: string;
+  rate_per_call: string;
+  max_calls: string;
+  token_type: string;
+  timestamp_ms: string;
 }
 
 /** Shape of the prepaid payload sent by clients */
