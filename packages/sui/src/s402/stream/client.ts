@@ -8,8 +8,8 @@
  * Reuses existing buildCreateStreamTx PTB builder.
  */
 
-import type { s402ClientScheme, s402PaymentRequirements, s402StreamPayload } from '@sweepay/core/s402';
-import { S402_VERSION } from '@sweepay/core/s402';
+import type { s402ClientScheme, s402PaymentRequirements, s402StreamPayload } from 's402';
+import { S402_VERSION } from 's402';
 import type { ClientSuiSigner } from '../../signer.js';
 import type { SweepayConfig } from '../../ptb/types.js';
 import { buildCreateStreamTx } from '../../ptb/stream.js';

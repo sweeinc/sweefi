@@ -3,7 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { buildCreateStreamTx, buildCreateStreamWithTimeoutTx, buildCloseTx, buildRecipientCloseTx } from "@sweepay/sui/ptb";
 import type { SweepayContext } from "../context.js";
 import { requireSigner } from "../context.js";
-import { resolveCoinType, formatBalance, parseAmount, assertTxSuccess, ZERO_ADDRESS } from "../utils/format.js";
+import { resolveCoinType, formatBalance, parseAmount, assertTxSuccess, ZERO_ADDRESS, suiAddress, optionalSuiAddress } from "../utils/format.js";
 
 export function registerStreamTools(server: McpServer, ctx: SweepayContext) {
   server.registerTool(
@@ -20,7 +20,7 @@ export function registerStreamTools(server: McpServer, ctx: SweepayContext) {
         "Note: The stream is a shared object (goes through Sui consensus on each operation). " +
         "Requires a configured wallet.",
       inputSchema: {
-        recipient: z.string().describe("Recipient Sui address"),
+        recipient: suiAddress("Recipient"),
         depositAmount: z.string().describe("Initial deposit in base units"),
         ratePerSecond: z.string().describe("Payment rate in base units per second"),
         budgetCap: z
@@ -35,7 +35,7 @@ export function registerStreamTools(server: McpServer, ctx: SweepayContext) {
           .max(10000)
           .optional()
           .describe("Fee in basis points (default 0)"),
-        feeRecipient: z.string().optional().describe("Fee recipient address"),
+        feeRecipient: optionalSuiAddress("Fee recipient"),
       },
     },
     async ({ recipient, depositAmount, ratePerSecond, budgetCap, coinType, feeBps, feeRecipient }) => {
@@ -91,7 +91,7 @@ export function registerStreamTools(server: McpServer, ctx: SweepayContext) {
         "longer for high-value long-running streams. " +
         "Requires a configured wallet.",
       inputSchema: {
-        recipient: z.string().describe("Recipient Sui address"),
+        recipient: suiAddress("Recipient"),
         depositAmount: z.string().describe("Initial deposit in base units"),
         ratePerSecond: z.string().describe("Payment rate in base units per second"),
         recipientCloseTimeoutMs: z
@@ -109,7 +109,7 @@ export function registerStreamTools(server: McpServer, ctx: SweepayContext) {
           .max(10000)
           .optional()
           .describe("Fee in basis points (default 0)"),
-        feeRecipient: z.string().optional().describe("Fee recipient address"),
+        feeRecipient: optionalSuiAddress("Fee recipient"),
       },
     },
     async ({ recipient, depositAmount, ratePerSecond, recipientCloseTimeoutMs, budgetCap, coinType, feeBps, feeRecipient }) => {

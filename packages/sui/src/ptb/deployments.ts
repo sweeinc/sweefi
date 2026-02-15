@@ -33,12 +33,29 @@ export const TESTNET_PACKAGE_ID_V5 =
   "0x0c8b91c9b23e891a70457c416bd17bab3d51ae42738f9c193fa40947fee9a58e";
 
 /** Sui Testnet v6 — configurable recipient_close timeout via dynamic fields (2026-02-13) */
-export const TESTNET_PACKAGE_ID =
+export const TESTNET_PACKAGE_ID_V6 =
   "0xc80485e9182c607c41e16c2606abefa7ce9b7f78d809054e99486a20d62167d5";
+
+/** Sui Testnet v7 — full suite: admin + payment + stream + escrow + seal + mandate + prepaid (2026-02-15) */
+export const TESTNET_PACKAGE_ID =
+  "0x242f22b9f8b3d77868f6cde06f294203d7c76afa0cd101f388a6cefa45b54c3d";
+
+/** AdminCap — owned by deployer, required for pause/unpause */
+export const TESTNET_ADMIN_CAP =
+  "0x2094ced6e92ce7632ae40bf1292f272cf4caa7c3ab110f2edbfa9f4fdafd119b";
+
+/** ProtocolState — shared object for pause guard */
+export const TESTNET_PROTOCOL_STATE =
+  "0xbfe77423523556fe038a3e83ad4e5be2eac03bc28c453f7345eef7636a547b09";
+
+/** UpgradeCap — owned by deployer, required for contract upgrades */
+export const TESTNET_UPGRADE_CAP =
+  "0x77c484495113c9fbfe9bce9b482f6974e83402ac65853a99c6273de23f9672ad";
 
 /** Sui Testnet config — ready to use with PTB builders */
 export const testnetConfig: SweepayConfig = {
   packageId: TESTNET_PACKAGE_ID,
+  protocolStateId: TESTNET_PROTOCOL_STATE,
 };
 
 // Mainnet TBD — will be set after mainnet deployment

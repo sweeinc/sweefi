@@ -1,6 +1,7 @@
 import { Transaction, coinWithBalance } from "@mysten/sui/transactions";
 import type { SweepayConfig, PayParams, CreateInvoiceParams, PayInvoiceParams } from "./types";
 import { SUI_CLOCK } from "./deployments";
+import { assertFeeBps, assertPositive } from "./assert";
 
 /**
  * Build a PTB for direct payment with fee split + receipt.
@@ -10,6 +11,9 @@ import { SUI_CLOCK } from "./deployments";
  * For composable PTBs (e.g., pay + use receipt as SEAL condition), use buildPayComposableTx.
  */
 export function buildPayTx(config: SweepayConfig, params: PayParams): Transaction {
+  assertPositive(params.amount, "amount", "buildPayTx");
+  assertFeeBps(params.feeBps, "buildPayTx");
+
   const tx = new Transaction();
   tx.setSender(params.sender);
 
@@ -49,6 +53,9 @@ export function buildPayComposableTx(
   config: SweepayConfig,
   params: PayParams,
 ) {
+  assertPositive(params.amount, "amount", "buildPayComposableTx");
+  assertFeeBps(params.feeBps, "buildPayComposableTx");
+
   const tx = new Transaction();
   tx.setSender(params.sender);
 
@@ -84,6 +91,9 @@ export function buildCreateInvoiceTx(
   config: SweepayConfig,
   params: CreateInvoiceParams,
 ): Transaction {
+  assertPositive(params.expectedAmount, "expectedAmount", "buildCreateInvoiceTx");
+  assertFeeBps(params.feeBps, "buildCreateInvoiceTx");
+
   const tx = new Transaction();
   tx.setSender(params.sender);
 

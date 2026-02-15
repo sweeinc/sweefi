@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SweepayContext } from "../context.js";
-import { formatBalance, resolveCoinType } from "../utils/format.js";
+import { formatBalance, resolveCoinType, suiAddress } from "../utils/format.js";
 
 export function registerBalanceTool(server: McpServer, ctx: SweepayContext) {
   server.registerTool(
@@ -12,7 +12,7 @@ export function registerBalanceTool(server: McpServer, ctx: SweepayContext) {
         "Check the SUI, USDC, or USDT balance for any Sui address. " +
         "Returns the balance in human-readable format with proper decimals.",
       inputSchema: {
-        address: z.string().describe("Sui address (0x...)"),
+        address: suiAddress("Wallet"),
         coinType: z
           .string()
           .optional()

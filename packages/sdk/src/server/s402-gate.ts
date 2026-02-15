@@ -31,12 +31,12 @@ import {
   encodePaymentRequired,
   decodePaymentPayload,
   encodeSettleResponse,
-} from '@sweepay/core';
+} from 's402';
 import type {
   s402PaymentRequirements,
   s402Scheme,
   s402SettleResponse,
-} from '@sweepay/core';
+} from 's402';
 
 export interface s402GateConfig {
   /** Payment amount in base units */
@@ -55,6 +55,13 @@ export interface s402GateConfig {
   protocolFeeBps?: number;
   /** Mandate requirements */
   mandate?: { required: boolean; minPerTx?: string };
+  /** Prepaid scheme config (included in requirements when schemes includes 'prepaid') */
+  prepaid?: {
+    ratePerCall: string;
+    maxCalls?: string;
+    minDeposit: string;
+    withdrawalDelayMs: string;
+  };
   /** Custom verify+settle handler (overrides built-in facilitator call) */
   processPayment?: (payload: unknown, requirements: s402PaymentRequirements) => Promise<s402SettleResponse>;
 }
@@ -69,6 +76,7 @@ export function s402Gate(config: s402GateConfig): MiddlewareHandler {
     facilitatorUrl,
     protocolFeeBps,
     mandate,
+    prepaid,
   } = config;
 
   // Always include "exact" for x402 compat
@@ -90,6 +98,12 @@ export function s402Gate(config: s402GateConfig): MiddlewareHandler {
         facilitatorUrl,
         protocolFeeBps,
         mandate: mandate ? { required: mandate.required, minPerTx: mandate.minPerTx } : undefined,
+        prepaid: prepaid ? {
+          ratePerCall: prepaid.ratePerCall,
+          maxCalls: prepaid.maxCalls,
+          minDeposit: prepaid.minDeposit,
+          withdrawalDelayMs: prepaid.withdrawalDelayMs,
+        } : undefined,
       };
 
       const encoded = encodePaymentRequired(requirements);
@@ -123,6 +137,12 @@ export function s402Gate(config: s402GateConfig): MiddlewareHandler {
           payTo,
           facilitatorUrl,
           protocolFeeBps,
+          prepaid: prepaid ? {
+            ratePerCall: prepaid.ratePerCall,
+            maxCalls: prepaid.maxCalls,
+            minDeposit: prepaid.minDeposit,
+            withdrawalDelayMs: prepaid.withdrawalDelayMs,
+          } : undefined,
         };
 
         const result = await config.processPayment(payload, requirements);

@@ -1,0 +1,53 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#4DA2FF', 'primaryTextColor': '#fff', 'primaryBorderColor': '#2D7DD2', 'lineColor': '#5C6BC0', 'secondaryColor': '#E8F5E9', 'tertiaryColor': '#FFF3E0', 'fontFamily': 'Inter, system-ui, sans-serif' }}}%%
+
+graph LR
+    subgraph AGENTS["🤖 AI Agents"]
+        A1["Claude / GPT<br/>Cursor / MCP Apps"]
+    end
+
+    subgraph SDK["📦 SDK"]
+        FETCH["@sweepay/sdk<br/>auto-pay"]
+        MCP["@sweepay/mcp<br/>16 tools"]
+    end
+
+    subgraph PROTOCOL["🔗 s402"]
+        CORE["s402 spec<br/>Zero deps"]
+        COMPAT["x402 compat"]
+    end
+
+    subgraph SUI["⚡ Sui Layer"]
+        PTB["@sweepay/sui<br/>PTB builders"]
+        FAC["facilitator<br/>verify + settle"]
+        GAS["gas station<br/>sponsored tx"]
+    end
+
+    subgraph CHAIN["🔷 Move Contracts"]
+        PAY["payment"]
+        PRE["prepaid"]
+        ESC["escrow"]
+        SEAL_M["seal"]
+        MAN["mandate"]
+        ADM["admin"]
+    end
+
+    subgraph INFRA["🔐 Infra"]
+        SEAL["SEAL<br/>encryption"]
+        WAL["Walrus<br/>storage"]
+    end
+
+    AGENTS --> SDK --> PROTOCOL --> SUI --> CHAIN --> INFRA
+    CORE -.- COMPAT
+
+    classDef agents fill:#4DA2FF,stroke:#2D7DD2,color:#fff
+    classDef sdk fill:#66BB6A,stroke:#43A047,color:#fff
+    classDef protocol fill:#FFA726,stroke:#F57C00,color:#fff
+    classDef sui fill:#7E57C2,stroke:#5E35B1,color:#fff
+    classDef chain fill:#26C6DA,stroke:#00ACC1,color:#fff
+    classDef seal fill:#EF5350,stroke:#E53935,color:#fff
+
+    class A1 agents
+    class FETCH,MCP sdk
+    class CORE,COMPAT protocol
+    class PTB,FAC,GAS sui
+    class PAY,PRE,ESC,SEAL_M,MAN,ADM chain
+    class SEAL,WAL seal

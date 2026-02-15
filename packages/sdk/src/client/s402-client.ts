@@ -17,9 +17,10 @@
  */
 
 import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
-import { s402Client } from '@sweepay/core';
+import { s402Client } from 's402';
 import {
   ExactSuiClientScheme,
+  PrepaidSuiClientScheme,
   StreamSuiClientScheme,
   EscrowSuiClientScheme,
   SealSuiClientScheme,
@@ -51,6 +52,7 @@ export function createS402Client(config: s402ClientConfig) {
   // Register advanced schemes if packageId is provided (needed for PTB builders)
   if (packageId) {
     const sweepayConfig = { packageId };
+    client.register(network, new PrepaidSuiClientScheme(signer, sweepayConfig));
     client.register(network, new StreamSuiClientScheme(signer, sweepayConfig));
     client.register(network, new EscrowSuiClientScheme(signer, sweepayConfig));
     client.register(network, new SealSuiClientScheme(signer, sweepayConfig));

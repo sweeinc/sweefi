@@ -3,7 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { buildCreateInvoiceTx, buildPayInvoiceTx } from "@sweepay/sui/ptb";
 import type { SweepayContext } from "../context.js";
 import { requireSigner } from "../context.js";
-import { resolveCoinType, formatBalance, parseAmount, assertTxSuccess, ZERO_ADDRESS } from "../utils/format.js";
+import { resolveCoinType, formatBalance, parseAmount, assertTxSuccess, ZERO_ADDRESS, suiAddress, optionalSuiAddress } from "../utils/format.js";
 
 export function registerInvoiceTools(server: McpServer, ctx: SweepayContext) {
   server.registerTool(
@@ -15,7 +15,7 @@ export function registerInvoiceTools(server: McpServer, ctx: SweepayContext) {
         "and recipient. When paid, the invoice is consumed on-chain (replay protection). " +
         "Optionally send the invoice to a specific address. Requires a configured wallet.",
       inputSchema: {
-        recipient: z.string().describe("Address that receives the payment when invoice is paid"),
+        recipient: suiAddress("Recipient"),
         amount: z.string().describe("Expected payment amount in base units"),
         feeBps: z
           .number()
@@ -24,8 +24,8 @@ export function registerInvoiceTools(server: McpServer, ctx: SweepayContext) {
           .max(10000)
           .optional()
           .describe("Fee in basis points (default 0)"),
-        feeRecipient: z.string().optional().describe("Address to receive the fee"),
-        sendTo: z.string().optional().describe("Send invoice to this address (optional)"),
+        feeRecipient: optionalSuiAddress("Fee recipient"),
+        sendTo: optionalSuiAddress("Invoice destination"),
       },
     },
     async ({ recipient, amount, feeBps, feeRecipient, sendTo }) => {

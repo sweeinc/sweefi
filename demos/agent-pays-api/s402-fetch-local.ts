@@ -5,13 +5,13 @@
  * Intercepts 402 responses, auto-creates payment, retries.
  */
 
-import type { s402Client } from "@sweepay/core";
+import type { s402Client } from "s402";
 import {
   detectProtocol,
   S402_HEADERS,
   encodePaymentPayload,
-} from "@sweepay/core";
-import type { s402PaymentRequirements } from "@sweepay/core";
+} from "s402";
+import type { s402PaymentRequirements } from "s402";
 
 export function wrapFetchWithS402(
   baseFetch: typeof globalThis.fetch,

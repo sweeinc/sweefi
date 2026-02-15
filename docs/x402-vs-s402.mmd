@@ -1,0 +1,27 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'fontFamily': 'Inter, system-ui, sans-serif' }}}%%
+
+graph TB
+    subgraph X402["❌ x402 · EVM"]
+        direction TB
+        X1["1. Client signs TX"] --> X2["2. Facilitator holds signed TX<br/>⚠️ Trust bottleneck"]
+        X2 --> X3["3. Facilitator broadcasts<br/>~2-12s finality"]
+        X3 --> X4["4. Server trusts facilitator<br/>⚠️ No delivery guarantee"]
+        X4 --> X5["$7.00 gas / 1K calls<br/>⚠️ Micropayments broken"]
+    end
+
+    subgraph S402["✅ s402 · Sui"]
+        direction TB
+        S1["1. Client builds PTB"] --> S2["2. Atomic settlement<br/>✅ No intermediary"]
+        S2 --> S3["3. ~400ms finality<br/>✅ On-chain receipt"]
+        S3 --> S4["4. SEAL trustless delivery<br/>✅ Content decrypts"]
+        S4 --> S5["$0.014 / 1K calls<br/>✅ 500x cheaper"]
+    end
+
+    style X402 fill:#FFF3E0,stroke:#FF9800
+    style S402 fill:#E8F5E9,stroke:#4CAF50
+    style X2 fill:#FFCDD2,stroke:#E53935
+    style X4 fill:#FFCDD2,stroke:#E53935
+    style X5 fill:#FFCDD2,stroke:#E53935
+    style S2 fill:#C8E6C9,stroke:#43A047
+    style S4 fill:#C8E6C9,stroke:#43A047
+    style S5 fill:#C8E6C9,stroke:#43A047

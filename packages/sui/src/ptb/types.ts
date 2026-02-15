@@ -143,3 +143,69 @@ export interface BatchClaimParams {
   /** Sender (recipient) address — must be recipient on all streams */
   sender: string;
 }
+
+// ══════════════════════════════════════════════════════════════
+// Prepaid types
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * Parameters for creating a prepaid balance (agent deposits funds).
+ *
+ * Trust model: The provider submits cumulative call counts. Move enforces
+ * rate_per_call and max_calls caps, but cannot verify actual API calls.
+ * The deposit amount is the agent's maximum possible loss.
+ */
+export interface PrepaidDepositParams {
+  /** Coin type (e.g., "0x2::sui::SUI") */
+  coinType: string;
+  /** Sender (agent) address */
+  sender: string;
+  /** Provider (authorized claimer) address */
+  provider: string;
+  /** Deposit amount in base units */
+  amount: bigint;
+  /** Maximum base units per call (rate cap) */
+  ratePerCall: bigint;
+  /** Max calls cap. Omit or use UNLIMITED_CALLS for no limit. */
+  maxCalls?: bigint | string;
+  /** How long agent must wait after last claim to withdraw (ms). Min 60s, max 7d. */
+  withdrawalDelayMs: bigint;
+  /** Protocol fee on claims in basis points (0-10000) */
+  feeBps: number;
+  /** Address that receives the protocol fee */
+  feeRecipient: string;
+}
+
+/** Parameters for provider claiming earned funds */
+export interface PrepaidClaimParams {
+  /** Coin type (e.g., "0x2::sui::SUI") */
+  coinType: string;
+  /** PrepaidBalance object ID */
+  balanceId: string;
+  /** Sender (provider) address */
+  sender: string;
+  /** Total cumulative calls served (Move computes delta from last claim) */
+  cumulativeCallCount: bigint;
+}
+
+/** Parameters for prepaid operations (withdrawal, cancel, close) */
+export interface PrepaidOpParams {
+  /** Coin type (e.g., "0x2::sui::SUI") */
+  coinType: string;
+  /** PrepaidBalance object ID */
+  balanceId: string;
+  /** Sender address (agent for withdrawal, provider for provider_close) */
+  sender: string;
+}
+
+/** Parameters for agent topping up an existing prepaid balance */
+export interface PrepaidTopUpParams {
+  /** Coin type (e.g., "0x2::sui::SUI") */
+  coinType: string;
+  /** PrepaidBalance object ID */
+  balanceId: string;
+  /** Sender (agent) address */
+  sender: string;
+  /** Additional deposit amount in base units */
+  amount: bigint;
+}

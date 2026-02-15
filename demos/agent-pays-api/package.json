@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@mysten/sui": "^1.45.2",
+    "s402": "^0.1.0",
     "@sweepay/core": "workspace:*",
     "@sweepay/sdk": "workspace:*",
     "@sweepay/sui": "workspace:*",

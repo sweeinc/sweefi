@@ -16,7 +16,7 @@ export type {
 } from "./types";
 
 // Deployment constants
-export { SUI_CLOCK, TESTNET_PACKAGE_ID, TESTNET_PACKAGE_ID_V1, TESTNET_PACKAGE_ID_V2, TESTNET_PACKAGE_ID_V3, TESTNET_PACKAGE_ID_V4, TESTNET_PACKAGE_ID_V5, testnetConfig } from "./deployments";
+export { SUI_CLOCK, TESTNET_PACKAGE_ID, TESTNET_PACKAGE_ID_V1, TESTNET_PACKAGE_ID_V2, TESTNET_PACKAGE_ID_V3, TESTNET_PACKAGE_ID_V4, TESTNET_PACKAGE_ID_V5, TESTNET_PACKAGE_ID_V6, TESTNET_ADMIN_CAP, TESTNET_PROTOCOL_STATE, TESTNET_UPGRADE_CAP, testnetConfig } from "./deployments";
 
 // Payment PTB builders
 export {
@@ -76,3 +76,40 @@ export {
   buildCreateRegistryTx,
   buildRevokeMandateTx,
 } from "./mandate";
+
+// Agent Mandate PTB builders (tiered spending authorization with periodic caps)
+export type {
+  CreateAgentMandateParams,
+  AgentMandatedPayParams,
+  AgentMandatedPayCheckedParams,
+  UpgradeMandateLevelParams,
+  UpdateMandateCapsParams,
+  MandateLevelValue,
+} from "./agent-mandate";
+export {
+  MandateLevel,
+  buildCreateAgentMandateTx,
+  buildAgentMandatedPayTx,
+  buildAgentMandatedPayCheckedTx,
+  buildUpgradeMandateLevelTx,
+  buildUpdateMandateCapsTx,
+} from "./agent-mandate";
+
+// Prepaid PTB builders (agent micropayment balances)
+export type {
+  PrepaidDepositParams,
+  PrepaidClaimParams,
+  PrepaidOpParams,
+  PrepaidTopUpParams,
+} from "./types";
+export {
+  UNLIMITED_CALLS,
+  buildDepositTx as buildPrepaidDepositTx,
+  buildClaimTx as buildPrepaidClaimTx,
+  buildRequestWithdrawalTx,
+  buildFinalizeWithdrawalTx,
+  buildCancelWithdrawalTx,
+  buildAgentCloseTx as buildPrepaidAgentCloseTx,
+  buildProviderCloseTx as buildPrepaidProviderCloseTx,
+  buildTopUpTx as buildPrepaidTopUpTx,
+} from "./prepaid";

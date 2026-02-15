@@ -27,6 +27,10 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
+  "files": ["dist", "README.md", "LICENSE"],
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@sweepay/core": "workspace:*",

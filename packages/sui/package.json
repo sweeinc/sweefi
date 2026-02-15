@@ -41,6 +41,27 @@
       },
       "default": "./dist/exact/facilitator/index.mjs"
     },
+    "./prepaid/client": {
+      "import": {
+        "types": "./dist/prepaid/client/index.d.mts",
+        "default": "./dist/prepaid/client/index.mjs"
+      },
+      "default": "./dist/prepaid/client/index.mjs"
+    },
+    "./prepaid/server": {
+      "import": {
+        "types": "./dist/prepaid/server/index.d.mts",
+        "default": "./dist/prepaid/server/index.mjs"
+      },
+      "default": "./dist/prepaid/server/index.mjs"
+    },
+    "./prepaid/facilitator": {
+      "import": {
+        "types": "./dist/prepaid/facilitator/index.d.mts",
+        "default": "./dist/prepaid/facilitator/index.mjs"
+      },
+      "default": "./dist/prepaid/facilitator/index.mjs"
+    },
     "./ptb": {
       "import": {
         "types": "./dist/ptb/index.d.mts",
@@ -58,8 +79,15 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
+  "files": ["dist", "README.md", "LICENSE"],
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
-    "@sweepay/core": "workspace:*",
+    "s402": "^0.1.0",
+    "@sweepay/core": "workspace:*"
+  },
+  "peerDependencies": {
     "@mysten/sui": "^1.20.0"
   },
   "devDependencies": {

@@ -14,19 +14,23 @@
 
 ```
 sweepay-project/
-├── contracts/                    # Move smart contracts (5 modules, 84 tests)
+├── contracts/                    # Move smart contracts (8 modules, 226 test annotations)
 │   └── sources/
 │       ├── payment.move          # Direct payments, invoices, receipts
 │       ├── stream.move           # Streaming micropayments + budget caps
 │       ├── escrow.move           # Time-locked escrow + arbiter disputes
-│       └── seal_policy.move      # SEAL integration (pay-to-decrypt)
+│       ├── seal_policy.move      # SEAL integration (pay-to-decrypt)
+│       ├── mandate.move          # Basic spending delegation, revocation
+│       ├── agent_mandate.move    # L0-L3 progressive autonomy, lazy reset
+│       ├── prepaid.move          # Deposit-based agent budgets, batch-claim
+│       └── admin.move            # Emergency pause, admin capabilities
 ├── packages/
-│   ├── core/                     # Shared types, client factories, s402 protocol, constants (85 tests)
-│   ├── sui/                      # 18 PTB builders for all contract ops (118 tests)
-│   ├── sdk/                      # Client + server SDK, 3-line integration (30 tests)
-│   ├── facilitator/              # Self-hostable payment verification (37 tests)
+│   ├── core/                     # Shared types, client factories, s402 protocol, constants (54 tests)
+│   ├── sui/                      # 18 PTB builders for all contract ops (123 tests)
+│   ├── sdk/                      # Client + server SDK, 3-line integration (39 tests)
+│   ├── facilitator/              # Self-hostable payment verification (41 tests)
 │   ├── mcp/                      # MCP server, 16 AI agent tools (36 tests)
-│   └── widget/                   # Framework-agnostic checkout core + Vue + React adapters (WIP)
+│   └── widget/                   # Framework-agnostic checkout core + Vue adapter (6 tests)
 ├── GRANT-APPLICATION.md          # Sui DeFi Moonshots grant application
 ├── BATTLE-PLAN.md                # Competitive strategy vs BEEP
 └── SPEC.md                       # Full specification and vision
@@ -55,11 +59,11 @@ pnpm -r --filter @sweepay/mcp test
 pnpm -r --filter @sweepay/sui build
 ```
 
-## Smart Contracts (Testnet v6)
+## Smart Contracts (Testnet v7)
 
 Package ID: `0xc80485e9182c607c41e16c2606abefa7ce9b7f78d809054e99486a20d62167d5`
 
-4 modules, all deployed, 84 Move tests passing.
+8 modules, all deployed, 226 Move test annotations passing (158 positive + 68 negative-path).
 
 **Key design patterns:**
 - All payment functions are `public` (composable in PTBs), not `entry`

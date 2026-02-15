@@ -18,7 +18,7 @@ import type {
   s402VerifyResponse,
   s402SettleResponse,
   s402ExactPayload,
-} from '@sweepay/core';
+} from 's402';
 import type { FacilitatorSuiSigner } from '../../signer.js';
 import { coinTypesEqual } from '../../utils.js';
 

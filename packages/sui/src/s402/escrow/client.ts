@@ -5,8 +5,8 @@
  * Reuses existing buildCreateEscrowTx PTB builder.
  */
 
-import type { s402ClientScheme, s402PaymentRequirements, s402EscrowPayload } from '@sweepay/core/s402';
-import { S402_VERSION } from '@sweepay/core/s402';
+import type { s402ClientScheme, s402PaymentRequirements, s402EscrowPayload } from 's402';
+import { S402_VERSION } from 's402';
 import type { ClientSuiSigner } from '../../signer.js';
 import type { SweepayConfig } from '../../ptb/types.js';
 import { buildCreateEscrowTx } from '../../ptb/escrow.js';

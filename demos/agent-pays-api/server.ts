@@ -27,12 +27,12 @@ import {
   encodePaymentRequired,
   decodePaymentPayload,
   encodeSettleResponse,
-} from "@sweepay/core";
+} from "s402";
 import type {
   s402PaymentRequirements,
   s402SettleResponse,
   s402ExactPayload,
-} from "@sweepay/core";
+} from "s402";
 
 // ══════════════════════════════════════════════════════════════
 // Configuration

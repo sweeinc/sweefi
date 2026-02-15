@@ -1,6 +1,7 @@
 import { Transaction, coinWithBalance } from "@mysten/sui/transactions";
 import type { SweepayConfig, PayParams } from "./types";
 import { SUI_CLOCK } from "./deployments";
+import { assertFeeBps, assertPositive } from "./assert";
 
 /**
  * Parameters for the atomic pay-and-keep-receipt flow.
@@ -33,6 +34,9 @@ export function buildPayAndProveTx(
   config: SweepayConfig,
   params: PayAndProveParams,
 ): Transaction {
+  assertPositive(params.amount, "amount", "buildPayAndProveTx");
+  assertFeeBps(params.feeBps, "buildPayAndProveTx");
+
   const tx = new Transaction();
   tx.setSender(params.sender);
 

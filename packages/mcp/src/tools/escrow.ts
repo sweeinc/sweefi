@@ -8,7 +8,7 @@ import {
 } from "@sweepay/sui/ptb";
 import type { SweepayContext } from "../context.js";
 import { requireSigner } from "../context.js";
-import { resolveCoinType, formatBalance, parseAmount, assertTxSuccess, ZERO_ADDRESS } from "../utils/format.js";
+import { resolveCoinType, formatBalance, parseAmount, assertTxSuccess, ZERO_ADDRESS, suiAddress, optionalSuiAddress } from "../utils/format.js";
 
 export function registerEscrowTools(server: McpServer, ctx: SweepayContext) {
   // ── Create Escrow ──────────────────────────────────────────
@@ -25,8 +25,8 @@ export function registerEscrowTools(server: McpServer, ctx: SweepayContext) {
         "seller encrypts deliverables, buyer decrypts after release. " +
         "Requires a configured wallet.",
       inputSchema: {
-        seller: z.string().describe("Seller Sui address (receives funds on release)"),
-        arbiter: z.string().describe("Arbiter Sui address (resolves disputes)"),
+        seller: suiAddress("Seller"),
+        arbiter: suiAddress("Arbiter"),
         amount: z.string().describe("Deposit amount in base units"),
         deadlineMs: z
           .string()
@@ -43,7 +43,7 @@ export function registerEscrowTools(server: McpServer, ctx: SweepayContext) {
           .max(10000)
           .optional()
           .describe("Fee in basis points, charged on release only (default 0)"),
-        feeRecipient: z.string().optional().describe("Fee recipient address"),
+        feeRecipient: optionalSuiAddress("Fee recipient"),
       },
     },
     async ({ seller, arbiter, amount, deadlineMs, coinType, memo, feeBps, feeRecipient }) => {
@@ -159,9 +159,8 @@ export function registerEscrowTools(server: McpServer, ctx: SweepayContext) {
       title: "Refund Escrow",
       description:
         "Refund escrowed funds to the buyer. Who can call:\n" +
-        "- Buyer: anytime (if ACTIVE state)\n" +
-        "- Arbiter: if DISPUTED state\n" +
         "- Anyone: after the deadline (permissionless timeout — prevents fund lockup)\n" +
+        "- Arbiter: if DISPUTED state (before deadline)\n" +
         "No fee is charged on refunds. The Escrow object is consumed. " +
         "Requires a configured wallet.",
       inputSchema: {

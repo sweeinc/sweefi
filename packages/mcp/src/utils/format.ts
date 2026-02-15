@@ -1,7 +1,19 @@
 import { COIN_TYPES, COIN_DECIMALS } from "@sweepay/core";
+import { z } from "zod";
 
 /** 64-char zero address — used as default feeRecipient when no fee is charged */
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000000000000000000000000000";
+
+/** Regex for a valid Sui address (0x + 64 hex chars) */
+const SUI_ADDRESS_RE = /^0x[a-fA-F0-9]{64}$/;
+
+/** Zod schema for a required Sui address with validation */
+export const suiAddress = (label: string) =>
+  z.string().regex(SUI_ADDRESS_RE, `${label} must be a valid Sui address (0x + 64 hex chars)`).describe(`${label} Sui address (0x...)`);
+
+/** Zod schema for an optional Sui address with validation */
+export const optionalSuiAddress = (label: string) =>
+  z.string().regex(SUI_ADDRESS_RE, `${label} must be a valid Sui address (0x + 64 hex chars)`).optional().describe(`${label} Sui address (0x...)`);
 
 /**
  * Validate and parse an amount string into a bigint.

@@ -11,8 +11,8 @@
  *   PTB 2: seal_approve() (SEAL key servers decrypt based on escrow receipt)
  */
 
-import type { s402ClientScheme, s402PaymentRequirements, s402SealPayload } from '@sweepay/core/s402';
-import { S402_VERSION } from '@sweepay/core/s402';
+import type { s402ClientScheme, s402PaymentRequirements, s402SealPayload } from 's402';
+import { S402_VERSION } from 's402';
 import type { ClientSuiSigner } from '../../signer.js';
 import type { SweepayConfig } from '../../ptb/types.js';
 import { buildCreateEscrowTx } from '../../ptb/escrow.js';

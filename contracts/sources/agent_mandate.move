@@ -1,0 +1,392 @@
+/// SweePay AgentMandate — tiered spending authorization with periodic caps
+///
+/// Extends the basic Mandate concept with:
+///   - Mandate levels (L0-L3): progressive autonomy from read-only to autonomous
+///   - Daily spending cap: lazy-reset every 24h
+///   - Weekly spending cap: lazy-reset every 7d
+///   - Level upgrade: delegator can promote an agent's mandate over time
+///
+/// Lazy reset pattern: Move has no cron. Daily/weekly counters reset on the
+/// first spend after the period boundary. This is the same pattern as
+/// prepaid.move's withdrawal timing — check Clock, reset if past deadline.
+///
+/// Uses the same RevocationRegistry from sweepay::mandate for revocation.
+///
+/// Error codes: 500-series (mandate=400, agent_mandate=500)
+#[allow(lint(self_transfer), unused_const)]
+module sweepay::agent_mandate {
+    use sui::clock::Clock;
+    use sweepay::mandate::{ Self as mandate, RevocationRegistry };
+
+    // ══════════════════════════════════════════════════════════════
+    // Constants
+    // ══════════════════════════════════════════════════════════════
+
+    /// Milliseconds in one day (24 * 60 * 60 * 1000)
+    const MS_PER_DAY: u64 = 86_400_000;
+    /// Milliseconds in one week (7 * 24 * 60 * 60 * 1000)
+    const MS_PER_WEEK: u64 = 604_800_000;
+
+    // Mandate levels
+    const LEVEL_READ_ONLY: u8 = 0;   // L0: cron/read-only (no spending)
+    const LEVEL_MONITOR: u8 = 1;      // L1: monitor + alert (no spending)
+    const LEVEL_CAPPED: u8 = 2;       // L2: capped purchasing (spends within caps)
+    const LEVEL_AUTONOMOUS: u8 = 3;   // L3: autonomous (spends with post-notify)
+
+    // ══════════════════════════════════════════════════════════════
+    // Error codes
+    // ══════════════════════════════════════════════════════════════
+
+    const ENotDelegate: u64 = 500;
+    const EExpired: u64 = 501;
+    const EPerTxLimitExceeded: u64 = 502;
+    const ETotalLimitExceeded: u64 = 503;
+    const ENotDelegator: u64 = 504;
+    const ERevoked: u64 = 505;
+    const EDailyLimitExceeded: u64 = 506;
+    const EWeeklyLimitExceeded: u64 = 507;
+    const EInvalidLevel: u64 = 508;
+    const ELevelNotAuthorized: u64 = 509;
+    const ECannotDowngrade: u64 = 510;
+
+    // ══════════════════════════════════════════════════════════════
+    // Structs
+    // ══════════════════════════════════════════════════════════════
+
+    /// Agent spending authorization with tiered levels and periodic caps.
+    /// Owned by the delegate (agent) for fast single-owner transactions.
+    public struct AgentMandate<phantom T> has key, store {
+        id: UID,
+        /// Human who authorized the spending
+        delegator: address,
+        /// Agent who can spend
+        delegate: address,
+
+        /// Mandate level: 0=L0 (read-only), 1=L1 (monitor), 2=L2 (capped), 3=L3 (autonomous)
+        level: u8,
+
+        /// Maximum amount per transaction (base units)
+        max_per_tx: u64,
+
+        /// Daily spending cap (base units). 0 = no daily limit.
+        daily_limit: u64,
+        /// Amount spent in current daily period
+        daily_spent: u64,
+        /// Timestamp (ms) when daily counter was last reset
+        last_daily_reset_ms: u64,
+
+        /// Weekly spending cap (base units). 0 = no weekly limit.
+        weekly_limit: u64,
+        /// Amount spent in current weekly period
+        weekly_spent: u64,
+        /// Timestamp (ms) when weekly counter was last reset
+        last_weekly_reset_ms: u64,
+
+        /// Lifetime spending cap (base units)
+        max_total: u64,
+        /// Running total of all spending
+        total_spent: u64,
+
+        /// Expiry timestamp in milliseconds
+        expires_at_ms: u64,
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // Events
+    // ══════════════════════════════════════════════════════════════
+
+    /// Emitted when an agent mandate is created
+    public struct AgentMandateCreated has copy, drop {
+        mandate_id: ID,
+        delegator: address,
+        delegate: address,
+        level: u8,
+        max_per_tx: u64,
+        daily_limit: u64,
+        weekly_limit: u64,
+        max_total: u64,
+        expires_at_ms: u64,
+    }
+
+    /// Emitted when a mandate level is upgraded
+    public struct MandateLevelUpgraded has copy, drop {
+        mandate_id: ID,
+        old_level: u8,
+        new_level: u8,
+        delegator: address,
+    }
+
+    /// Emitted on each spend for audit trail
+    public struct AgentSpend has copy, drop {
+        mandate_id: ID,
+        delegate: address,
+        amount: u64,
+        daily_spent: u64,
+        weekly_spent: u64,
+        total_spent: u64,
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // Mandate lifecycle
+    // ══════════════════════════════════════════════════════════════
+
+    /// Create an agent mandate. Called by the delegator (human).
+    /// Level must be 0-3. For L0/L1, spending caps can be 0.
+    public fun create<T>(
+        delegate: address,
+        level: u8,
+        max_per_tx: u64,
+        daily_limit: u64,
+        weekly_limit: u64,
+        max_total: u64,
+        expires_at_ms: u64,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ): AgentMandate<T> {
+        assert!(expires_at_ms > clock.timestamp_ms(), EExpired);
+        assert!(level <= LEVEL_AUTONOMOUS, EInvalidLevel);
+
+        let now = clock.timestamp_ms();
+        let mandate = AgentMandate<T> {
+            id: object::new(ctx),
+            delegator: ctx.sender(),
+            delegate,
+            level,
+            max_per_tx,
+            daily_limit,
+            daily_spent: 0,
+            last_daily_reset_ms: now,
+            weekly_limit,
+            weekly_spent: 0,
+            last_weekly_reset_ms: now,
+            max_total,
+            total_spent: 0,
+            expires_at_ms,
+        };
+
+        sui::event::emit(AgentMandateCreated {
+            mandate_id: object::id(&mandate),
+            delegator: ctx.sender(),
+            delegate,
+            level,
+            max_per_tx,
+            daily_limit,
+            weekly_limit,
+            max_total,
+            expires_at_ms,
+        });
+
+        mandate
+    }
+
+    /// Convenience entry: create and transfer to delegate in one call.
+    entry fun create_and_transfer<T>(
+        delegate: address,
+        level: u8,
+        max_per_tx: u64,
+        daily_limit: u64,
+        weekly_limit: u64,
+        max_total: u64,
+        expires_at_ms: u64,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let mandate = create<T>(
+            delegate, level, max_per_tx, daily_limit,
+            weekly_limit, max_total, expires_at_ms, clock, ctx,
+        );
+        transfer::transfer(mandate, delegate);
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // Spending
+    // ══════════════════════════════════════════════════════════════
+
+    /// Validate and debit a spending amount. Called by the delegate (agent).
+    ///
+    /// Checks (in order):
+    ///   1. Caller is the delegate
+    ///   2. Mandate not expired
+    ///   3. Level >= L2 (only L2+ can spend)
+    ///   4. Lazy-reset daily counter if 24h+ have elapsed
+    ///   5. Lazy-reset weekly counter if 7d+ have elapsed
+    ///   6. amount <= max_per_tx
+    ///   7. daily_spent + amount <= daily_limit (if daily_limit > 0)
+    ///   8. weekly_spent + amount <= weekly_limit (if weekly_limit > 0)
+    ///   9. total_spent + amount <= max_total
+    public fun validate_and_spend<T>(
+        mandate: &mut AgentMandate<T>,
+        amount: u64,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        let now = clock.timestamp_ms();
+
+        // 1. Only the delegate can spend
+        assert!(ctx.sender() == mandate.delegate, ENotDelegate);
+
+        // 2. Check expiry
+        assert!(now < mandate.expires_at_ms, EExpired);
+
+        // 3. Level check — only L2+ can spend
+        assert!(mandate.level >= LEVEL_CAPPED, ELevelNotAuthorized);
+
+        // 4. Lazy daily reset
+        if (now - mandate.last_daily_reset_ms >= MS_PER_DAY) {
+            mandate.daily_spent = 0;
+            mandate.last_daily_reset_ms = now;
+        };
+
+        // 5. Lazy weekly reset
+        if (now - mandate.last_weekly_reset_ms >= MS_PER_WEEK) {
+            mandate.weekly_spent = 0;
+            mandate.last_weekly_reset_ms = now;
+        };
+
+        // 6. Per-transaction limit
+        assert!(amount <= mandate.max_per_tx, EPerTxLimitExceeded);
+
+        // 7. Daily limit (0 = no daily limit)
+        if (mandate.daily_limit > 0) {
+            assert!(mandate.daily_spent + amount <= mandate.daily_limit, EDailyLimitExceeded);
+        };
+
+        // 8. Weekly limit (0 = no weekly limit)
+        if (mandate.weekly_limit > 0) {
+            assert!(mandate.weekly_spent + amount <= mandate.weekly_limit, EWeeklyLimitExceeded);
+        };
+
+        // 9. Lifetime cap
+        assert!(mandate.total_spent + amount <= mandate.max_total, ETotalLimitExceeded);
+
+        // Debit all counters
+        mandate.daily_spent = mandate.daily_spent + amount;
+        mandate.weekly_spent = mandate.weekly_spent + amount;
+        mandate.total_spent = mandate.total_spent + amount;
+
+        // Emit audit event
+        sui::event::emit(AgentSpend {
+            mandate_id: object::id(mandate),
+            delegate: mandate.delegate,
+            amount,
+            daily_spent: mandate.daily_spent,
+            weekly_spent: mandate.weekly_spent,
+            total_spent: mandate.total_spent,
+        });
+    }
+
+    /// Validate spending with revocation check.
+    /// Uses the same RevocationRegistry from sweepay::mandate.
+    public fun validate_and_spend_checked<T>(
+        m: &mut AgentMandate<T>,
+        amount: u64,
+        registry: &RevocationRegistry,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        // Check revocation first (reuse mandate module's registry + helper)
+        assert!(!mandate::is_id_revoked(registry, object::id(m)), ERevoked);
+
+        // Then normal validation
+        validate_and_spend(m, amount, clock, ctx);
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // Level management
+    // ══════════════════════════════════════════════════════════════
+
+    /// Upgrade a mandate's level. Only the delegator can upgrade.
+    /// Cannot downgrade — use revoke + recreate for that.
+    entry fun upgrade_level<T>(
+        mandate: &mut AgentMandate<T>,
+        new_level: u8,
+        ctx: &TxContext,
+    ) {
+        assert!(ctx.sender() == mandate.delegator, ENotDelegator);
+        assert!(new_level <= LEVEL_AUTONOMOUS, EInvalidLevel);
+        assert!(new_level > mandate.level, ECannotDowngrade);
+
+        let old_level = mandate.level;
+        mandate.level = new_level;
+
+        sui::event::emit(MandateLevelUpgraded {
+            mandate_id: object::id(mandate),
+            old_level,
+            new_level,
+            delegator: mandate.delegator,
+        });
+    }
+
+    /// Update spending caps. Only the delegator can modify caps.
+    /// Useful when upgrading from L1→L2 (need to set spending caps).
+    entry fun update_caps<T>(
+        mandate: &mut AgentMandate<T>,
+        new_max_per_tx: u64,
+        new_daily_limit: u64,
+        new_weekly_limit: u64,
+        new_max_total: u64,
+        ctx: &TxContext,
+    ) {
+        assert!(ctx.sender() == mandate.delegator, ENotDelegator);
+        mandate.max_per_tx = new_max_per_tx;
+        mandate.daily_limit = new_daily_limit;
+        mandate.weekly_limit = new_weekly_limit;
+        mandate.max_total = new_max_total;
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // View functions
+    // ══════════════════════════════════════════════════════════════
+
+    public fun delegator<T>(m: &AgentMandate<T>): address { m.delegator }
+    public fun delegate<T>(m: &AgentMandate<T>): address { m.delegate }
+    public fun level<T>(m: &AgentMandate<T>): u8 { m.level }
+    public fun max_per_tx<T>(m: &AgentMandate<T>): u64 { m.max_per_tx }
+    public fun daily_limit<T>(m: &AgentMandate<T>): u64 { m.daily_limit }
+    public fun daily_spent<T>(m: &AgentMandate<T>): u64 { m.daily_spent }
+    public fun weekly_limit<T>(m: &AgentMandate<T>): u64 { m.weekly_limit }
+    public fun weekly_spent<T>(m: &AgentMandate<T>): u64 { m.weekly_spent }
+    public fun max_total<T>(m: &AgentMandate<T>): u64 { m.max_total }
+    public fun total_spent<T>(m: &AgentMandate<T>): u64 { m.total_spent }
+    public fun expires_at_ms<T>(m: &AgentMandate<T>): u64 { m.expires_at_ms }
+    public fun remaining<T>(m: &AgentMandate<T>): u64 { m.max_total - m.total_spent }
+
+    public fun daily_remaining<T>(m: &AgentMandate<T>): u64 {
+        if (m.daily_limit == 0) return m.max_total - m.total_spent;
+        m.daily_limit - m.daily_spent
+    }
+
+    public fun weekly_remaining<T>(m: &AgentMandate<T>): u64 {
+        if (m.weekly_limit == 0) return m.max_total - m.total_spent;
+        m.weekly_limit - m.weekly_spent
+    }
+
+    public fun is_expired<T>(m: &AgentMandate<T>, clock: &Clock): bool {
+        clock.timestamp_ms() >= m.expires_at_ms
+    }
+
+    public fun is_revoked<T>(m: &AgentMandate<T>, registry: &RevocationRegistry): bool {
+        mandate::is_id_revoked(registry, object::id(m))
+    }
+
+    /// Check if the mandate can spend (level >= L2, not expired)
+    public fun can_spend<T>(m: &AgentMandate<T>, clock: &Clock): bool {
+        m.level >= LEVEL_CAPPED && !is_expired(m, clock)
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // Test helpers
+    // ══════════════════════════════════════════════════════════════
+
+    #[test_only]
+    public fun destroy_for_testing<T>(mandate: AgentMandate<T>) {
+        let AgentMandate {
+            id, delegator: _, delegate: _, level: _,
+            max_per_tx: _, daily_limit: _, daily_spent: _,
+            last_daily_reset_ms: _, weekly_limit: _, weekly_spent: _,
+            last_weekly_reset_ms: _, max_total: _, total_spent: _,
+            expires_at_ms: _,
+        } = mandate;
+        object::delete(id);
+    }
+}

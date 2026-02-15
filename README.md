@@ -17,17 +17,23 @@ const data = await client.fetch('https://api.example.com/premium-data');
 
 SweePay is payment infrastructure purpose-built for the agentic economy. AI agents need to pay for APIs, computing resources, and digital goods — without human intervention, credit cards, or centralized custody.
 
+SweePay is the payment layer of the **Swee ecosystem**: **SweePay** (payments) + **SweeAgent** (agent identity & reputation, `@sweeagent/*`) + **SweeWorld** (geo-location consumer app). This monorepo contains SweePay — the foundation everything else builds on.
+
 **s402** is a Sui-native HTTP 402 protocol that is wire-compatible with [x402](https://x402.org) but architecturally superior:
+
+![s402 vs x402](docs/x402-vs-s402.png)
 
 | Feature | x402 (EVM) | s402 (Sui) |
 |---------|-----------|-----------|
 | Settlement | Verify first, settle later (temporal gap) | Atomic PTBs (no gap) |
-| Payment modes | Exact only | Exact + Stream + Escrow + SEAL |
+| Payment modes | Exact only | Exact + Prepaid + Escrow (v0.1), + Seal + Stream (v0.2) |
+| Micro-payments | $7.00 gas per 1K API calls (broken) | $0.014 gas per 1K calls via prepaid |
 | Agent authorization | None | AP2 Mandates (spending limits) |
 | Content gating | Server-trust (server controls access) | Trustless (SEAL threshold encryption) |
-| Finality | ~12s (Ethereum) | ~2-3s (Sui) |
-| Facilitator | Required | Optional (direct settlement) |
+| Finality | ~12s (Ethereum L1), ~2s (Base L2) | ~400ms (Sui) |
+| Facilitator | Required (trust bottleneck) | Optional (direct settlement) |
 | Receipts | Off-chain | On-chain NFTs |
+| Security model | Sign-first (facilitator holds signed txs) | Settle-first (atomic on-chain) |
 
 ## The s402 Protocol
 
@@ -55,16 +61,31 @@ Agent                    Server                  Sui Testnet
 
 **Key insight**: The agent never knows prices upfront. It discovers requirements via the 402 response and pays automatically. Works across any API, any price, any payment scheme.
 
-## Four Payment Schemes
+## Payment Schemes
+
+### v0.1 — The Core Three
 
 | Scheme | Use Case | How It Works | Status |
 |--------|----------|-------------|--------|
 | **Exact** | One-shot API calls | Sign transfer, execute, done | **E2E demo'd** |
-| **Stream** | Metered access (AI inference, video) | Create stream on first 402, use stream-id for ongoing access | Contracts deployed, HTTP integration ready |
+| **Prepaid** | AI agent API budgets, high-frequency access | Deposit funds → off-chain API calls → provider batch-claims | Move module in dev |
 | **Escrow** | Digital goods, freelance work | Lock funds, release on delivery, refund on deadline | Contracts deployed, HTTP integration ready |
-| **SEAL** | Pay-to-decrypt (trustless content gating) | Pay → receipt → SEAL key servers release decryption key | Token-gated deployed, receipt-gated in progress |
+
+**Pay per call. Fund agent budgets. Trade trustlessly.** x402 gives you the first one. SweePay gives you all three.
+
+### v0.2 — Split + Content + Streaming
+
+| Scheme | Use Case | How It Works | Status |
+|--------|----------|-------------|--------|
+| **Split** | Multi-party settlement (royalties, affiliates) | One PTB splits payment to N recipients atomically | Planned |
+| **Seal** | Pay-to-decrypt (trustless content gating) | Pay → receipt → SEAL key servers release decryption key | Token-gated deployed, receipt-gated in progress |
+| **Stream** | Continuous access (AI inference, video) | Create stream on first 402, use stream-id for ongoing access | Contracts deployed, HTTP integration ready |
+
+**Together these enable autonomous digital commerce without platforms.** An AI agent can deposit a budget (prepaid), call APIs (exact), buy goods trustlessly from a stranger (escrow) — all without a human, an API key, or a platform taking 30%. See [SPEC.md](SPEC.md) for the full vision.
 
 ## Architecture
+
+![SweePay Architecture](docs/architecture.png)
 
 ```
 AI Agent (Claude, GPT, Cursor, etc.)
@@ -73,11 +94,17 @@ AI Agent (Claude, GPT, Cursor, etc.)
     |                                   |
     +-- MCP tool discovery -------> @sweepay/mcp (16 tools)
     |                                   |
-    +-- Direct PTB --------------> @sweepay/sui (22 PTB builders)
+    +-- Direct PTB --------------> @sweepay/sui (PTB builders)
+    |                                   |
+    |                         s402 (protocol spec, zero deps)
+    |                                   |
+    |                         @sweepay/facilitator (verify + settle)
+    |                                   |
+    +-- Agent identity ----------> @sweeagent/identity   [FUTURE]
+    +-- Agent reputation --------> @sweeagent/reputation [FUTURE]
+    +-- Agent discovery ---------> @sweeagent/registry   [FUTURE]
                                         |
-                                 @sweepay/facilitator (verify + settle)
-                                        |
-                                 Sui blockchain (5 Move modules, 89 on-chain tests)
+                              Sui blockchain (6 Move modules, 101 on-chain tests)
                                         |
                                  +------+------+
                                  |  payment    | Direct pay + receipts
@@ -85,6 +112,7 @@ AI Agent (Claude, GPT, Cursor, etc.)
                                  |  escrow     | Time-locked + arbiter disputes
                                  |  seal_policy| Pay-to-decrypt via SEAL
                                  |  mandate    | AP2 agent spending limits
+                                 |  admin      | Protocol governance
                                  +-------------+
 ```
 
@@ -92,21 +120,42 @@ AI Agent (Claude, GPT, Cursor, etc.)
 
 | Package | Description | Tests |
 |---------|-------------|-------|
-| [`@sweepay/sdk`](packages/sdk) | Client + server SDK (3-line integration) | 30 |
-| [`@sweepay/sui`](packages/sui) | 22 PTB builders for all contract operations | 118 |
-| [`@sweepay/facilitator`](packages/facilitator) | Self-hostable payment verification service | 37 |
-| [`@sweepay/core`](packages/core) | s402 protocol types, client, scheme interfaces | 85 |
+| [`s402`](packages/s402-core) | Chain-agnostic HTTP 402 protocol spec (zero deps) | 112 |
+| [`@sweepay/sui`](packages/sui) | Sui PTB builders for all contract operations | 116 |
+| [`@sweepay/core`](packages/core) | Shared types, network configs, client factories | 54 |
+| [`@sweepay/sui`](packages/sui) | 18 PTB builders for all contract operations | 123 |
+| [`@sweepay/facilitator`](packages/facilitator) | Self-hostable payment verification service | 41 |
 | [`@sweepay/mcp`](packages/mcp) | MCP server with 16 AI agent tools | 36 |
+| [`@sweepay/sdk`](packages/sdk) | Client + server SDK (3-line integration) | 39 |
 | [`@sweepay/widget`](packages/widget) | Checkout UI — Vue + React adapters | 6 |
-| [`sweepay-contracts`](contracts) | 5 Move modules on Sui testnet | 89 |
+| [`s402`](../s402) | Protocol types, HTTP encoding, compat layer | 118 |
+| [`sweepay-contracts`](contracts) | 8 Move modules on Sui testnet (v7) | 226 |
 
-**Total: 411 tests (310 TypeScript + 101 Move)**
+**Total: 640+ tests (417 TypeScript + 226 Move)**
 
-## Live Agent Demo
+## Try It Now
 
-See it work end-to-end: an AI agent auto-pays for premium API access on Sui testnet.
+### 1. See a 402 in action (no wallet needed)
 
 ```bash
+# Hit the free endpoint — works normally
+curl https://sweepay-demo.fly.dev/api/weather
+
+# Hit the premium endpoint — get a 402 with payment requirements
+curl -i https://sweepay-demo.fly.dev/api/forecast
+# HTTP/1.1 402 Payment Required
+# payment-required: eyJzNDAyVmVyc2lvbiI6IjEiLC...
+# {"error":"Payment Required","price":"1000 MIST"}
+
+# Check what the server accepts
+curl https://sweepay-demo.fly.dev/.well-known/s402.json
+# {"s402Version":"1","schemes":["exact"],"networks":["sui:testnet"],...}
+```
+
+### 2. Full agent demo (needs testnet wallet)
+
+```bash
+# Get testnet SUI: https://faucet.sui.io
 cd demos/agent-pays-api
 pnpm install
 SUI_PRIVATE_KEY=<base64-key> pnpm demo
@@ -250,7 +299,7 @@ No admin keys control user funds.
 
 ## Smart Contracts
 
-Deployed on Sui testnet. 5 modules, 101 Move tests, v6.
+Deployed on Sui testnet v6. 6 modules, 101 Move tests, AdminCap + ProtocolState for governance.
 
 | Module | Purpose |
 |--------|---------|
@@ -259,6 +308,7 @@ Deployed on Sui testnet. 5 modules, 101 Move tests, v6.
 | `escrow` | Time-locked escrow with arbiter disputes |
 | `seal_policy` | SEAL integration for pay-to-decrypt |
 | `mandate` | AP2 agent spending authorization |
+| `admin` | AdminCap, ProtocolState, pause/unpause/burn |
 
 Package ID (testnet v6): `0xc80485e9182c607c41e16c2606abefa7ce9b7f78d809054e99486a20d62167d5`
 
@@ -294,12 +344,24 @@ cd demos/agent-pays-api && SUI_PRIVATE_KEY=<key> pnpm demo
 
 ## Built On
 
-- [Sui](https://sui.io) — High-performance L1 with PTBs and ~2s finality
+- [Sui](https://sui.io) — High-performance L1 with PTBs and ~400ms finality
 - [SEAL](https://docs.sui.io/concepts/cryptography/seal) — Sui's threshold encryption for programmable access control
 - [x402](https://x402.org) — Coinbase's HTTP 402 payment protocol (wire-compatible)
 - [MCP](https://modelcontextprotocol.io) — Anthropic's Model Context Protocol
 - [Hono](https://hono.dev) — Lightweight web framework
 - [@mysten/sui](https://github.com/MystenLabs/ts-sdks) — Official Sui TypeScript SDK
+
+## The Swee Ecosystem
+
+SweePay is the payment layer. The broader ecosystem includes:
+
+| Brand | Role | Status |
+|-------|------|--------|
+| **SweePay** | Payment protocol + SDK (`s402`, `@sweepay/*`) | Shipping |
+| **SweeAgent** | Agent identity, reputation, commerce network (`@sweeagent/*`) | Vision — seams architected |
+| **SweeWorld** | Geo-location mobile app (Tauri) — pins, tipping, SEAL content | Brainstorm |
+
+See [SPEC.md](SPEC.md) for the full vision and roadmap.
 
 ## License
 

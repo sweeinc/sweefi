@@ -18,7 +18,7 @@
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
 import { fromBase64 } from "@mysten/sui/utils";
-import { s402Client, S402_VERSION } from "@sweepay/core";
+import { s402Client, S402_VERSION } from "s402";
 import { ExactSuiClientScheme, toClientSuiSigner } from "@sweepay/sui";
 import { wrapFetchWithS402 } from "./s402-fetch-local.js";
 

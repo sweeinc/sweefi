@@ -41,8 +41,13 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
+  "files": ["dist", "README.md", "LICENSE"],
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@mysten/sui": "^1.20.0",
+    "s402": "^0.1.0",
     "@sweepay/core": "workspace:*",
     "@sweepay/sui": "workspace:*",
     "@x402/fetch": "^2.3.0",

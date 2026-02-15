@@ -7,8 +7,8 @@
  */
 
 import { Transaction, coinWithBalance } from '@mysten/sui/transactions';
-import type { s402ClientScheme, s402PaymentRequirements, s402ExactPayload } from '@sweepay/core';
-import { S402_VERSION } from '@sweepay/core';
+import type { s402ClientScheme, s402PaymentRequirements, s402ExactPayload } from 's402';
+import { S402_VERSION } from 's402';
 import type { ClientSuiSigner } from '../../signer.js';
 
 export class ExactSuiClientScheme implements s402ClientScheme {

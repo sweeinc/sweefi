@@ -3,7 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { buildPayTx } from "@sweepay/sui/ptb";
 import type { SweepayContext } from "../context.js";
 import { requireSigner } from "../context.js";
-import { resolveCoinType, formatBalance, parseAmount, assertTxSuccess, ZERO_ADDRESS } from "../utils/format.js";
+import { resolveCoinType, formatBalance, parseAmount, assertTxSuccess, ZERO_ADDRESS, suiAddress, optionalSuiAddress } from "../utils/format.js";
 
 export function registerPayTool(server: McpServer, ctx: SweepayContext) {
   server.registerTool(
@@ -18,7 +18,7 @@ export function registerPayTool(server: McpServer, ctx: SweepayContext) {
         "so verify fee settings when using a third-party facilitator. " +
         "Requires a configured wallet (SUI_PRIVATE_KEY).",
       inputSchema: {
-        recipient: z.string().describe("Recipient Sui address (0x...)"),
+        recipient: suiAddress("Recipient"),
         amount: z.string().describe("Amount in base units (e.g., '1000000000' for 1 SUI)"),
         coinType: z
           .string()
@@ -32,10 +32,7 @@ export function registerPayTool(server: McpServer, ctx: SweepayContext) {
           .max(10000)
           .optional()
           .describe("Fee in basis points (0-10000). Defaults to 0 (no fee)."),
-        feeRecipient: z
-          .string()
-          .optional()
-          .describe("Address to receive the fee. Required if feeBps > 0."),
+        feeRecipient: optionalSuiAddress("Fee recipient"),
       },
     },
     async ({ recipient, amount, coinType, memo, feeBps, feeRecipient }) => {

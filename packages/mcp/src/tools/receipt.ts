@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SweepayContext } from "../context.js";
+import { suiAddress } from "../utils/format.js";
 
 export function registerReceiptTool(server: McpServer, ctx: SweepayContext) {
   server.registerTool(
@@ -58,7 +59,7 @@ export function registerReceiptTool(server: McpServer, ctx: SweepayContext) {
         "Query recent payment events for an address. Shows payments made or received, " +
         "including amounts, counterparties, and transaction digests.",
       inputSchema: {
-        address: z.string().describe("Sui address to check payment history for"),
+        address: suiAddress("Account"),
         limit: z
           .number()
           .int()

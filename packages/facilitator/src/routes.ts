@@ -112,7 +112,7 @@ export function createRoutes(facilitator: x402Facilitator) {
     const supported = facilitator.getSupported();
     return c.json({
       s402Version: "1",
-      schemes: ["exact"],
+      schemes: ["exact", "prepaid"],
       networks: supported.kinds?.map((k: { network: string }) => k.network) ?? [],
       assets: [],
       directSettlement: true,

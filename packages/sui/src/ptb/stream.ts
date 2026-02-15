@@ -1,6 +1,7 @@
 import { Transaction, coinWithBalance } from "@mysten/sui/transactions";
 import type { SweepayConfig, CreateStreamParams, CreateStreamWithTimeoutParams, StreamOpParams, StreamTopUpParams, BatchClaimParams } from "./types";
 import { SUI_CLOCK } from "./deployments";
+import { assertFeeBps, assertPositive } from "./assert";
 
 function requireProtocolState(config: SweepayConfig, fn: string): string {
   if (!config.protocolStateId) {
@@ -22,6 +23,10 @@ export function buildCreateStreamTx(
   config: SweepayConfig,
   params: CreateStreamParams,
 ): Transaction {
+  assertPositive(params.depositAmount, "depositAmount", "buildCreateStreamTx");
+  assertPositive(params.ratePerSecond, "ratePerSecond", "buildCreateStreamTx");
+  assertFeeBps(params.feeBps, "buildCreateStreamTx");
+
   const protocolStateId = requireProtocolState(config, "buildCreateStreamTx");
   const tx = new Transaction();
   tx.setSender(params.sender);
@@ -57,6 +62,10 @@ export function buildCreateStreamWithTimeoutTx(
   config: SweepayConfig,
   params: CreateStreamWithTimeoutParams,
 ): Transaction {
+  assertPositive(params.depositAmount, "depositAmount", "buildCreateStreamWithTimeoutTx");
+  assertPositive(params.ratePerSecond, "ratePerSecond", "buildCreateStreamWithTimeoutTx");
+  assertFeeBps(params.feeBps, "buildCreateStreamWithTimeoutTx");
+
   const protocolStateId = requireProtocolState(config, "buildCreateStreamWithTimeoutTx");
   const tx = new Transaction();
   tx.setSender(params.sender);

@@ -11,13 +11,13 @@
  * Wire-compatible with both s402 and x402 servers.
  */
 
-import type { s402Client } from '@sweepay/core';
+import type { s402Client } from 's402';
 import {
   detectProtocol,
   encodePaymentPayload,
   S402_HEADERS,
   normalizeRequirements,
-} from '@sweepay/core';
+} from 's402';
 
 export interface s402FetchOptions {
   /** Facilitator URL for settlement */

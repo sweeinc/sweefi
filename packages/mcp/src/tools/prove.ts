@@ -3,7 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { buildPayAndProveTx } from "@sweepay/sui/ptb";
 import type { SweepayContext } from "../context.js";
 import { requireSigner } from "../context.js";
-import { resolveCoinType, formatBalance, parseAmount, assertTxSuccess, ZERO_ADDRESS } from "../utils/format.js";
+import { resolveCoinType, formatBalance, parseAmount, assertTxSuccess, ZERO_ADDRESS, suiAddress, optionalSuiAddress } from "../utils/format.js";
 
 export function registerProveTool(server: McpServer, ctx: SweepayContext) {
   server.registerTool(
@@ -19,15 +19,9 @@ export function registerProveTool(server: McpServer, ctx: SweepayContext) {
         "Use this for pay-to-decrypt, pay-to-access, and token-gated content. " +
         "Requires a configured wallet.",
       inputSchema: {
-        recipient: z.string().describe("Seller/recipient Sui address (0x...)"),
+        recipient: suiAddress("Seller/recipient"),
         amount: z.string().describe("Amount in base units (e.g., '1000000000' for 1 SUI)"),
-        receiptDestination: z
-          .string()
-          .optional()
-          .describe(
-            "Where to send the PaymentReceipt. Defaults to your wallet address. " +
-            "Set to an agent address for delegated SEAL decryption.",
-          ),
+        receiptDestination: optionalSuiAddress("Receipt destination"),
         coinType: z
           .string()
           .optional()
@@ -43,10 +37,7 @@ export function registerProveTool(server: McpServer, ctx: SweepayContext) {
           .max(10000)
           .optional()
           .describe("Fee in basis points (0-10000). Defaults to 0."),
-        feeRecipient: z
-          .string()
-          .optional()
-          .describe("Address to receive the fee. Required if feeBps > 0."),
+        feeRecipient: optionalSuiAddress("Fee recipient"),
       },
     },
     async ({ recipient, amount, receiptDestination, coinType, memo, feeBps, feeRecipient }) => {

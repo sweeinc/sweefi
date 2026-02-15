@@ -1,6 +1,7 @@
 import { Transaction, coinWithBalance } from "@mysten/sui/transactions";
 import type { SweepayConfig } from "./types";
 import { SUI_CLOCK } from "./deployments";
+import { assertFeeBps, assertPositive } from "./assert";
 
 function requireProtocolState(config: SweepayConfig): string {
   if (!config.protocolStateId) {
@@ -64,6 +65,9 @@ export function buildCreateEscrowTx(
   config: SweepayConfig,
   params: CreateEscrowParams,
 ): Transaction {
+  assertPositive(params.depositAmount, "depositAmount", "buildCreateEscrowTx");
+  assertFeeBps(params.feeBps, "buildCreateEscrowTx");
+
   const protocolStateId = requireProtocolState(config);
   const tx = new Transaction();
   tx.setSender(params.sender);

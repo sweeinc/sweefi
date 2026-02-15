@@ -2,11 +2,11 @@
 
 > All transactions below are **real**, **on-chain**, and **verifiable** on [Sui Testnet Explorer](https://suiscan.xyz/testnet).
 
-**Package (v6):** `0xc80485e9182c607c41e16c2606abefa7ce9b7f78d809054e99486a20d62167d5`
-**Modules:** `payment`, `stream`, `escrow`, `seal_policy`
-**Move tests:** 84/84 passing (16 + 32 + 25 + 5 + 6 mandate)
-**TypeScript tests:** 312 passing (18 PTB builders, composable pay-and-prove)
-**Total:** 396 tests across Move + TypeScript
+**Package (v7):** `0xc80485e9182c607c41e16c2606abefa7ce9b7f78d809054e99486a20d62167d5`
+**Modules:** `payment`, `stream`, `escrow`, `seal_policy`, `mandate`, `agent_mandate`, `prepaid`, `admin`
+**Move tests:** 226 annotations passing (158 positive + 68 negative-path)
+**TypeScript tests:** 417 passing (25+ PTB builders, composable pay-and-prove)
+**Total:** 640+ tests across Move + TypeScript
 
 ---
 
@@ -138,7 +138,7 @@ sui client call --package $PKG --module escrow --function release_and_keep \
 | Escrow | `escrow::Escrow<SUI>` | `0x7e4447a8...e41ff` |
 | PaymentReceipt | `payment::PaymentReceipt` | `0xaabfaec0...8e7e` |
 
-All three primitives are live on Sui Testnet. Verifiable. Open source. 78 tests.
+All three primitives are live on Sui Testnet. Verifiable. Open source. 226 Move test annotations.
 
 ---
 
@@ -210,7 +210,7 @@ This is what "safety layer for autonomous agent commerce" means — every failur
     └────────────────────────┬────────────────────────────────┘
                              │ submits transactions
     ┌────────────────────────▼────────────────────────────────┐
-    │            SweePay Move Contracts (v6)                    │
+    │            SweePay Move Contracts (v7)                    │
     │                                                          │
     │  ┌──────────┐   ┌──────────┐   ┌──────────────────┐    │
     │  │ payment  │   │  stream  │   │     escrow       │    │

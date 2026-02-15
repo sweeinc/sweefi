@@ -208,6 +208,13 @@ module sweepay::mandate {
         df::exists_(&registry.id, key)
     }
 
+    /// Check if an arbitrary object ID is revoked in a registry.
+    /// Used by agent_mandate module for cross-module revocation checks.
+    public fun is_id_revoked(registry: &RevocationRegistry, mandate_id: ID): bool {
+        let key = RevokedKey { mandate_id };
+        df::exists_(&registry.id, key)
+    }
+
     // ══════════════════════════════════════════════════════════════
     // Test helpers
     // ══════════════════════════════════════════════════════════════

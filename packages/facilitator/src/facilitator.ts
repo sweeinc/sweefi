@@ -1,6 +1,7 @@
 import { x402Facilitator } from "@sweepay/core/facilitator";
 import { toFacilitatorSuiSigner } from "@sweepay/sui";
 import { registerExactSuiScheme } from "@sweepay/sui/exact/facilitator";
+import { registerPrepaidSuiScheme } from "@sweepay/sui/prepaid/facilitator";
 import type { Config } from "./config";
 
 /**
@@ -19,6 +20,11 @@ export function createFacilitator(config: Config): x402Facilitator {
   );
 
   registerExactSuiScheme(facilitator, {
+    signer,
+    networks: ["sui:testnet", "sui:mainnet"],
+  });
+
+  registerPrepaidSuiScheme(facilitator, {
     signer,
     networks: ["sui:testnet", "sui:mainnet"],
   });

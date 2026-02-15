@@ -17,7 +17,7 @@ import { Transaction, coinWithBalance } from '@mysten/sui/transactions';
 import type { SuiClient } from '@mysten/sui/client';
 import type { Signer } from '@mysten/sui/cryptography';
 import { toBase64 } from '@mysten/sui/utils';
-import type { s402DirectScheme, s402PaymentRequirements, s402SettleResponse } from '@sweepay/core/s402';
+import type { s402DirectScheme, s402PaymentRequirements, s402SettleResponse } from 's402';
 
 export class DirectSuiSettlement implements s402DirectScheme {
   readonly scheme = 'exact' as const;

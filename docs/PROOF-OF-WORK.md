@@ -14,14 +14,15 @@ cd contracts && sui move test
 
 ## Verified Test Counts (Current)
 
-- TypeScript tests: 312 passing
-  - `@sweepay/core`: 85
-  - `@sweepay/sui`: 106 passing (`7` live-testnet dryrun tests skipped in offline lane, `5` todo)
-  - `@sweepay/sdk`: 30
-  - `@sweepay/facilitator`: 37
+- TypeScript tests: 417 passing
+  - `@sweepay/core`: 54
+  - `@sweepay/sui`: 123
+  - `@sweepay/sdk`: 39
+  - `@sweepay/facilitator`: 41
   - `@sweepay/mcp`: 36
   - `@sweepay/widget`: 6
-- Move tests: 84 passing
+  - `s402`: 118
+- Move tests: 226 annotations (158 positive + 68 negative-path)
 
 ## Live Testnet Transactions
 
