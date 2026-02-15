@@ -156,16 +156,23 @@ export class PrepaidSuiFacilitatorScheme implements s402FacilitatorScheme {
 
       const finalityMs = Date.now() - startMs;
 
-      // TODO(F-05): Extract balanceId from transaction effects.
-      // The PrepaidBalance object ID is in the created objects of the settled tx.
-      // Requires extending FacilitatorSuiSigner with getTransactionBlock() or
-      // changing executeTransaction to return objectChanges. For now, the server
-      // should query the transaction effects using the txDigest to get the
-      // PrepaidBalance ID it needs for claim tracking.
+      // Extract balanceId from the PrepaidDeposited event in the settled transaction.
+      // Uses the optional getTransactionBlock method — if not available, the server
+      // can query the transaction effects directly using the txDigest.
+      let balanceId: string | undefined;
+      if (this.signer.getTransactionBlock) {
+        const txBlock = await this.signer.getTransactionBlock(txDigest, requirements.network);
+        const depositEvent = extractDepositEvent(txBlock.events ?? []);
+        if (depositEvent) {
+          balanceId = depositEvent.balance_id;
+        }
+      }
+
       return {
         success: true,
         txDigest,
         finalityMs,
+        balanceId,
       };
     } catch (error) {
       return {

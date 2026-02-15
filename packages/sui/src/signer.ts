@@ -81,6 +81,20 @@ export interface FacilitatorSuiSigner {
    * @param network - CAIP-2 network identifier
    */
   waitForTransaction(digest: string, network: string): Promise<void>;
+
+  /**
+   * Fetch transaction details after execution (optional).
+   * Used to extract created objects from settlement (e.g., PrepaidBalance ID).
+   * If not implemented, settle will return without scheme-specific object IDs.
+   *
+   * @param digest - Transaction digest
+   * @param network - CAIP-2 network identifier
+   * @returns Transaction events (for extracting object IDs from Move events)
+   */
+  getTransactionBlock?(
+    digest: string,
+    network: string,
+  ): Promise<{ events?: Array<{ type: string; parsedJson?: unknown }> }>;
 }
 
 /**
@@ -174,6 +188,15 @@ export function toFacilitatorSuiSigner(
         digest,
         options: { showEffects: true },
       });
+    },
+
+    async getTransactionBlock(digest: string, network: string) {
+      const client = getClient(network);
+      const result = await client.getTransactionBlock({
+        digest,
+        options: { showEvents: true },
+      });
+      return { events: result.events ?? undefined };
     },
   };
 }

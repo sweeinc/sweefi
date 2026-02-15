@@ -446,6 +446,52 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
       expect(result.success).toBe(true);
       expect(waited).toBe(true);
     });
+
+    // ── balanceId extraction (F-05) ──
+
+    it("should extract balanceId from settlement events when getTransactionBlock is available", async () => {
+      const BALANCE_ID = "0x" + "e".repeat(64);
+      const signer = createMockFacilitatorSigner({
+        getTransactionBlock: async () => ({
+          events: [createMockDepositEvent()],
+        }),
+      });
+      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const result = await scheme.settle(
+        createMockS402PrepaidPayload(),
+        createMockS402Requirements(),
+      );
+      expect(result.success).toBe(true);
+      expect(result.balanceId).toBe(BALANCE_ID);
+    });
+
+    it("should settle without balanceId when getTransactionBlock is not available", async () => {
+      // Default mock signer has no getTransactionBlock
+      const signer = createMockFacilitatorSigner();
+      delete (signer as any).getTransactionBlock;
+      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const result = await scheme.settle(
+        createMockS402PrepaidPayload(),
+        createMockS402Requirements(),
+      );
+      expect(result.success).toBe(true);
+      expect(result.balanceId).toBeUndefined();
+    });
+
+    it("should settle without balanceId when event extraction fails", async () => {
+      const signer = createMockFacilitatorSigner({
+        getTransactionBlock: async () => ({
+          events: [], // no deposit event
+        }),
+      });
+      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const result = await scheme.settle(
+        createMockS402PrepaidPayload(),
+        createMockS402Requirements(),
+      );
+      expect(result.success).toBe(true);
+      expect(result.balanceId).toBeUndefined();
+    });
   });
 
   describe("metadata", () => {
