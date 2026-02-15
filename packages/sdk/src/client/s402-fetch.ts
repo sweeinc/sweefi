@@ -11,13 +11,26 @@
  * Wire-compatible with both s402 and x402 servers.
  */
 
-import type { s402Client } from 's402';
+import type { s402Client, s402PaymentRequirements } from 's402';
 import {
   detectProtocol,
   encodePaymentPayload,
   S402_HEADERS,
   normalizeRequirements,
 } from 's402';
+
+/** Maximum base64 header size before decoding. Mirrors the 64KB limit in s402 core. */
+const MAX_HEADER_BYTES = 64 * 1024;
+
+/**
+ * Decode a base64 string to UTF-8. Unicode-safe (handles CJK, emoji, etc.).
+ * Mirrors the fromBase64 helper in s402/http which is not exported.
+ */
+function safeBase64Decode(b64: string): string {
+  const binary = atob(b64);
+  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
 
 export interface s402FetchOptions {
   /** Facilitator URL for settlement */
@@ -60,19 +73,11 @@ export function wrapFetchWithS402(
       return response;
     }
 
-    // Decode requirements
-    const headerValue = response.headers.get(S402_HEADERS.PAYMENT_REQUIRED);
-    if (!headerValue) return response;
+    // Decode requirements (F-V02: unicode-safe base64 + size limit)
+    let requirements = decodeRequirementsFromHeaders(response.headers);
+    if (!requirements) return response;
 
-    let requirements;
-    try {
-      const decoded = JSON.parse(atob(headerValue));
-      requirements = normalizeRequirements(decoded);
-    } catch {
-      return response;
-    }
-
-    // Create payment
+    // Create payment and retry
     let retries = 0;
     while (retries < maxRetries) {
       try {
@@ -88,8 +93,12 @@ export function wrapFetchWithS402(
           headers: retryHeaders,
         });
 
-        // If still 402, decode new requirements and retry
+        // If still 402, re-decode fresh requirements from the new response (F-V03 fix)
         if (retryResponse.status === 402 && retries + 1 < maxRetries) {
+          const freshRequirements = decodeRequirementsFromHeaders(retryResponse.headers);
+          if (freshRequirements) {
+            requirements = freshRequirements;
+          }
           retries++;
           continue;
         }
@@ -105,4 +114,23 @@ export function wrapFetchWithS402(
 
     return response;
   };
+}
+
+/**
+ * Decode payment requirements from response headers.
+ * Unicode-safe, size-limited, handles both s402 and x402 formats.
+ */
+function decodeRequirementsFromHeaders(headers: Headers): s402PaymentRequirements | null {
+  const headerValue = headers.get(S402_HEADERS.PAYMENT_REQUIRED);
+  if (!headerValue) return null;
+
+  // Size limit defense — mirrors s402 core's 64KB cap
+  if (headerValue.length > MAX_HEADER_BYTES) return null;
+
+  try {
+    const decoded = JSON.parse(safeBase64Decode(headerValue));
+    return normalizeRequirements(decoded);
+  } catch {
+    return null;
+  }
 }

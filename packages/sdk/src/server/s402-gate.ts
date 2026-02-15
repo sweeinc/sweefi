@@ -82,30 +82,32 @@ export function s402Gate(config: s402GateConfig): MiddlewareHandler {
   // Always include "exact" for x402 compat
   const accepts: s402Scheme[] = [...new Set([...schemes, 'exact' as const])];
 
+  // Build requirements once — used for both the 402 response and processPayment handler.
+  // Single source of truth prevents field drift between the two paths (F-V01 fix).
+  const requirements: s402PaymentRequirements = {
+    s402Version: S402_VERSION,
+    accepts,
+    network,
+    asset,
+    amount: price,
+    payTo,
+    facilitatorUrl,
+    protocolFeeBps,
+    mandate: mandate ? { required: mandate.required, minPerTx: mandate.minPerTx } : undefined,
+    prepaid: prepaid ? {
+      ratePerCall: prepaid.ratePerCall,
+      maxCalls: prepaid.maxCalls,
+      minDeposit: prepaid.minDeposit,
+      withdrawalDelayMs: prepaid.withdrawalDelayMs,
+    } : undefined,
+  };
+
   return async (c: Context, next) => {
     // Check for existing payment
     const paymentHeader = c.req.header(S402_HEADERS.PAYMENT);
 
     if (!paymentHeader) {
       // No payment — return 402 with requirements
-      const requirements: s402PaymentRequirements = {
-        s402Version: S402_VERSION,
-        accepts,
-        network,
-        asset,
-        amount: price,
-        payTo,
-        facilitatorUrl,
-        protocolFeeBps,
-        mandate: mandate ? { required: mandate.required, minPerTx: mandate.minPerTx } : undefined,
-        prepaid: prepaid ? {
-          ratePerCall: prepaid.ratePerCall,
-          maxCalls: prepaid.maxCalls,
-          minDeposit: prepaid.minDeposit,
-          withdrawalDelayMs: prepaid.withdrawalDelayMs,
-        } : undefined,
-      };
-
       const encoded = encodePaymentRequired(requirements);
 
       return c.json(
@@ -128,23 +130,6 @@ export function s402Gate(config: s402GateConfig): MiddlewareHandler {
 
       // Verify and settle payment via the provided handler
       if (config.processPayment) {
-        const requirements: s402PaymentRequirements = {
-          s402Version: S402_VERSION,
-          accepts,
-          network,
-          asset,
-          amount: price,
-          payTo,
-          facilitatorUrl,
-          protocolFeeBps,
-          prepaid: prepaid ? {
-            ratePerCall: prepaid.ratePerCall,
-            maxCalls: prepaid.maxCalls,
-            minDeposit: prepaid.minDeposit,
-            withdrawalDelayMs: prepaid.withdrawalDelayMs,
-          } : undefined,
-        };
-
         const result = await config.processPayment(payload, requirements);
 
         if (!result.success) {
