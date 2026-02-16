@@ -13,6 +13,9 @@
 ///   4. Small deposits + short refill cycles limit exposure
 ///   5. Reputation enforcement (dishonest providers lose repeat business)
 ///
+/// v0.2 roadmap: Signed usage receipts (provider signs each API response,
+///   agent can submit fraud proofs on-chain). See ADR-007.
+///
 /// Design decisions:
 ///   - PrepaidBalance is a SHARED object (both agent and provider mutate it)
 ///   - Cumulative claimed_calls (not incremental) — idempotent retries safe
