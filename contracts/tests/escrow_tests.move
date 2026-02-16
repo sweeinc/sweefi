@@ -118,6 +118,25 @@ module sweepay::escrow_tests {
     }
 
     #[test]
+    #[expected_failure(abort_code = escrow::EArbiterIsSeller)]
+    fun test_create_arbiter_is_seller_fails() {
+        let mut scenario = ts::begin(BUYER);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+
+        // Seller == Arbiter: seller could dispute→release to bypass buyer consent
+        escrow::create<SUI>(
+            deposit, SELLER, SELLER, DEADLINE_MS, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
+        );
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
     #[expected_failure(abort_code = escrow::EDescriptionTooLong)]
     fun test_create_description_too_long_fails() {
         let mut scenario = ts::begin(BUYER);

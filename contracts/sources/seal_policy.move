@@ -16,7 +16,8 @@
 ///   - Only the buyer (receipt owner) can decrypt
 ///   - Only receipts matching the escrow_id can decrypt
 ///   - Receipts are non-forgeable (minted only by escrow::release)
-///   - Receipts have `store` — buyer can transfer decrypt rights to another address
+///   - Receipts have `store` for composability, but decrypt rights remain with the
+///     original buyer address (check_policy verifies sender == receipt_buyer)
 ///
 /// Error codes: 300-series (payment=0, stream=100, escrow=200, seal=300)
 #[allow(lint(self_transfer))]

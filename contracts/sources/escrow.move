@@ -48,6 +48,7 @@ module sweepay::escrow {
     const EZeroAmount: u64 = 209;
     const EInvalidFeeBps: u64 = 210;
     const EDescriptionTooLong: u64 = 211;
+    const EArbiterIsSeller: u64 = 212;
 
     // ══════════════════════════════════════════════════════════════
     // State constants
@@ -171,6 +172,9 @@ module sweepay::escrow {
         assert!(deadline_ms > now_ms, EDeadlineInPast);
         assert!(fee_bps <= 10_000, EInvalidFeeBps);
         assert!(description.length() <= 1024, EDescriptionTooLong);
+        // Prevent seller == arbiter: seller could dispute() then release() as arbiter,
+        // bypassing buyer consent entirely. See security audit session 128.
+        assert!(arbiter != seller, EArbiterIsSeller);
 
         let buyer = ctx.sender();
 
