@@ -18,6 +18,7 @@ module sweepay::payment {
     use sui::clock::Clock;
     use std::type_name;
     use std::ascii;
+    use sweepay::math;
 
     // ══════════════════════════════════════════════════════════════
     // Error codes
@@ -26,7 +27,6 @@ module sweepay::payment {
     const EInsufficientPayment: u64 = 0;
     const EZeroAmount: u64 = 1;
     const EInvalidFeeBps: u64 = 2;
-    const EOverflow: u64 = 3;
 
     // ══════════════════════════════════════════════════════════════
     // Types
@@ -182,7 +182,7 @@ module sweepay::payment {
         };
 
         // Calculate fee with overflow protection (u128 intermediate)
-        let fee_amount = calculate_fee(amount, fee_bps);
+        let fee_amount = math::calculate_fee(amount, fee_bps);
 
         // Split and transfer fee
         if (fee_amount > 0) {
@@ -282,7 +282,7 @@ module sweepay::payment {
         };
 
         // Calculate fee with overflow protection
-        let fee_amount = calculate_fee(expected_amount, fee_bps);
+        let fee_amount = math::calculate_fee(expected_amount, fee_bps);
 
         // Split and transfer fee
         if (fee_amount > 0) {
@@ -339,6 +339,33 @@ module sweepay::payment {
     }
 
     // ══════════════════════════════════════════════════════════════
+    // Destruction (zombie object prevention)
+    // ══════════════════════════════════════════════════════════════
+
+    /// Destroy a payment receipt. Since receipts are owned objects (key + store),
+    /// only the current holder's transactions can pass them as arguments.
+    /// Use when a receipt is no longer needed (e.g., after indexing off-chain).
+    public fun destroy_receipt(receipt: PaymentReceipt) {
+        let PaymentReceipt {
+            id, payer: _, recipient: _, amount: _, fee_amount: _,
+            token_type: _, timestamp_ms: _, memo: _,
+        } = receipt;
+        object::delete(id);
+    }
+
+    /// Cancel an unpaid invoice. The current holder can cancel.
+    /// Invoice has `key` only (no `store`), so only module-controlled transfers
+    /// are possible — the holder is implicitly authorized.
+    /// Use when the invoice is no longer needed (e.g., order cancelled, expired).
+    public fun cancel_invoice(invoice: Invoice) {
+        let Invoice {
+            id, creator: _, recipient: _, expected_amount: _,
+            fee_bps: _, fee_recipient: _,
+        } = invoice;
+        object::delete(id);
+    }
+
+    // ══════════════════════════════════════════════════════════════
     // Accessors
     // ══════════════════════════════════════════════════════════════
 
@@ -358,17 +385,4 @@ module sweepay::payment {
     public fun invoice_fee_bps(i: &Invoice): u64 { i.fee_bps }
     public fun invoice_fee_recipient(i: &Invoice): address { i.fee_recipient }
 
-    // ══════════════════════════════════════════════════════════════
-    // Internal helpers
-    // ══════════════════════════════════════════════════════════════
-
-    /// Calculate fee with overflow protection.
-    /// Uses u128 intermediate to prevent overflow on large amounts.
-    /// Council: Cetus lost $223M from integer overflow. Checked arithmetic everywhere.
-    fun calculate_fee(amount: u64, fee_bps: u64): u64 {
-        if (fee_bps == 0) return 0;
-        let result = ((amount as u128) * (fee_bps as u128)) / 10_000u128;
-        assert!(result <= (0xFFFFFFFFFFFFFFFF as u128), EOverflow);
-        (result as u64)
-    }
 }

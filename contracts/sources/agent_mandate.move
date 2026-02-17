@@ -116,6 +116,16 @@ module sweepay::agent_mandate {
         delegator: address,
     }
 
+    /// Emitted when spending caps are updated by the delegator
+    public struct CapsUpdated has copy, drop {
+        mandate_id: ID,
+        delegator: address,
+        new_max_per_tx: u64,
+        new_daily_limit: u64,
+        new_weekly_limit: u64,
+        new_max_total: u64,
+    }
+
     /// Emitted on each spend for audit trail
     public struct AgentSpend has copy, drop {
         mandate_id: ID,
@@ -202,61 +212,70 @@ module sweepay::agent_mandate {
     // Spending
     // ══════════════════════════════════════════════════════════════
 
-    /// Validate and debit a spending amount. Called by the delegate (agent).
+    /// Validate and debit a spending amount with mandatory revocation check.
+    /// Called by the delegate (agent) in the same PTB as the payment transaction.
+    ///
+    /// RevocationRegistry is required — there is no unchecked path.
+    /// If revocation is meaningless, delegators lose their kill switch.
     ///
     /// Checks (in order):
-    ///   1. Caller is the delegate
-    ///   2. Mandate not expired
-    ///   3. Level >= L2 (only L2+ can spend)
-    ///   4. Lazy-reset daily counter if 24h+ have elapsed
-    ///   5. Lazy-reset weekly counter if 7d+ have elapsed
-    ///   6. amount <= max_per_tx
-    ///   7. daily_spent + amount <= daily_limit (if daily_limit > 0)
-    ///   8. weekly_spent + amount <= weekly_limit (if weekly_limit > 0)
-    ///   9. total_spent + amount <= max_total
+    ///   1. Mandate not revoked (via RevocationRegistry)
+    ///   2. Caller is the delegate
+    ///   3. Mandate not expired
+    ///   4. Level >= L2 (only L2+ can spend)
+    ///   5. Lazy-reset daily counter if 24h+ have elapsed
+    ///   6. Lazy-reset weekly counter if 7d+ have elapsed
+    ///   7. amount <= max_per_tx
+    ///   8. daily_spent + amount <= daily_limit (if daily_limit > 0)
+    ///   9. weekly_spent + amount <= weekly_limit (if weekly_limit > 0)
+    ///  10. total_spent + amount <= max_total
     public fun validate_and_spend<T>(
         mandate: &mut AgentMandate<T>,
         amount: u64,
+        registry: &RevocationRegistry,
         clock: &Clock,
         ctx: &TxContext,
     ) {
+        // 1. Check revocation first (reuse mandate module's registry + helper)
+        assert!(!mandate::is_id_revoked(registry, object::id(mandate)), ERevoked);
+
         let now = clock.timestamp_ms();
 
-        // 1. Only the delegate can spend
+        // 2. Only the delegate can spend
         assert!(ctx.sender() == mandate.delegate, ENotDelegate);
 
-        // 2. Check expiry
+        // 3. Check expiry
         assert!(now < mandate.expires_at_ms, EExpired);
 
-        // 3. Level check — only L2+ can spend
+        // 4. Level check — only L2+ can spend
         assert!(mandate.level >= LEVEL_CAPPED, ELevelNotAuthorized);
 
-        // 4. Lazy daily reset
+        // 5. Lazy daily reset
         if (now - mandate.last_daily_reset_ms >= MS_PER_DAY) {
             mandate.daily_spent = 0;
             mandate.last_daily_reset_ms = now;
         };
 
-        // 5. Lazy weekly reset
+        // 6. Lazy weekly reset
         if (now - mandate.last_weekly_reset_ms >= MS_PER_WEEK) {
             mandate.weekly_spent = 0;
             mandate.last_weekly_reset_ms = now;
         };
 
-        // 6. Per-transaction limit
+        // 7. Per-transaction limit
         assert!(amount <= mandate.max_per_tx, EPerTxLimitExceeded);
 
-        // 7. Daily limit (0 = no daily limit)
+        // 8. Daily limit (0 = no daily limit)
         if (mandate.daily_limit > 0) {
             assert!(mandate.daily_spent + amount <= mandate.daily_limit, EDailyLimitExceeded);
         };
 
-        // 8. Weekly limit (0 = no weekly limit)
+        // 9. Weekly limit (0 = no weekly limit)
         if (mandate.weekly_limit > 0) {
             assert!(mandate.weekly_spent + amount <= mandate.weekly_limit, EWeeklyLimitExceeded);
         };
 
-        // 9. Lifetime cap
+        // 10. Lifetime cap
         assert!(mandate.total_spent + amount <= mandate.max_total, ETotalLimitExceeded);
 
         // Debit all counters
@@ -273,22 +292,6 @@ module sweepay::agent_mandate {
             weekly_spent: mandate.weekly_spent,
             total_spent: mandate.total_spent,
         });
-    }
-
-    /// Validate spending with revocation check.
-    /// Uses the same RevocationRegistry from sweepay::mandate.
-    public fun validate_and_spend_checked<T>(
-        m: &mut AgentMandate<T>,
-        amount: u64,
-        registry: &RevocationRegistry,
-        clock: &Clock,
-        ctx: &TxContext,
-    ) {
-        // Check revocation first (reuse mandate module's registry + helper)
-        assert!(!mandate::is_id_revoked(registry, object::id(m)), ERevoked);
-
-        // Then normal validation
-        validate_and_spend(m, amount, clock, ctx);
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -332,6 +335,34 @@ module sweepay::agent_mandate {
         mandate.daily_limit = new_daily_limit;
         mandate.weekly_limit = new_weekly_limit;
         mandate.max_total = new_max_total;
+
+        sui::event::emit(CapsUpdated {
+            mandate_id: object::id(mandate),
+            delegator: mandate.delegator,
+            new_max_per_tx,
+            new_daily_limit,
+            new_weekly_limit,
+            new_max_total,
+        });
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // Destruction (zombie object prevention)
+    // ══════════════════════════════════════════════════════════════
+
+    /// Destroy an agent mandate. Only the delegate (owner) can destroy.
+    /// Use when a mandate is expired, revoked, or no longer needed.
+    /// Prevents zombie objects accumulating on-chain.
+    public fun destroy<T>(mandate: AgentMandate<T>, ctx: &TxContext) {
+        assert!(ctx.sender() == mandate.delegate, ENotDelegate);
+        let AgentMandate {
+            id, delegator: _, delegate: _, level: _,
+            max_per_tx: _, daily_limit: _, daily_spent: _,
+            last_daily_reset_ms: _, weekly_limit: _, weekly_spent: _,
+            last_weekly_reset_ms: _, max_total: _, total_spent: _,
+            expires_at_ms: _,
+        } = mandate;
+        object::delete(id);
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -349,16 +380,29 @@ module sweepay::agent_mandate {
     public fun max_total<T>(m: &AgentMandate<T>): u64 { m.max_total }
     public fun total_spent<T>(m: &AgentMandate<T>): u64 { m.total_spent }
     public fun expires_at_ms<T>(m: &AgentMandate<T>): u64 { m.expires_at_ms }
-    public fun remaining<T>(m: &AgentMandate<T>): u64 { m.max_total - m.total_spent }
+    /// Remaining lifetime budget. Saturates to 0 if caps were lowered
+    /// below total_spent via update_caps (prevents underflow abort).
+    public fun remaining<T>(m: &AgentMandate<T>): u64 {
+        if (m.total_spent >= m.max_total) 0
+        else m.max_total - m.total_spent
+    }
 
     public fun daily_remaining<T>(m: &AgentMandate<T>): u64 {
-        if (m.daily_limit == 0) return m.max_total - m.total_spent;
-        m.daily_limit - m.daily_spent
+        if (m.daily_limit == 0) {
+            if (m.total_spent >= m.max_total) return 0;
+            return m.max_total - m.total_spent
+        };
+        if (m.daily_spent >= m.daily_limit) 0
+        else m.daily_limit - m.daily_spent
     }
 
     public fun weekly_remaining<T>(m: &AgentMandate<T>): u64 {
-        if (m.weekly_limit == 0) return m.max_total - m.total_spent;
-        m.weekly_limit - m.weekly_spent
+        if (m.weekly_limit == 0) {
+            if (m.total_spent >= m.max_total) return 0;
+            return m.max_total - m.total_spent
+        };
+        if (m.weekly_spent >= m.weekly_limit) 0
+        else m.weekly_limit - m.weekly_spent
     }
 
     public fun is_expired<T>(m: &AgentMandate<T>, clock: &Clock): bool {

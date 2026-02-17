@@ -31,6 +31,7 @@ module sweepay::escrow {
     use std::type_name;
     use std::ascii;
     use sweepay::admin;
+    use sweepay::math;
 
     // ══════════════════════════════════════════════════════════════
     // Error codes (200-series)
@@ -49,6 +50,7 @@ module sweepay::escrow {
     const EInvalidFeeBps: u64 = 210;
     const EDescriptionTooLong: u64 = 211;
     const EArbiterIsSeller: u64 = 212;
+    const EArbiterIsBuyer: u64 = 213;
 
     // ══════════════════════════════════════════════════════════════
     // State constants
@@ -177,6 +179,9 @@ module sweepay::escrow {
         assert!(arbiter != seller, EArbiterIsSeller);
 
         let buyer = ctx.sender();
+        // Prevent buyer == arbiter: buyer could dispute() then release() as arbiter,
+        // self-approving without seller delivery. Same bypass vector, reversed role.
+        assert!(arbiter != buyer, EArbiterIsBuyer);
 
         let escrow = Escrow<T> {
             id: object::new(ctx),
@@ -255,7 +260,7 @@ module sweepay::escrow {
         let now_ms = clock.timestamp_ms();
 
         // Calculate fee with overflow protection (u128 intermediate)
-        let fee_amount = calculate_fee(amount, fee_bps);
+        let fee_amount = math::calculate_fee(amount, fee_bps);
         let _seller_amount = amount - fee_amount;
 
         // Split fee from balance
@@ -428,6 +433,20 @@ module sweepay::escrow {
     }
 
     // ══════════════════════════════════════════════════════════════
+    // Destruction (zombie object prevention)
+    // ══════════════════════════════════════════════════════════════
+
+    /// Destroy an escrow receipt. Since receipts are owned objects (key + store),
+    /// only the current holder's transactions can pass them as arguments.
+    public fun destroy_receipt(receipt: EscrowReceipt) {
+        let EscrowReceipt {
+            id, escrow_id: _, buyer: _, seller: _, amount: _,
+            fee_amount: _, token_type: _, released_at_ms: _, released_by: _,
+        } = receipt;
+        object::delete(id);
+    }
+
+    // ══════════════════════════════════════════════════════════════
     // Read-only accessors
     // ══════════════════════════════════════════════════════════════
 
@@ -453,16 +472,4 @@ module sweepay::escrow {
     public fun receipt_released_by(r: &EscrowReceipt): address { r.released_by }
     public fun receipt_token_type(r: &EscrowReceipt): &ascii::String { &r.token_type }
 
-    // ══════════════════════════════════════════════════════════════
-    // Internal helpers
-    // ══════════════════════════════════════════════════════════════
-
-    /// Calculate fee with overflow protection (same pattern as payment.move / stream.move).
-    /// Uses u128 intermediate to prevent overflow on large amounts.
-    fun calculate_fee(amount: u64, fee_bps: u64): u64 {
-        if (fee_bps == 0) return 0;
-        let result = ((amount as u128) * (fee_bps as u128)) / 10_000u128;
-        // Safe: amount <= u64::MAX, fee_bps <= 10000, so result <= u64::MAX
-        (result as u64)
-    }
 }

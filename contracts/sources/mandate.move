@@ -37,6 +37,12 @@ module sweepay::mandate {
 
     /// Spending authorization owned by the delegate (agent).
     /// phantom T constrains which coin type this mandate covers.
+    ///
+    /// B-03: `store` ability is intentional — enables wrapping by higher-level
+    /// protocols (AgentMandate, portfolio managers). Trade-off: `store` allows
+    /// transfer via public_transfer, but transfer doesn't bypass revocation
+    /// (the revocation registry uses the Mandate's UID, which is immutable).
+    /// Removing `store` would break composability with no security benefit.
     public struct Mandate<phantom T> has key, store {
         id: UID,
         /// Human who authorized the spending
@@ -109,20 +115,29 @@ module sweepay::mandate {
     // Spending
     // ══════════════════════════════════════════════════════════════
 
-    /// Validate and debit a spending amount. Called by the delegate in the
-    /// same PTB as the payment transaction (atomic).
+    /// Validate and debit a spending amount with mandatory revocation check.
+    /// Called by the delegate in the same PTB as the payment transaction (atomic).
     ///
     /// Checks:
-    ///   1. Caller is the delegate
-    ///   2. Mandate not expired
-    ///   3. Amount <= max_per_tx
-    ///   4. total_spent + amount <= max_total
+    ///   1. Mandate not revoked (via RevocationRegistry)
+    ///   2. Caller is the delegate
+    ///   3. Mandate not expired
+    ///   4. Amount <= max_per_tx
+    ///   5. total_spent + amount <= max_total
+    ///
+    /// RevocationRegistry is required — there is no unchecked path.
+    /// If revocation is meaningless, delegators lose their kill switch.
     public fun validate_and_spend<T>(
         mandate: &mut Mandate<T>,
         amount: u64,
+        registry: &RevocationRegistry,
         clock: &Clock,
         ctx: &TxContext,
     ) {
+        // Check revocation first
+        let key = RevokedKey { mandate_id: object::id(mandate) };
+        assert!(!df::exists_(&registry.id, key), ERevoked);
+
         // Only the delegate can spend
         assert!(ctx.sender() == mandate.delegate, ENotDelegate);
 
@@ -137,23 +152,6 @@ module sweepay::mandate {
 
         // Debit
         mandate.total_spent = mandate.total_spent + amount;
-    }
-
-    /// Validate spending with revocation check.
-    /// Pass the delegator's RevocationRegistry to also check if mandate was revoked.
-    public fun validate_and_spend_checked<T>(
-        mandate: &mut Mandate<T>,
-        amount: u64,
-        registry: &RevocationRegistry,
-        clock: &Clock,
-        ctx: &TxContext,
-    ) {
-        // Check revocation first
-        let key = RevokedKey { mandate_id: object::id(mandate) };
-        assert!(!df::exists_(& registry.id, key), ERevoked);
-
-        // Then normal validation
-        validate_and_spend(mandate, amount, clock, ctx);
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -182,6 +180,34 @@ module sweepay::mandate {
         let key = RevokedKey { mandate_id };
         if (!df::exists_(&registry.id, key)) {
             df::add(&mut registry.id, key, true);
+        };
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // Destruction (zombie object prevention)
+    // ══════════════════════════════════════════════════════════════
+
+    /// Destroy a mandate. Only the delegate (owner) can destroy.
+    /// Use when a mandate is expired, revoked, or no longer needed.
+    /// Prevents zombie objects accumulating on-chain.
+    public fun destroy<T>(mandate: Mandate<T>, ctx: &TxContext) {
+        assert!(ctx.sender() == mandate.delegate, ENotDelegate);
+        let Mandate { id, delegator: _, delegate: _, max_per_tx: _, max_total: _, total_spent: _, expires_at_ms: _ } = mandate;
+        object::delete(id);
+    }
+
+    /// Remove a revocation entry from the registry.
+    /// Only the registry owner (delegator) can clean up.
+    /// Call after the mandate object has been destroyed to free storage.
+    entry fun cleanup_revocation(
+        registry: &mut RevocationRegistry,
+        mandate_id: ID,
+        ctx: &TxContext,
+    ) {
+        assert!(ctx.sender() == registry.owner, ENotDelegator);
+        let key = RevokedKey { mandate_id };
+        if (df::exists_(&registry.id, key)) {
+            let _: bool = df::remove(&mut registry.id, key);
         };
     }
 
@@ -222,6 +248,20 @@ module sweepay::mandate {
     #[test_only]
     public fun destroy_for_testing<T>(mandate: Mandate<T>) {
         let Mandate { id, delegator: _, delegate: _, max_per_tx: _, max_total: _, total_spent: _, expires_at_ms: _ } = mandate;
+        object::delete(id);
+    }
+
+    #[test_only]
+    public fun create_registry_for_testing(ctx: &mut TxContext): RevocationRegistry {
+        RevocationRegistry {
+            id: object::new(ctx),
+            owner: ctx.sender(),
+        }
+    }
+
+    #[test_only]
+    public fun destroy_registry_for_testing(registry: RevocationRegistry) {
+        let RevocationRegistry { id, owner: _ } = registry;
         object::delete(id);
     }
 }

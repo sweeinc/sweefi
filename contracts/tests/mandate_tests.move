@@ -16,6 +16,7 @@ module sweepay::mandate_tests {
     fun test_create_and_spend() {
         let mut scenario = ts::begin(DELEGATOR);
         let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
         let ctx = ts::ctx(&mut scenario);
 
         // Delegator creates mandate
@@ -39,15 +40,16 @@ module sweepay::mandate_tests {
         let ctx = ts::ctx(&mut scenario);
 
         // Spend 500M MIST (0.5 SUI)
-        mandate::validate_and_spend(&mut m, 500_000_000, &clock, ctx);
+        mandate::validate_and_spend(&mut m, 500_000_000, &registry, &clock, ctx);
         assert!(mandate::total_spent(&m) == 500_000_000);
         assert!(mandate::remaining(&m) == 9_500_000_000);
 
         // Spend another 300M MIST
-        mandate::validate_and_spend(&mut m, 300_000_000, &clock, ctx);
+        mandate::validate_and_spend(&mut m, 300_000_000, &registry, &clock, ctx);
         assert!(mandate::total_spent(&m) == 800_000_000);
 
         mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
         clock::destroy_for_testing(clock);
         ts::end(scenario);
     }
@@ -61,6 +63,7 @@ module sweepay::mandate_tests {
     fun test_per_tx_limit() {
         let mut scenario = ts::begin(DELEGATOR);
         let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
         let ctx = ts::ctx(&mut scenario);
 
         let mut m = mandate::create<SUI>(
@@ -76,9 +79,10 @@ module sweepay::mandate_tests {
         let ctx = ts::ctx(&mut scenario);
 
         // Try to spend 2 SUI (exceeds per-tx limit of 1 SUI)
-        mandate::validate_and_spend(&mut m, 2_000_000_000, &clock, ctx);
+        mandate::validate_and_spend(&mut m, 2_000_000_000, &registry, &clock, ctx);
 
         mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
         clock::destroy_for_testing(clock);
         ts::end(scenario);
     }
@@ -92,6 +96,7 @@ module sweepay::mandate_tests {
     fun test_total_limit() {
         let mut scenario = ts::begin(DELEGATOR);
         let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
         let ctx = ts::ctx(&mut scenario);
 
         let mut m = mandate::create<SUI>(
@@ -107,12 +112,13 @@ module sweepay::mandate_tests {
         let ctx = ts::ctx(&mut scenario);
 
         // Spend 1.5 SUI (ok)
-        mandate::validate_and_spend(&mut m, 1_500_000_000, &clock, ctx);
+        mandate::validate_and_spend(&mut m, 1_500_000_000, &registry, &clock, ctx);
 
         // Spend 1 SUI more (total 2.5 SUI > max_total 2 SUI)
-        mandate::validate_and_spend(&mut m, 1_000_000_000, &clock, ctx);
+        mandate::validate_and_spend(&mut m, 1_000_000_000, &registry, &clock, ctx);
 
         mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
         clock::destroy_for_testing(clock);
         ts::end(scenario);
     }
@@ -126,6 +132,7 @@ module sweepay::mandate_tests {
     fun test_expired_mandate() {
         let mut scenario = ts::begin(DELEGATOR);
         let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
         let ctx = ts::ctx(&mut scenario);
 
         let mut m = mandate::create<SUI>(
@@ -144,9 +151,10 @@ module sweepay::mandate_tests {
         let ctx = ts::ctx(&mut scenario);
 
         // Should fail — mandate expired
-        mandate::validate_and_spend(&mut m, 100_000_000, &clock, ctx);
+        mandate::validate_and_spend(&mut m, 100_000_000, &registry, &clock, ctx);
 
         mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
         clock::destroy_for_testing(clock);
         ts::end(scenario);
     }
@@ -160,6 +168,7 @@ module sweepay::mandate_tests {
     fun test_wrong_caller() {
         let mut scenario = ts::begin(DELEGATOR);
         let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
         let ctx = ts::ctx(&mut scenario);
 
         let mut m = mandate::create<SUI>(
@@ -173,9 +182,10 @@ module sweepay::mandate_tests {
 
         // Stay as DELEGATOR (not DELEGATE)
         // Should fail — only delegate can spend
-        mandate::validate_and_spend(&mut m, 100_000_000, &clock, ctx);
+        mandate::validate_and_spend(&mut m, 100_000_000, &registry, &clock, ctx);
 
         mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
         clock::destroy_for_testing(clock);
         ts::end(scenario);
     }

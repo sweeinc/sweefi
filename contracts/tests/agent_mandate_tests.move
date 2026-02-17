@@ -17,6 +17,7 @@ module sweepay::agent_mandate_tests {
     fun test_create_l2_and_spend() {
         let mut scenario = ts::begin(DELEGATOR);
         let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
         let ctx = ts::ctx(&mut scenario);
 
         let mut m = agent_mandate::create<SUI>(
@@ -45,17 +46,18 @@ module sweepay::agent_mandate_tests {
         let ctx = ts::ctx(&mut scenario);
 
         // Spend 500M MIST
-        agent_mandate::validate_and_spend(&mut m, 500_000_000, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 500_000_000, &registry, &clock, ctx);
         assert!(agent_mandate::total_spent(&m) == 500_000_000);
         assert!(agent_mandate::daily_spent(&m) == 500_000_000);
         assert!(agent_mandate::weekly_spent(&m) == 500_000_000);
 
         // Spend another 300M MIST
-        agent_mandate::validate_and_spend(&mut m, 300_000_000, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 300_000_000, &registry, &clock, ctx);
         assert!(agent_mandate::total_spent(&m) == 800_000_000);
         assert!(agent_mandate::daily_remaining(&m) == 4_200_000_000);
 
         agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
         clock::destroy_for_testing(clock);
         ts::end(scenario);
     }
@@ -68,6 +70,7 @@ module sweepay::agent_mandate_tests {
     fun test_l3_autonomous_spend() {
         let mut scenario = ts::begin(DELEGATOR);
         let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
         let ctx = ts::ctx(&mut scenario);
 
         let mut m = agent_mandate::create<SUI>(
@@ -80,10 +83,11 @@ module sweepay::agent_mandate_tests {
         let ctx = ts::ctx(&mut scenario);
 
         // L3 can spend too
-        agent_mandate::validate_and_spend(&mut m, 500_000_000, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 500_000_000, &registry, &clock, ctx);
         assert!(agent_mandate::total_spent(&m) == 500_000_000);
 
         agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
         clock::destroy_for_testing(clock);
         ts::end(scenario);
     }
@@ -93,10 +97,11 @@ module sweepay::agent_mandate_tests {
     // ══════════════════════════════════════════════════════════════
 
     #[test]
-    #[expected_failure(abort_code = 509)] // ELevelNotAuthorized
+    #[expected_failure(abort_code = agent_mandate::ELevelNotAuthorized)]
     fun test_l0_cannot_spend() {
         let mut scenario = ts::begin(DELEGATOR);
         let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
         let ctx = ts::ctx(&mut scenario);
 
         let mut m = agent_mandate::create<SUI>(
@@ -108,18 +113,20 @@ module sweepay::agent_mandate_tests {
         let ctx = ts::ctx(&mut scenario);
 
         // Should fail — L0 can't spend
-        agent_mandate::validate_and_spend(&mut m, 1, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 1, &registry, &clock, ctx);
 
         agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
         clock::destroy_for_testing(clock);
         ts::end(scenario);
     }
 
     #[test]
-    #[expected_failure(abort_code = 509)] // ELevelNotAuthorized
+    #[expected_failure(abort_code = agent_mandate::ELevelNotAuthorized)]
     fun test_l1_cannot_spend() {
         let mut scenario = ts::begin(DELEGATOR);
         let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
         let ctx = ts::ctx(&mut scenario);
 
         let mut m = agent_mandate::create<SUI>(
@@ -132,9 +139,10 @@ module sweepay::agent_mandate_tests {
         let ctx = ts::ctx(&mut scenario);
 
         // Should fail — L1 can't spend
-        agent_mandate::validate_and_spend(&mut m, 100_000_000, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 100_000_000, &registry, &clock, ctx);
 
         agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
         clock::destroy_for_testing(clock);
         ts::end(scenario);
     }
@@ -144,10 +152,11 @@ module sweepay::agent_mandate_tests {
     // ══════════════════════════════════════════════════════════════
 
     #[test]
-    #[expected_failure(abort_code = 506)] // EDailyLimitExceeded
+    #[expected_failure(abort_code = agent_mandate::EDailyLimitExceeded)]
     fun test_daily_limit_exceeded() {
         let mut scenario = ts::begin(DELEGATOR);
         let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
         let ctx = ts::ctx(&mut scenario);
 
         let mut m = agent_mandate::create<SUI>(
@@ -163,12 +172,13 @@ module sweepay::agent_mandate_tests {
         let ctx = ts::ctx(&mut scenario);
 
         // Spend 1.5 SUI (ok, under daily 2 SUI)
-        agent_mandate::validate_and_spend(&mut m, 1_500_000_000, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 1_500_000_000, &registry, &clock, ctx);
 
         // Spend 1 SUI more (total daily: 2.5 SUI > 2 SUI limit)
-        agent_mandate::validate_and_spend(&mut m, 1_000_000_000, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 1_000_000_000, &registry, &clock, ctx);
 
         agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
         clock::destroy_for_testing(clock);
         ts::end(scenario);
     }
@@ -178,10 +188,11 @@ module sweepay::agent_mandate_tests {
     // ══════════════════════════════════════════════════════════════
 
     #[test]
-    #[expected_failure(abort_code = 507)] // EWeeklyLimitExceeded
+    #[expected_failure(abort_code = agent_mandate::EWeeklyLimitExceeded)]
     fun test_weekly_limit_exceeded() {
         let mut scenario = ts::begin(DELEGATOR);
         let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
         let ctx = ts::ctx(&mut scenario);
 
         let mut m = agent_mandate::create<SUI>(
@@ -197,12 +208,13 @@ module sweepay::agent_mandate_tests {
         let ctx = ts::ctx(&mut scenario);
 
         // Spend 2 SUI (ok)
-        agent_mandate::validate_and_spend(&mut m, 2_000_000_000, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 2_000_000_000, &registry, &clock, ctx);
 
         // Spend 2 SUI more (total weekly: 4 SUI > 3 SUI limit)
-        agent_mandate::validate_and_spend(&mut m, 2_000_000_000, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 2_000_000_000, &registry, &clock, ctx);
 
         agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
         clock::destroy_for_testing(clock);
         ts::end(scenario);
     }
@@ -215,6 +227,7 @@ module sweepay::agent_mandate_tests {
     fun test_daily_reset_after_24h() {
         let mut scenario = ts::begin(DELEGATOR);
         let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
         let ctx = ts::ctx(&mut scenario);
 
         let mut m = agent_mandate::create<SUI>(
@@ -231,7 +244,7 @@ module sweepay::agent_mandate_tests {
         let ctx = ts::ctx(&mut scenario);
 
         // Spend 2 SUI (hits daily limit)
-        agent_mandate::validate_and_spend(&mut m, 2_000_000_000, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 2_000_000_000, &registry, &clock, ctx);
         assert!(agent_mandate::daily_spent(&m) == 2_000_000_000);
         assert!(agent_mandate::daily_remaining(&m) == 0);
 
@@ -239,13 +252,14 @@ module sweepay::agent_mandate_tests {
         clock::set_for_testing(&mut clock, 86_400_001);
 
         // Now spend again — lazy reset should kick in
-        agent_mandate::validate_and_spend(&mut m, 1_000_000_000, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 1_000_000_000, &registry, &clock, ctx);
         // daily_spent should be 1 SUI (reset happened, then debited)
         assert!(agent_mandate::daily_spent(&m) == 1_000_000_000);
         // total_spent should be 3 SUI (cumulative, never resets)
         assert!(agent_mandate::total_spent(&m) == 3_000_000_000);
 
         agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
         clock::destroy_for_testing(clock);
         ts::end(scenario);
     }
@@ -258,6 +272,7 @@ module sweepay::agent_mandate_tests {
     fun test_weekly_reset_after_7d() {
         let mut scenario = ts::begin(DELEGATOR);
         let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
         let ctx = ts::ctx(&mut scenario);
 
         let mut m = agent_mandate::create<SUI>(
@@ -274,18 +289,19 @@ module sweepay::agent_mandate_tests {
         let ctx = ts::ctx(&mut scenario);
 
         // Spend 3 SUI (hits weekly limit)
-        agent_mandate::validate_and_spend(&mut m, 3_000_000_000, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 3_000_000_000, &registry, &clock, ctx);
         assert!(agent_mandate::weekly_spent(&m) == 3_000_000_000);
 
         // Advance clock by 7 days + 1ms
         clock::set_for_testing(&mut clock, 604_800_001);
 
         // Lazy weekly reset kicks in
-        agent_mandate::validate_and_spend(&mut m, 1_000_000_000, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 1_000_000_000, &registry, &clock, ctx);
         assert!(agent_mandate::weekly_spent(&m) == 1_000_000_000);
         assert!(agent_mandate::total_spent(&m) == 4_000_000_000);
 
         agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
         clock::destroy_for_testing(clock);
         ts::end(scenario);
     }
@@ -295,10 +311,11 @@ module sweepay::agent_mandate_tests {
     // ══════════════════════════════════════════════════════════════
 
     #[test]
-    #[expected_failure(abort_code = 502)] // EPerTxLimitExceeded
+    #[expected_failure(abort_code = agent_mandate::EPerTxLimitExceeded)]
     fun test_per_tx_limit() {
         let mut scenario = ts::begin(DELEGATOR);
         let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
         let ctx = ts::ctx(&mut scenario);
 
         let mut m = agent_mandate::create<SUI>(
@@ -312,9 +329,10 @@ module sweepay::agent_mandate_tests {
         let ctx = ts::ctx(&mut scenario);
 
         // Try to spend 2 SUI (exceeds per-tx limit)
-        agent_mandate::validate_and_spend(&mut m, 2_000_000_000, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 2_000_000_000, &registry, &clock, ctx);
 
         agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
         clock::destroy_for_testing(clock);
         ts::end(scenario);
     }
@@ -324,10 +342,11 @@ module sweepay::agent_mandate_tests {
     // ══════════════════════════════════════════════════════════════
 
     #[test]
-    #[expected_failure(abort_code = 503)] // ETotalLimitExceeded
+    #[expected_failure(abort_code = agent_mandate::ETotalLimitExceeded)]
     fun test_total_limit() {
         let mut scenario = ts::begin(DELEGATOR);
         let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
         let ctx = ts::ctx(&mut scenario);
 
         let mut m = agent_mandate::create<SUI>(
@@ -344,15 +363,16 @@ module sweepay::agent_mandate_tests {
         let ctx = ts::ctx(&mut scenario);
 
         // Spend 2 SUI
-        agent_mandate::validate_and_spend(&mut m, 2_000_000_000, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 2_000_000_000, &registry, &clock, ctx);
 
         // Advance a day to avoid any daily cap confusion
         clock::set_for_testing(&mut clock, 86_400_001);
 
         // Spend 2 SUI more (total 4 > max_total 3)
-        agent_mandate::validate_and_spend(&mut m, 2_000_000_000, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 2_000_000_000, &registry, &clock, ctx);
 
         agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
         clock::destroy_for_testing(clock);
         ts::end(scenario);
     }
@@ -362,10 +382,11 @@ module sweepay::agent_mandate_tests {
     // ══════════════════════════════════════════════════════════════
 
     #[test]
-    #[expected_failure(abort_code = 501)] // EExpired
+    #[expected_failure(abort_code = agent_mandate::EExpired)]
     fun test_expired_agent_mandate() {
         let mut scenario = ts::begin(DELEGATOR);
         let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
         let ctx = ts::ctx(&mut scenario);
 
         let mut m = agent_mandate::create<SUI>(
@@ -381,9 +402,10 @@ module sweepay::agent_mandate_tests {
         let ctx = ts::ctx(&mut scenario);
 
         // Should fail — expired
-        agent_mandate::validate_and_spend(&mut m, 100_000_000, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 100_000_000, &registry, &clock, ctx);
 
         agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
         clock::destroy_for_testing(clock);
         ts::end(scenario);
     }
@@ -393,10 +415,11 @@ module sweepay::agent_mandate_tests {
     // ══════════════════════════════════════════════════════════════
 
     #[test]
-    #[expected_failure(abort_code = 500)] // ENotDelegate
+    #[expected_failure(abort_code = agent_mandate::ENotDelegate)]
     fun test_wrong_caller() {
         let mut scenario = ts::begin(DELEGATOR);
         let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
         let ctx = ts::ctx(&mut scenario);
 
         let mut m = agent_mandate::create<SUI>(
@@ -406,9 +429,10 @@ module sweepay::agent_mandate_tests {
         );
 
         // Stay as DELEGATOR
-        agent_mandate::validate_and_spend(&mut m, 100_000_000, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 100_000_000, &registry, &clock, ctx);
 
         agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
         clock::destroy_for_testing(clock);
         ts::end(scenario);
     }
@@ -421,6 +445,7 @@ module sweepay::agent_mandate_tests {
     fun test_upgrade_l1_to_l2() {
         let mut scenario = ts::begin(DELEGATOR);
         let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
         let ctx = ts::ctx(&mut scenario);
 
         let mut m = agent_mandate::create<SUI>(
@@ -440,16 +465,17 @@ module sweepay::agent_mandate_tests {
         // Now delegate can spend
         ts::next_tx(&mut scenario, DELEGATE);
         let ctx = ts::ctx(&mut scenario);
-        agent_mandate::validate_and_spend(&mut m, 500_000_000, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 500_000_000, &registry, &clock, ctx);
         assert!(agent_mandate::total_spent(&m) == 500_000_000);
 
         agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
         clock::destroy_for_testing(clock);
         ts::end(scenario);
     }
 
     #[test]
-    #[expected_failure(abort_code = 510)] // ECannotDowngrade
+    #[expected_failure(abort_code = agent_mandate::ECannotDowngrade)]
     fun test_cannot_downgrade() {
         let mut scenario = ts::begin(DELEGATOR);
         let clock = clock::create_for_testing(ts::ctx(&mut scenario));
@@ -470,7 +496,7 @@ module sweepay::agent_mandate_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 504)] // ENotDelegator
+    #[expected_failure(abort_code = agent_mandate::ENotDelegator)]
     fun test_upgrade_wrong_caller() {
         let mut scenario = ts::begin(DELEGATOR);
         let clock = clock::create_for_testing(ts::ctx(&mut scenario));
@@ -524,11 +550,11 @@ module sweepay::agent_mandate_tests {
     }
 
     // ══════════════════════════════════════════════════════════════
-    // Revocation via shared registry
+    // Revocation via shared registry (now mandatory on all spend paths)
     // ══════════════════════════════════════════════════════════════
 
     #[test]
-    #[expected_failure(abort_code = 505)] // ERevoked
+    #[expected_failure(abort_code = agent_mandate::ERevoked)]
     fun test_revoked_agent_mandate() {
         let mut scenario = ts::begin(DELEGATOR);
         let clock = clock::create_for_testing(ts::ctx(&mut scenario));
@@ -556,8 +582,8 @@ module sweepay::agent_mandate_tests {
         ts::next_tx(&mut scenario, DELEGATE);
         let ctx = ts::ctx(&mut scenario);
 
-        // Should fail — revoked
-        agent_mandate::validate_and_spend_checked(&mut m, 100_000_000, &registry, &clock, ctx);
+        // Should fail — revoked (validate_and_spend now always checks registry)
+        agent_mandate::validate_and_spend(&mut m, 100_000_000, &registry, &clock, ctx);
 
         ts::return_shared(registry);
         agent_mandate::destroy_for_testing(m);
@@ -630,7 +656,7 @@ module sweepay::agent_mandate_tests {
     // ══════════════════════════════════════════════════════════════
 
     #[test]
-    #[expected_failure(abort_code = 508)] // EInvalidLevel
+    #[expected_failure(abort_code = agent_mandate::EInvalidLevel)]
     fun test_invalid_level() {
         let mut scenario = ts::begin(DELEGATOR);
         let clock = clock::create_for_testing(ts::ctx(&mut scenario));
@@ -656,6 +682,7 @@ module sweepay::agent_mandate_tests {
     fun test_zero_limits_means_no_periodic_cap() {
         let mut scenario = ts::begin(DELEGATOR);
         let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
         let ctx = ts::ctx(&mut scenario);
 
         let mut m = agent_mandate::create<SUI>(
@@ -673,12 +700,58 @@ module sweepay::agent_mandate_tests {
         // Spend 5 SUI five times (25 total) — no daily/weekly cap to stop us
         let mut i = 0;
         while (i < 5) {
-            agent_mandate::validate_and_spend(&mut m, 5_000_000_000, &clock, ctx);
+            agent_mandate::validate_and_spend(&mut m, 5_000_000_000, &registry, &clock, ctx);
             i = i + 1;
         };
         assert!(agent_mandate::total_spent(&m) == 25_000_000_000);
 
         agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // Production destroy function
+    // ══════════════════════════════════════════════════════════════
+
+    #[test]
+    fun test_destroy_by_delegate() {
+        let mut scenario = ts::begin(DELEGATOR);
+        let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            1_000_000_000, 5_000_000_000, 20_000_000_000, 100_000_000_000,
+            1_000_000, &clock, ctx,
+        );
+
+        // Delegate destroys their own mandate
+        ts::next_tx(&mut scenario, DELEGATE);
+        let ctx = ts::ctx(&mut scenario);
+        agent_mandate::destroy(m, ctx);
+
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = agent_mandate::ENotDelegate)]
+    fun test_destroy_by_non_delegate_fails() {
+        let mut scenario = ts::begin(DELEGATOR);
+        let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            1_000_000_000, 5_000_000_000, 20_000_000_000, 100_000_000_000,
+            1_000_000, &clock, ctx,
+        );
+
+        // Delegator tries to destroy — should fail (only delegate can)
+        agent_mandate::destroy(m, ctx);
+
         clock::destroy_for_testing(clock);
         ts::end(scenario);
     }

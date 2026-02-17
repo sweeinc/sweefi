@@ -143,6 +143,11 @@ module sweepay::admin {
     }
 
     #[test_only]
+    public fun create_state_for_testing(ctx: &mut TxContext): ProtocolState {
+        ProtocolState { id: object::new(ctx), paused: false }
+    }
+
+    #[test_only]
     public fun destroy_state_for_testing(state: ProtocolState) {
         let ProtocolState { id, paused: _ } = state;
         object::delete(id);

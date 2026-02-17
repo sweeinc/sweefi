@@ -25,6 +25,14 @@
 ///   - u128 intermediate math for rate * count (Cetus $223M lesson)
 ///   - Zero-delta claims are no-ops (prevents withdrawal lock griefing)
 ///   - Per-provider isolation: one PrepaidBalance per agent-provider pair
+///
+/// C-06 (Bilateral key loss): If both the agent and provider lose access to
+/// their keys, the PrepaidBalance becomes permanently locked — no admin or
+/// third-party can recover the funds. This is by design (no admin backdoor),
+/// but operators should be aware:
+///   - Funds at risk = current PrepaidBalance.balance at time of key loss
+///   - Mitigation: use small deposits + frequent refill cycles
+///   - Future: governance-gated emergency drain after long dormancy period
 module sweepay::prepaid {
     use sui::coin::{Self, Coin};
     use sui::balance::Balance;
@@ -33,6 +41,7 @@ module sweepay::prepaid {
     use std::type_name;
     use std::ascii;
     use sweepay::admin;
+    use sweepay::math;
 
     // ══════════════════════════════════════════════════════════════
     // Error codes (600-series)
@@ -252,7 +261,7 @@ module sweepay::prepaid {
         assert!(gross_amount <= balance.deposited.value(), ERateLimitExceeded);
 
         // Calculate fee (overflow-safe, same as stream.move)
-        let fee_amount = calculate_fee(gross_amount, balance.fee_bps);
+        let fee_amount = math::calculate_fee(gross_amount, balance.fee_bps);
         let provider_amount = gross_amount - fee_amount;
 
         // Transfer fee
@@ -518,13 +527,6 @@ module sweepay::prepaid {
     // ══════════════════════════════════════════════════════════════
     // Internal helpers
     // ══════════════════════════════════════════════════════════════
-
-    /// Calculate fee with overflow protection (same as stream.move + payment.move).
-    fun calculate_fee(amount: u64, fee_bps: u64): u64 {
-        if (fee_bps == 0) return 0;
-        let result = ((amount as u128) * (fee_bps as u128)) / 10_000u128;
-        (result as u64)
-    }
 
     // ══════════════════════════════════════════════════════════════
     // Test helpers

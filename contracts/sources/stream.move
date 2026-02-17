@@ -23,6 +23,7 @@ module sweepay::stream {
     use std::type_name;
     use std::ascii;
     use sweepay::admin;
+    use sweepay::math;
 
     // ══════════════════════════════════════════════════════════════
     // Error codes
@@ -48,6 +49,11 @@ module sweepay::stream {
     /// Prevents payer from setting a trivially short timeout that
     /// makes recipient_close() useless as a safety mechanism.
     const MIN_RECIPIENT_CLOSE_TIMEOUT_MS: u64 = 86_400_000;
+
+    /// Maximum allowed recipient close timeout: 30 days in ms.
+    /// Prevents u64 overflow when added to last_activity timestamp
+    /// and caps how long funds can be locked in an abandoned stream.
+    const MAX_RECIPIENT_CLOSE_TIMEOUT_MS: u64 = 2_592_000_000;
 
     /// Dynamic field key for per-stream recipient close timeout.
     /// Stored on the StreamingMeter UID via dynamic_field.
@@ -223,6 +229,7 @@ module sweepay::stream {
         assert!(fee_bps <= 10_000, EInvalidFeeBps);
         assert!(budget_cap > 0, EBudgetCapExceeded);
         assert!(recipient_close_timeout_ms >= MIN_RECIPIENT_CLOSE_TIMEOUT_MS, ETimeoutTooShort);
+        assert!(recipient_close_timeout_ms <= MAX_RECIPIENT_CLOSE_TIMEOUT_MS, ETimeoutTooShort);
 
         let now_ms = clock.timestamp_ms();
         let payer = ctx.sender();
@@ -312,7 +319,7 @@ module sweepay::stream {
         assert!(claimable > 0, ENothingToClaim);
 
         // Calculate fee (overflow-safe)
-        let fee_amount = calculate_fee(claimable, meter.fee_bps);
+        let fee_amount = math::calculate_fee(claimable, meter.fee_bps);
         let recipient_amount = claimable - fee_amount;
 
         // Transfer fee
@@ -480,7 +487,7 @@ module sweepay::stream {
         };
 
         if (claimable > 0) {
-            let fee_amount = calculate_fee(claimable, meter.fee_bps);
+            let fee_amount = math::calculate_fee(claimable, meter.fee_bps);
             let recipient_amount = claimable - fee_amount;
 
             if (fee_amount > 0) {
@@ -607,7 +614,7 @@ module sweepay::stream {
 
         // Transfer accrued to recipient (with fee split)
         if (claimable > 0) {
-            let fee_amount = calculate_fee(claimable, meter.fee_bps);
+            let fee_amount = math::calculate_fee(claimable, meter.fee_bps);
             let recipient_amount = claimable - fee_amount;
 
             if (fee_amount > 0) {
@@ -794,11 +801,4 @@ module sweepay::stream {
         }
     }
 
-    /// Calculate fee with overflow protection (same as payment.move).
-    fun calculate_fee(amount: u64, fee_bps: u64): u64 {
-        if (fee_bps == 0) return 0;
-        let result = ((amount as u128) * (fee_bps as u128)) / 10_000u128;
-        // Safe: amount <= u64::MAX, fee_bps <= 10000, so result <= u64::MAX
-        (result as u64)
-    }
 }
