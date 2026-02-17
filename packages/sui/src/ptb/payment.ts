@@ -7,7 +7,7 @@ import { assertFeeBps, assertPositive } from "./assert";
  * Build a PTB for direct payment with fee split + receipt.
  * Uses `pay_and_keep` entry — receipt auto-transferred to sender.
  *
- * This is the simple path for one-shot payments outside the x402 flow.
+ * This is the simple path for one-shot payments outside the s402 flow.
  * For composable PTBs (e.g., pay + use receipt as SEAL condition), use buildPayComposableTx.
  */
 export function buildPayTx(config: SweepayConfig, params: PayParams): Transaction {

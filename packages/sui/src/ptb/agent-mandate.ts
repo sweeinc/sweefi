@@ -46,13 +46,14 @@ export interface CreateAgentMandateParams {
 export interface AgentMandatedPayParams extends PayParams {
   /** AgentMandate object ID (owned by the delegate/agent) */
   mandateId: string;
-}
-
-/** Parameters for agent-mandated payment with revocation check */
-export interface AgentMandatedPayCheckedParams extends AgentMandatedPayParams {
-  /** RevocationRegistry object ID (shared) */
+  /** RevocationRegistry object ID (shared). Required — revocation check is mandatory. */
   registryId: string;
 }
+
+/**
+ * @deprecated Use AgentMandatedPayParams — registryId is now always required.
+ */
+export type AgentMandatedPayCheckedParams = AgentMandatedPayParams;
 
 /** Parameters for upgrading a mandate's level */
 export interface UpgradeMandateLevelParams {
@@ -119,9 +120,9 @@ export function buildCreateAgentMandateTx(
 
 /**
  * Build a PTB that validates agent spending + executes payment atomically.
- * Uses validate_and_spend (no revocation check — faster, owned object only).
+ * Revocation check is mandatory — there is no unchecked path.
  *
- * Flow: validate_and_spend (debit mandate) → pay_and_keep (execute payment)
+ * Flow: validate_and_spend (revocation check + debit mandate) → pay_and_keep (execute payment)
  */
 export function buildAgentMandatedPayTx(
   config: SweepayConfig,
@@ -130,58 +131,9 @@ export function buildAgentMandatedPayTx(
   const tx = new Transaction();
   tx.setSender(params.sender);
 
-  // Step 1: Validate and debit the agent mandate (daily/weekly/lifetime caps)
+  // Step 1: Validate with mandatory revocation check + debit the agent mandate
   tx.moveCall({
     target: `${config.packageId}::agent_mandate::validate_and_spend`,
-    typeArguments: [params.coinType],
-    arguments: [
-      tx.object(params.mandateId),
-      tx.pure.u64(params.amount),
-      tx.object(SUI_CLOCK),
-    ],
-  });
-
-  // Step 2: Execute the payment
-  const memo = typeof params.memo === "string"
-    ? new TextEncoder().encode(params.memo)
-    : params.memo ?? new Uint8Array();
-
-  const coin = coinWithBalance({ type: params.coinType, balance: params.amount });
-
-  tx.moveCall({
-    target: `${config.packageId}::payment::pay_and_keep`,
-    typeArguments: [params.coinType],
-    arguments: [
-      coin,
-      tx.pure.address(params.recipient),
-      tx.pure.u64(params.amount),
-      tx.pure.u64(params.feeBps),
-      tx.pure.address(params.feeRecipient),
-      tx.pure.vector("u8", Array.from(memo)),
-      tx.object(SUI_CLOCK),
-    ],
-  });
-
-  return tx;
-}
-
-/**
- * Build a PTB that validates agent spending with revocation check + executes payment.
- * Uses validate_and_spend_checked (includes RevocationRegistry lookup — adds shared object).
- *
- * Use this when the agent needs to prove it hasn't been revoked.
- * Slightly slower due to shared object consensus.
- */
-export function buildAgentMandatedPayCheckedTx(
-  config: SweepayConfig,
-  params: AgentMandatedPayCheckedParams,
-): Transaction {
-  const tx = new Transaction();
-  tx.setSender(params.sender);
-
-  // Step 1: Validate with revocation check
-  tx.moveCall({
-    target: `${config.packageId}::agent_mandate::validate_and_spend_checked`,
     typeArguments: [params.coinType],
     arguments: [
       tx.object(params.mandateId),
@@ -214,6 +166,11 @@ export function buildAgentMandatedPayCheckedTx(
 
   return tx;
 }
+
+/**
+ * @deprecated Use buildAgentMandatedPayTx — revocation check is now mandatory on all paths.
+ */
+export const buildAgentMandatedPayCheckedTx = buildAgentMandatedPayTx;
 
 /**
  * Build a PTB to upgrade an agent mandate's level.

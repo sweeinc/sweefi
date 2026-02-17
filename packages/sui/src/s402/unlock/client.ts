@@ -1,24 +1,24 @@
 /**
- * s402 Seal Scheme — Client
+ * s402 Unlock Scheme — Client
  *
- * Composite: builds escrow PTB + SEAL encryption setup.
+ * Composite: builds escrow PTB + encryption setup for pay-to-decrypt.
  *
  * IMPORTANT CONSTRAINT (expert-validated):
- * SEAL + mandate CANNOT be in the same PTB. ValidPtb requires all
- * commands be seal_approve from the same package. If a mandate is present,
- * the flow must be TWO separate PTBs:
+ * Encryption key-server approval + mandate CANNOT be in the same PTB.
+ * ValidPtb requires all commands be from the same package. If a mandate
+ * is present, the flow must be TWO separate PTBs:
  *   PTB 1: validate_and_spend() + escrow creation (mandate authorizes the spend)
- *   PTB 2: seal_approve() (SEAL key servers decrypt based on escrow receipt)
+ *   PTB 2: key-server approval (decrypt based on escrow receipt)
  */
 
-import type { s402ClientScheme, s402PaymentRequirements, s402SealPayload } from 's402';
+import type { s402ClientScheme, s402PaymentRequirements, s402UnlockPayload } from 's402';
 import { S402_VERSION } from 's402';
 import type { ClientSuiSigner } from '../../signer.js';
 import type { SweepayConfig } from '../../ptb/types.js';
 import { buildCreateEscrowTx } from '../../ptb/escrow.js';
 
-export class SealSuiClientScheme implements s402ClientScheme {
-  readonly scheme = 'seal' as const;
+export class UnlockSuiClientScheme implements s402ClientScheme {
+  readonly scheme = 'unlock' as const;
 
   constructor(
     private readonly signer: ClientSuiSigner,
@@ -27,10 +27,10 @@ export class SealSuiClientScheme implements s402ClientScheme {
 
   async createPayment(
     requirements: s402PaymentRequirements,
-  ): Promise<s402SealPayload> {
-    const seal = requirements.seal;
-    if (!seal) {
-      throw new Error('Seal requirements missing from s402PaymentRequirements');
+  ): Promise<s402UnlockPayload> {
+    const unlock = requirements.unlock;
+    if (!unlock) {
+      throw new Error('Unlock requirements missing from s402PaymentRequirements');
     }
 
     // Step 1: Build escrow creation PTB (pays for the content)
@@ -53,11 +53,11 @@ export class SealSuiClientScheme implements s402ClientScheme {
 
     return {
       s402Version: S402_VERSION,
-      scheme: 'seal',
+      scheme: 'unlock',
       payload: {
         transaction: bytes,
         signature,
-        encryptionId: seal.encryptionId,
+        encryptionId: unlock.encryptionId,
       },
     };
   }

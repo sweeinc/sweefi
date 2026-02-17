@@ -1,19 +1,13 @@
 /**
- * @module @x402/sui - x402 Payment Protocol Sui Implementation
+ * @module @sweepay/sui — Sui-native payment protocol implementation
  *
- * This module provides the Sui-specific implementation of the x402 payment protocol.
- * Implements the sign-first model per the official Sui spec (scheme_exact_sui.md).
+ * Provides the Sui-specific implementation of the s402 payment protocol.
+ * Implements the sign-first model using Sui's PTBs and sub-second finality.
  */
-
-// Export V2 implementations (default)
-export { ExactSuiScheme } from "./exact";
 
 // Export signer utilities and types
 export { toClientSuiSigner, toFacilitatorSuiSigner } from "./signer";
 export type { ClientSuiSigner, FacilitatorSuiSigner, FacilitatorSuiSignerConfig } from "./signer";
-
-// Export payload types
-export type { ExactSuiPayload } from "./types";
 
 // Export constants
 export * from "./constants";

@@ -26,6 +26,8 @@ export interface CreateMandateParams {
 export interface MandatedPayParams extends PayParams {
   /** Mandate object ID (owned by the delegate/agent) */
   mandateId: string;
+  /** RevocationRegistry object ID (shared object, mandatory for revocation checks) */
+  registryId: string;
 }
 
 /** Parameters for revoking a mandate */
@@ -102,6 +104,7 @@ export function buildMandatedPayTx(
     arguments: [
       tx.object(params.mandateId),
       tx.pure.u64(params.amount),
+      tx.object(params.registryId),
       tx.object(SUI_CLOCK),
     ],
   });
