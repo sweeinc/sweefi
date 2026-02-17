@@ -1,6 +1,5 @@
 import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
 import { normalizeStructTag } from "@mysten/sui/utils";
-import type { Network } from "@sweepay/core/types";
 import {
   SUI_MAINNET_CAIP2,
   SUI_TESTNET_CAIP2,
@@ -17,7 +16,7 @@ import {
  * @param customRpcUrl - Optional custom RPC URL override
  * @returns SuiClient configured for the specified network
  */
-export function createSuiClient(network: Network, customRpcUrl?: string): SuiClient {
+export function createSuiClient(network: string, customRpcUrl?: string): SuiClient {
   if (customRpcUrl) {
     return new SuiClient({ url: customRpcUrl });
   }
@@ -40,7 +39,7 @@ export function createSuiClient(network: Network, customRpcUrl?: string): SuiCli
  * @param network - CAIP-2 network identifier
  * @returns USDC coin type string
  */
-export function getUsdcCoinType(network: Network): string {
+export function getUsdcCoinType(network: string): string {
   switch (network) {
     case SUI_MAINNET_CAIP2:
       return USDC_MAINNET;

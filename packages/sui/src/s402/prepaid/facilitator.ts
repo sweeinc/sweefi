@@ -9,7 +9,12 @@
  *   1. Scheme validation (must be "prepaid")
  *   2. Signature recovery (payer = agent depositing funds)
  *   3. Dry-run simulation (proves deposit would succeed on-chain)
- *   4. Balance change verification (deposit amount matches requirements)
+ *   4. Event-based verification:
+ *      - Event originates from expected package (prevent event spoofing)
+ *      - token_type matches requirements.asset (prevent worthless token attack)
+ *      - agent matches recovered signer (prevent impersonation)
+ *      - provider matches requirements.payTo (prevent free-service attack)
+ *      - deposit amount >= requirements.prepaid.minDeposit
  *   5. Rate/maxCalls commitment match (payload params match requirements)
  *
  * After settlement, the PrepaidBalance shared object ID is returned
@@ -25,11 +30,23 @@ import type {
   s402PrepaidPayload,
 } from 's402';
 import type { FacilitatorSuiSigner } from '../../signer.js';
+import { coinTypesEqual } from '../../utils.js';
+import { normalizeSuiAddress } from '@mysten/sui/utils';
 
 export class PrepaidSuiFacilitatorScheme implements s402FacilitatorScheme {
   readonly scheme = 'prepaid' as const;
 
-  constructor(private readonly signer: FacilitatorSuiSigner) {}
+  /**
+   * @param signer - Facilitator signer for signature verification and TX execution
+   * @param packageId - Expected SweePay Move package ID. When provided, event
+   *   extraction verifies the event originates from this package (prevents event
+   *   spoofing from attacker-deployed contracts). When omitted, falls back to
+   *   suffix matching (less secure, suitable for development/testing).
+   */
+  constructor(
+    private readonly signer: FacilitatorSuiSigner,
+    private readonly packageId?: string,
+  ) {}
 
   async verify(
     payload: s402PaymentPayload,
@@ -89,7 +106,7 @@ export class PrepaidSuiFacilitatorScheme implements s402FacilitatorScheme {
       //   1. Events contain the exact deposit amount (no gas fee confusion)
       //   2. Events contain the provider address (enables provider verification)
       //   3. Events are emitted by the contract itself (single source of truth)
-      const depositEvent = extractDepositEvent(dryRunResult.events ?? []);
+      const depositEvent = extractDepositEvent(dryRunResult.events ?? [], this.packageId);
 
       if (!depositEvent) {
         return {
@@ -99,9 +116,29 @@ export class PrepaidSuiFacilitatorScheme implements s402FacilitatorScheme {
         };
       }
 
+      // Verify token type matches (prevent worthless token attack — client could
+      // deposit a custom token with the same name but zero value)
+      if (!coinTypesEqual(depositEvent.token_type, requirements.asset)) {
+        return {
+          valid: false,
+          invalidReason: `Token type mismatch: event=${depositEvent.token_type}, required=${requirements.asset}`,
+          payerAddress,
+        };
+      }
+
+      // Verify agent matches recovered signer (prevent impersonation)
+      // Normalized to handle potential format differences (short vs full-length addresses)
+      if (normalizeSuiAddress(depositEvent.agent) !== normalizeSuiAddress(payerAddress)) {
+        return {
+          valid: false,
+          invalidReason: `Agent mismatch: event=${depositEvent.agent}, signer=${payerAddress}`,
+          payerAddress,
+        };
+      }
+
       // Verify deposit targets the correct provider (prevents free-service attack
       // where client sets provider=self, gets access, then claims back their deposit)
-      if (depositEvent.provider !== requirements.payTo) {
+      if (normalizeSuiAddress(depositEvent.provider) !== normalizeSuiAddress(requirements.payTo)) {
         return {
           valid: false,
           invalidReason: `Provider mismatch: deposit targets ${depositEvent.provider}, expected ${requirements.payTo}`,
@@ -162,7 +199,7 @@ export class PrepaidSuiFacilitatorScheme implements s402FacilitatorScheme {
       let balanceId: string | undefined;
       if (this.signer.getTransactionBlock) {
         const txBlock = await this.signer.getTransactionBlock(txDigest, requirements.network);
-        const depositEvent = extractDepositEvent(txBlock.events ?? []);
+        const depositEvent = extractDepositEvent(txBlock.events ?? [], this.packageId);
         if (depositEvent) {
           balanceId = depositEvent.balance_id;
         }
@@ -198,15 +235,16 @@ interface DepositEventData {
 /**
  * Extract PrepaidDeposited event from dry-run or execution results.
  *
- * Uses event data instead of balance changes for verification because:
- *   1. Events contain the exact deposit amount (no gas fee confusion with coin type)
- *   2. Events contain the provider address (enables provider verification)
- *   3. Events are emitted by the Move contract itself (authoritative source)
+ * When packageId is provided, matches the full event type to prevent spoofing
+ * from attacker-deployed contracts. When omitted, falls back to suffix matching.
  */
 function extractDepositEvent(
   events: Array<{ type: string; parsedJson?: unknown }>,
+  packageId?: string,
 ): DepositEventData | null {
-  const event = events.find(e => e.type.endsWith('::prepaid::PrepaidDeposited'));
+  const event = packageId
+    ? events.find(e => e.type.startsWith(`${packageId}::`) && e.type.endsWith('::PrepaidDeposited'))
+    : events.find(e => e.type.endsWith('::prepaid::PrepaidDeposited'));
   if (!event?.parsedJson || typeof event.parsedJson !== 'object') return null;
   return event.parsedJson as DepositEventData;
 }

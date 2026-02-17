@@ -12,7 +12,6 @@ import type {
   s402RouteConfig,
 } from 's402';
 import { S402_VERSION } from 's402';
-import type { Network } from '@sweepay/core/types';
 import { getUsdcCoinType } from '../../utils.js';
 
 export class PrepaidSuiServerScheme implements s402ServerScheme {
@@ -28,7 +27,7 @@ export class PrepaidSuiServerScheme implements s402ServerScheme {
       s402Version: S402_VERSION,
       accepts: ['prepaid', 'exact'],
       network: config.network,
-      asset: config.asset ?? getUsdcCoinType(config.network as Network),
+      asset: config.asset ?? getUsdcCoinType(config.network),
       // For prepaid, "amount" = the minimum deposit
       amount: prepaid.minDeposit,
       payTo: config.payTo,

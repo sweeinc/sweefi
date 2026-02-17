@@ -37,6 +37,7 @@ function createMockDepositEvent(overrides: Partial<{
   amount: string;
   rate_per_call: string;
   max_calls: string;
+  token_type: string;
 }> = {}) {
   return {
     id: { txDigest: "mock-digest", eventSeq: "0" },
@@ -51,7 +52,7 @@ function createMockDepositEvent(overrides: Partial<{
       amount: overrides.amount ?? "10000000",
       rate_per_call: overrides.rate_per_call ?? "1000000",
       max_calls: overrides.max_calls ?? "100",
-      token_type: USDC_MAINNET,
+      token_type: overrides.token_type ?? USDC_MAINNET,
       timestamp_ms: "1700000000000",
     },
     bcs: "",
@@ -142,7 +143,7 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
   describe("verify", () => {
     it("should reject non-prepaid scheme", async () => {
       const signer = createMockFacilitatorSigner();
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       const payload = { ...createMockS402PrepaidPayload(), scheme: "exact" as const };
       const result = await scheme.verify(payload as any, createMockS402Requirements());
       expect(result.valid).toBe(false);
@@ -151,7 +152,7 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
 
     it("should reject missing transaction", async () => {
       const signer = createMockFacilitatorSigner();
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       const payload = createMockS402PrepaidPayload();
       payload.payload.transaction = "";
       const result = await scheme.verify(payload, createMockS402Requirements());
@@ -161,7 +162,7 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
 
     it("should reject missing signature", async () => {
       const signer = createMockFacilitatorSigner();
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       const payload = createMockS402PrepaidPayload();
       payload.payload.signature = "";
       const result = await scheme.verify(payload, createMockS402Requirements());
@@ -171,7 +172,7 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
 
     it("should reject missing prepaid requirements", async () => {
       const signer = createMockFacilitatorSigner();
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       const result = await scheme.verify(
         createMockS402PrepaidPayload(),
         createMockS402Requirements({ prepaid: undefined }),
@@ -182,7 +183,7 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
 
     it("should reject rate mismatch", async () => {
       const signer = createMockFacilitatorSigner();
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       const payload = createMockS402PrepaidPayload();
       payload.payload.ratePerCall = "999999";
       const result = await scheme.verify(payload, createMockS402Requirements());
@@ -192,7 +193,7 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
 
     it("should reject maxCalls mismatch when requirements specify it", async () => {
       const signer = createMockFacilitatorSigner();
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       const payload = createMockS402PrepaidPayload();
       payload.payload.maxCalls = "50";
       const result = await scheme.verify(payload, createMockS402Requirements());
@@ -202,7 +203,7 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
 
     it("should verify valid prepaid payload", async () => {
       const signer = createMockFacilitatorSigner();
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       const result = await scheme.verify(
         createMockS402PrepaidPayload(),
         createMockS402Requirements(),
@@ -223,7 +224,7 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
           return createSuccessfulDryRun();
         },
       });
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       const result = await scheme.verify(
         createMockS402PrepaidPayload(),
         createMockS402Requirements(),
@@ -237,7 +238,7 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
       const signer = createMockFacilitatorSigner({
         simulateTransaction: async () => createFailedDryRun("InsufficientBalance"),
       });
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       const result = await scheme.verify(
         createMockS402PrepaidPayload(),
         createMockS402Requirements(),
@@ -249,6 +250,42 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
 
     // ── Event-based verification tests (security-critical) ──
 
+    it("should reject when deposit uses wrong token type (worthless token attack)", async () => {
+      const WORTHLESS_TOKEN = "0x" + "f".repeat(64) + "::fake::FAKE";
+      const signer = createMockFacilitatorSigner({
+        simulateTransaction: async () =>
+          createSuccessfulDryRun({
+            events: [createMockDepositEvent({ token_type: WORTHLESS_TOKEN })],
+          }),
+      });
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
+      const result = await scheme.verify(
+        createMockS402PrepaidPayload(),
+        createMockS402Requirements(),
+      );
+      expect(result.valid).toBe(false);
+      expect(result.invalidReason).toContain("Token type mismatch");
+      expect(result.payerAddress).toBe(MOCK_PAYER);
+    });
+
+    it("should reject when agent does not match signer (impersonation attack)", async () => {
+      const IMPERSONATED = "0x" + "1".repeat(64);
+      const signer = createMockFacilitatorSigner({
+        simulateTransaction: async () =>
+          createSuccessfulDryRun({
+            events: [createMockDepositEvent({ agent: IMPERSONATED })],
+          }),
+      });
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
+      const result = await scheme.verify(
+        createMockS402PrepaidPayload(),
+        createMockS402Requirements(),
+      );
+      expect(result.valid).toBe(false);
+      expect(result.invalidReason).toContain("Agent mismatch");
+      expect(result.payerAddress).toBe(MOCK_PAYER);
+    });
+
     it("should reject when deposit targets wrong provider (F-01: free-service attack)", async () => {
       const ATTACKER = "0x" + "f".repeat(64);
       const signer = createMockFacilitatorSigner({
@@ -257,7 +294,7 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
             events: [createMockDepositEvent({ provider: ATTACKER })],
           }),
       });
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       const result = await scheme.verify(
         createMockS402PrepaidPayload(),
         createMockS402Requirements(),
@@ -274,7 +311,7 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
             events: [createMockDepositEvent({ provider: MOCK_PAYER })],
           }),
       });
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       const result = await scheme.verify(
         createMockS402PrepaidPayload(),
         createMockS402Requirements(),
@@ -290,7 +327,7 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
             events: [createMockDepositEvent({ amount: "5000000" })],
           }),
       });
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       const result = await scheme.verify(
         createMockS402PrepaidPayload(),
         createMockS402Requirements(),
@@ -306,7 +343,7 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
             events: [createMockDepositEvent({ amount: "10000000" })],
           }),
       });
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       const result = await scheme.verify(
         createMockS402PrepaidPayload(),
         createMockS402Requirements(),
@@ -314,12 +351,30 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
       expect(result.valid).toBe(true);
     });
 
+    it("should reject event from spoofed package (C-1: event spoofing attack)", async () => {
+      const ATTACKER_PKG = "0x" + "f".repeat(64);
+      const spoofedEvent = createMockDepositEvent();
+      // Change the event type to come from an attacker's package
+      spoofedEvent.type = `${ATTACKER_PKG}::prepaid::PrepaidDeposited`;
+      const signer = createMockFacilitatorSigner({
+        simulateTransaction: async () =>
+          createSuccessfulDryRun({ events: [spoofedEvent] }),
+      });
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
+      const result = await scheme.verify(
+        createMockS402PrepaidPayload(),
+        createMockS402Requirements(),
+      );
+      expect(result.valid).toBe(false);
+      expect(result.invalidReason).toContain("No PrepaidDeposited event");
+    });
+
     it("should reject when no PrepaidDeposited event found (fail-closed)", async () => {
       const signer = createMockFacilitatorSigner({
         simulateTransaction: async () =>
           createSuccessfulDryRun({ events: [] }),
       });
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       const result = await scheme.verify(
         createMockS402PrepaidPayload(),
         createMockS402Requirements(),
@@ -334,7 +389,7 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
           throw new Error("Signature verification failed");
         },
       });
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       const result = await scheme.verify(
         createMockS402PrepaidPayload(),
         createMockS402Requirements(),
@@ -349,7 +404,7 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
           throw new Error("Network unreachable");
         },
       });
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       const result = await scheme.verify(
         createMockS402PrepaidPayload(),
         createMockS402Requirements(),
@@ -364,7 +419,7 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
       const signer = createMockFacilitatorSigner({
         executeTransaction: async () => "0xdigest123",
       });
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       const result = await scheme.settle(
         createMockS402PrepaidPayload(),
         createMockS402Requirements(),
@@ -382,7 +437,7 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
           return createSuccessfulDryRun();
         },
       });
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       await scheme.settle(createMockS402PrepaidPayload(), createMockS402Requirements());
       // settle calls verify which calls simulateTransaction
       expect(simulateCalls).toBeGreaterThanOrEqual(1);
@@ -392,7 +447,7 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
       const signer = createMockFacilitatorSigner({
         simulateTransaction: async () => createFailedDryRun("ObjectNotFound"),
       });
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       const result = await scheme.settle(
         createMockS402PrepaidPayload(),
         createMockS402Requirements(),
@@ -408,7 +463,7 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
             events: [createMockDepositEvent({ provider: MOCK_PAYER })],
           }),
       });
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       const result = await scheme.settle(
         createMockS402PrepaidPayload(),
         createMockS402Requirements(),
@@ -422,7 +477,7 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
           throw new Error("Network timeout");
         },
       });
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       const result = await scheme.settle(
         createMockS402PrepaidPayload(),
         createMockS402Requirements(),
@@ -438,7 +493,7 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
           waited = true;
         },
       });
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       const result = await scheme.settle(
         createMockS402PrepaidPayload(),
         createMockS402Requirements(),
@@ -456,7 +511,7 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
           events: [createMockDepositEvent()],
         }),
       });
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       const result = await scheme.settle(
         createMockS402PrepaidPayload(),
         createMockS402Requirements(),
@@ -469,7 +524,7 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
       // Default mock signer has no getTransactionBlock
       const signer = createMockFacilitatorSigner();
       delete (signer as any).getTransactionBlock;
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       const result = await scheme.settle(
         createMockS402PrepaidPayload(),
         createMockS402Requirements(),
@@ -484,7 +539,7 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
           events: [], // no deposit event
         }),
       });
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       const result = await scheme.settle(
         createMockS402PrepaidPayload(),
         createMockS402Requirements(),
@@ -497,7 +552,7 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
   describe("metadata", () => {
     it("should report scheme as 'prepaid'", () => {
       const signer = createMockFacilitatorSigner();
-      const scheme = new PrepaidSuiFacilitatorScheme(signer);
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
       expect(scheme.scheme).toBe("prepaid");
     });
   });

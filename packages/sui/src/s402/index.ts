@@ -6,7 +6,7 @@
  *   - Prepaid: deposit-based agent budgets (off-chain usage, batch-claim)
  *   - Stream: two-phase protocol (402 setup + X-STREAM-ID header)
  *   - Escrow: time-locked escrow with arbiter
- *   - Seal: composite escrow + SEAL encryption
+ *   - Unlock: composite escrow + pay-to-decrypt encryption
  *   - Direct: no-facilitator self-settlement
  */
 
@@ -16,18 +16,21 @@ export { ExactSuiFacilitatorScheme } from './exact/facilitator.js';
 
 // Stream
 export { StreamSuiClientScheme } from './stream/client.js';
+export { StreamSuiFacilitatorScheme } from './stream/facilitator.js';
 export { StreamSuiServerScheme } from './stream/server.js';
 
 // Escrow
 export { EscrowSuiClientScheme } from './escrow/client.js';
+export { EscrowSuiFacilitatorScheme } from './escrow/facilitator.js';
+export { EscrowSuiServerScheme } from './escrow/server.js';
 
 // Prepaid
 export { PrepaidSuiClientScheme } from './prepaid/client.js';
 export { PrepaidSuiFacilitatorScheme } from './prepaid/facilitator.js';
 export { PrepaidSuiServerScheme } from './prepaid/server.js';
 
-// Seal
-export { SealSuiClientScheme } from './seal/client.js';
+// Unlock (pay-to-decrypt)
+export { UnlockSuiClientScheme } from './unlock/client.js';
 
 // Direct settlement
 export { DirectSuiSettlement } from './direct.js';

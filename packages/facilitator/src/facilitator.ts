@@ -1,14 +1,18 @@
-import { x402Facilitator } from "@sweepay/core/facilitator";
+import { s402Facilitator } from "s402";
 import { toFacilitatorSuiSigner } from "@sweepay/sui";
-import { registerExactSuiScheme } from "@sweepay/sui/exact/facilitator";
-import { registerPrepaidSuiScheme } from "@sweepay/sui/prepaid/facilitator";
+import {
+  ExactSuiFacilitatorScheme,
+  PrepaidSuiFacilitatorScheme,
+  StreamSuiFacilitatorScheme,
+  EscrowSuiFacilitatorScheme,
+} from "@sweepay/sui";
 import type { Config } from "./config";
 
 /**
- * Create and configure the x402 facilitator with Sui support.
+ * Create and configure the s402 facilitator with Sui support.
  */
-export function createFacilitator(config: Config): x402Facilitator {
-  const facilitator = new x402Facilitator();
+export function createFacilitator(config: Config): s402Facilitator {
+  const facilitator = new s402Facilitator();
 
   const rpcUrls: Record<string, string> = {};
   if (config.SUI_MAINNET_RPC) rpcUrls["sui:mainnet"] = config.SUI_MAINNET_RPC;
@@ -19,15 +23,19 @@ export function createFacilitator(config: Config): x402Facilitator {
     Object.keys(rpcUrls).length > 0 ? { rpcUrls } : undefined,
   );
 
-  registerExactSuiScheme(facilitator, {
-    signer,
-    networks: ["sui:testnet", "sui:mainnet"],
-  });
+  // Package ID for event anti-spoofing verification. When set, facilitator
+  // scheme handlers verify that Move events originate from this package,
+  // preventing attackers from deploying contracts that emit fake events.
+  const packageId = config.SWEEPAY_PACKAGE_ID;
 
-  registerPrepaidSuiScheme(facilitator, {
-    signer,
-    networks: ["sui:testnet", "sui:mainnet"],
-  });
+  const networks = ["sui:testnet", "sui:mainnet"];
+
+  for (const network of networks) {
+    facilitator.register(network, new ExactSuiFacilitatorScheme(signer));
+    facilitator.register(network, new PrepaidSuiFacilitatorScheme(signer, packageId));
+    facilitator.register(network, new StreamSuiFacilitatorScheme(signer, packageId));
+    facilitator.register(network, new EscrowSuiFacilitatorScheme(signer, packageId));
+  }
 
   return facilitator;
 }

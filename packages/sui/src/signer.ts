@@ -3,7 +3,6 @@ import type { Signer } from "@mysten/sui/cryptography";
 import type { Transaction } from "@mysten/sui/transactions";
 import { fromBase64, toBase64 } from "@mysten/sui/utils";
 import { verifyTransactionSignature } from "@mysten/sui/verify";
-import type { Network } from "@sweepay/core/types";
 import { createSuiClient } from "./utils";
 
 /**
@@ -131,7 +130,7 @@ export function toFacilitatorSuiSigner(
     if (cached) return cached;
 
     const rpcUrl = config?.rpcUrls?.[network] ?? config?.rpcUrl;
-    const client = createSuiClient(network as Network, rpcUrl);
+    const client = createSuiClient(network, rpcUrl);
     clientCache.set(network, client);
     return client;
   };

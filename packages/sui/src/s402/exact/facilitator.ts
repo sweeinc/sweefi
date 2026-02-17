@@ -2,7 +2,7 @@
  * s402 Exact Scheme — Facilitator
  *
  * Verifies and settles exact payment transactions.
- * Reuses the existing 4-step verification logic from the x402 facilitator:
+ * 4-step verification logic:
  *   1. Scheme validation
  *   2. Network match
  *   3. Signature recovery + dry-run simulation
