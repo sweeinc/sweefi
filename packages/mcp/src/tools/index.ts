@@ -9,12 +9,23 @@ import { registerStreamTools } from "./stream.js";
 import { registerEscrowTools } from "./escrow.js";
 import { registerProveTool } from "./prove.js";
 import { registerAdminTools } from "./admin.js";
+import { registerPrepaidTools, registerPrepaidProviderTools } from "./prepaid.js";
+import { registerMandateTools } from "./mandate.js";
+
+export interface RegisterToolsOptions {
+  /** Enable admin tools (pause/unpause/burn). Defaults to false. */
+  enableAdminTools?: boolean;
+  /** Enable provider-side tools (prepaid claim). Defaults to false.
+   *  Only enable when the MCP server is running as a provider, not a consumer agent. */
+  enableProviderTools?: boolean;
+}
 
 /**
- * Register all SweePay tools on the MCP server.
- * 19 tools total: 5 read-only + 14 transaction.
+ * Register SweePay tools on the MCP server.
+ * Admin tools (pause/unpause/burn) are only registered when explicitly opted in.
+ * Provider tools (prepaid claim) are only registered when explicitly opted in.
  */
-export function registerAllTools(server: McpServer, ctx: SweepayContext) {
+export function registerAllTools(server: McpServer, ctx: SweepayContext, opts?: RegisterToolsOptions) {
   // Read-only tools (no wallet needed)
   registerBalanceTool(server, ctx);
   registerSupportedTool(server, ctx);
@@ -26,5 +37,18 @@ export function registerAllTools(server: McpServer, ctx: SweepayContext) {
   registerInvoiceTools(server, ctx); // sweepay_create_invoice + sweepay_pay_invoice
   registerStreamTools(server, ctx); // sweepay_start_stream + sweepay_stop_stream + sweepay_recipient_close_stream
   registerEscrowTools(server, ctx); // sweepay_create/release/refund/dispute_escrow
-  registerAdminTools(server, ctx); // sweepay_protocol_status + sweepay_pause/unpause/burn
+  registerPrepaidTools(server, ctx); // sweepay_prepaid_deposit/request_withdrawal/finalize/cancel/top_up/agent_close/status
+  registerMandateTools(server, ctx); // sweepay_create_mandate/create_agent_mandate/basic_mandated_pay/agent_mandated_pay/revoke/registry/inspect
+
+  // Provider tools register the provider-side of two-party schemes (e.g., prepaid claim).
+  // A consumer agent should NOT have these — it would confuse the LLM.
+  if (opts?.enableProviderTools) {
+    registerPrepaidProviderTools(server, ctx); // sweepay_prepaid_claim
+  }
+
+  // Admin tools require explicit opt-in — a compromised agent calling
+  // burn_admin_cap is an irreversible disaster.
+  if (opts?.enableAdminTools) {
+    registerAdminTools(server, ctx);
+  }
 }

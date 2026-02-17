@@ -14,6 +14,29 @@ export interface SweepayContext {
   signer: Keypair | null;
   config: SweepayConfig;
   network: string;
+  /** Spending limits enforced by the MCP server. */
+  spendingLimits: SpendingLimits;
+}
+
+/**
+ * D-03/D-05 (Trust boundary): These limits protect against LLM misbehavior
+ * (e.g., the model deciding to spend 1000 SUI instead of 0.001 SUI).
+ * They are NOT a security boundary against host compromise — the private key
+ * is in-process and can be extracted by a compromised host. On-chain Mandates
+ * are the real enforcement layer for untrusted agents.
+ *
+ * B-16 (Volatility): sessionSpent is in-memory and resets on process restart.
+ * A malicious host can restart the MCP server to reset the session limit.
+ * Per-session limits are a best-effort guard, not a hard security boundary.
+ * For hard spending caps, use on-chain Mandates with lifetime limits.
+ */
+export interface SpendingLimits {
+  /** Max base-unit amount per single transaction. 0n = unlimited. */
+  maxPerTx: bigint;
+  /** Max cumulative base-unit amount per session. 0n = unlimited. */
+  maxPerSession: bigint;
+  /** Running total spent in this session. Mutated on each successful tx. */
+  sessionSpent: bigint;
 }
 
 export interface SweepayMcpConfig {
@@ -27,6 +50,15 @@ export interface SweepayMcpConfig {
   packageId?: string;
   /** Shared ProtocolState object ID (required for admin + stream/escrow create) */
   protocolStateId?: string;
+  /** Enable admin tools (pause/unpause/burn). Defaults to false for safety. */
+  enableAdminTools?: boolean;
+  /** Enable provider-side tools (prepaid claim). Defaults to false.
+   *  Only enable when the MCP server is running as a provider, not a consumer agent. */
+  enableProviderTools?: boolean;
+  /** Per-transaction spending limit in base units. 0 = no limit. */
+  maxAmountPerTx?: bigint;
+  /** Per-session cumulative spending limit in base units. 0 = no limit. */
+  maxAmountPerSession?: bigint;
 }
 
 /**
@@ -63,16 +95,70 @@ export function createContext(config?: SweepayMcpConfig): SweepayContext {
       try {
         const bytes = Uint8Array.from(atob(privateKey), (c) => c.charCodeAt(0));
         signer = Ed25519Keypair.fromSecretKey(bytes);
-      } catch (e) {
+      } catch {
+        // Do NOT log error details — they may contain key material fragments.
         console.error(
-          `[sweepay-mcp] Failed to parse SUI_PRIVATE_KEY. Tried bech32 (suiprivkey1...) and raw base64 — both failed. ` +
-          `Transaction tools will be disabled. Error: ${e instanceof Error ? e.message : e}`
+          `[sweepay-mcp] Failed to parse SUI_PRIVATE_KEY. ` +
+          `Ensure it is a valid bech32 (suiprivkey1...) or base64-encoded Ed25519 key. ` +
+          `Transaction tools will be disabled.`
         );
       }
     }
   }
 
-  return { suiClient, signer, config: sweepayConfig, network };
+  const spendingLimits: SpendingLimits = {
+    maxPerTx: config?.maxAmountPerTx ?? BigInt(process.env.MCP_MAX_PER_TX ?? "0"),
+    maxPerSession: config?.maxAmountPerSession ?? BigInt(process.env.MCP_MAX_PER_SESSION ?? "0"),
+    sessionSpent: 0n,
+  };
+
+  return { suiClient, signer, config: sweepayConfig, network, spendingLimits };
+}
+
+/**
+ * Check spending limits before executing a transaction.
+ * Throws if the amount would exceed per-tx or per-session caps.
+ *
+ * TRUST BOUNDARY: These limits protect against LLM misbehavior (e.g., the model
+ * deciding to spend 1000 SUI instead of 0.001 SUI). They are NOT a security
+ * boundary against host compromise — the private key is in-process. On-chain
+ * Mandates are the real enforcement layer for untrusted agents.
+ *
+ * On success, debits the session total (caller must only call after a successful tx).
+ */
+export function checkSpendingLimit(ctx: SweepayContext, amount: bigint): void {
+  // D-02: Guard against zero/negative amounts reaching the spending check
+  if (amount <= 0n) {
+    throw new Error(
+      `Transaction amount must be positive, got ${amount}. ` +
+      `Zero or negative amounts should not reach the spending check.`
+    );
+  }
+
+  const { maxPerTx, maxPerSession, sessionSpent } = ctx.spendingLimits;
+
+  if (maxPerTx > 0n && amount > maxPerTx) {
+    throw new Error(
+      `Transaction amount (${amount}) exceeds per-transaction limit (${maxPerTx}). ` +
+      `Configure MCP_MAX_PER_TX or maxAmountPerTx to adjust.`
+    );
+  }
+
+  if (maxPerSession > 0n && sessionSpent + amount > maxPerSession) {
+    throw new Error(
+      `Transaction would exceed session spending limit. ` +
+      `Spent: ${sessionSpent}, requested: ${amount}, limit: ${maxPerSession}. ` +
+      `Configure MCP_MAX_PER_SESSION or maxAmountPerSession to adjust.`
+    );
+  }
+}
+
+/**
+ * Record a successful spend against the session limit.
+ * Call ONLY after a transaction succeeds.
+ */
+export function recordSpend(ctx: SweepayContext, amount: bigint): void {
+  ctx.spendingLimits.sessionSpent += amount;
 }
 
 /**
