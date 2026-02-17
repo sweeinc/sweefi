@@ -1,6 +1,4 @@
-export { createPayingClient } from "./paying-client";
 export { adaptWallet } from "./wallet-adapter";
-export type { PayingClientConfig } from "./types";
 
 // s402
 export { createS402Client } from "./s402-client";

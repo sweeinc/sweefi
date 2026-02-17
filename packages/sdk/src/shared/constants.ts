@@ -5,7 +5,7 @@
 export const DEFAULT_FACILITATOR_URL = "https://swee-facilitator.fly.dev";
 
 /**
- * Re-export USDC addresses from @x402/sui for convenience
+ * Re-export USDC addresses from @sweepay/sui for convenience
  */
 export { USDC_MAINNET, USDC_TESTNET, USDC_DECIMALS } from "@sweepay/sui";
 

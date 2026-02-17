@@ -4,7 +4,7 @@
  * Returns HTTP 402 with s402 payment requirements for unpaid requests.
  * On payment: decodes X-PAYMENT header, verifies via facilitator, grants access.
  *
- * Always includes "exact" in accepts array for x402 backward compatibility.
+ * Always includes "exact" in accepts array (base scheme).
  *
  * @example
  * ```typescript
@@ -45,7 +45,7 @@ export interface s402GateConfig {
   network: string;
   /** Recipient address */
   payTo: string;
-  /** Accepted schemes (always includes "exact" for x402 compat) */
+  /** Accepted schemes (always includes "exact") */
   schemes?: s402Scheme[];
   /** Coin type (default: SUI) */
   asset?: string;
@@ -79,7 +79,7 @@ export function s402Gate(config: s402GateConfig): MiddlewareHandler {
     prepaid,
   } = config;
 
-  // Always include "exact" for x402 compat
+  // Always include "exact" (base scheme)
   const accepts: s402Scheme[] = [...new Set([...schemes, 'exact' as const])];
 
   // Build requirements once — used for both the 402 response and processPayment handler.

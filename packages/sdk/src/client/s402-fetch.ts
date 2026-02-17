@@ -1,36 +1,20 @@
 /**
- * s402 Fetch Wrapper — replaces @x402/fetch dependency
+ * s402 Fetch Wrapper
  *
  * Wraps global fetch to auto-handle 402 responses:
  *   1. Detects 402 response
- *   2. Checks protocol (s402 or x402) via detectProtocol()
- *   3. Decodes payment requirements
+ *   2. Reads payment-required header
+ *   3. Decodes s402 payment requirements
  *   4. Creates payment via s402Client
- *   5. Retries request with X-PAYMENT header
- *
- * Wire-compatible with both s402 and x402 servers.
+ *   5. Retries request with x-payment header
  */
 
 import type { s402Client, s402PaymentRequirements } from 's402';
 import {
-  detectProtocol,
   encodePaymentPayload,
   S402_HEADERS,
-  normalizeRequirements,
+  decodePaymentRequired,
 } from 's402';
-
-/** Maximum base64 header size before decoding. Mirrors the 64KB limit in s402 core. */
-const MAX_HEADER_BYTES = 64 * 1024;
-
-/**
- * Decode a base64 string to UTF-8. Unicode-safe (handles CJK, emoji, etc.).
- * Mirrors the fromBase64 helper in s402/http which is not exported.
- */
-function safeBase64Decode(b64: string): string {
-  const binary = atob(b64);
-  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
-  return new TextDecoder().decode(bytes);
-}
 
 export interface s402FetchOptions {
   /** Facilitator URL for settlement */
@@ -40,7 +24,27 @@ export interface s402FetchOptions {
 }
 
 /**
- * Wrap a fetch function with automatic s402/x402 payment handling.
+ * Error thrown when payment was submitted but the follow-up request failed.
+ * The payment may have been processed server-side — DO NOT retry blindly.
+ * Check the transaction digest before retrying.
+ */
+export class s402PaymentSentError extends Error {
+  readonly code = 'PAYMENT_SENT_RESPONSE_LOST';
+  readonly requirements: s402PaymentRequirements;
+
+  constructor(requirements: s402PaymentRequirements, _cause?: unknown) {
+    super(
+      `Payment was submitted but the response was lost (network error). ` +
+      `The payment may have been processed. Check on-chain state before retrying. ` +
+      `Amount: ${requirements.amount}, payTo: ${requirements.payTo}`,
+    );
+    this.name = 's402PaymentSentError';
+    this.requirements = requirements;
+  }
+}
+
+/**
+ * Wrap a fetch function with automatic s402 payment handling.
  *
  * @param baseFetch - The underlying fetch function (usually globalThis.fetch)
  * @param client - The s402Client with registered schemes
@@ -66,71 +70,88 @@ export function wrapFetchWithS402(
       return response;
     }
 
-    // Detect protocol
-    const protocol = detectProtocol(response.headers);
-    if (protocol === 'unknown') {
+    // Check for payment-required header
+    const headerValue = response.headers.get(S402_HEADERS.PAYMENT_REQUIRED);
+    if (!headerValue) {
       // No payment-required header — return raw 402
       return response;
     }
 
-    // Decode requirements (F-V02: unicode-safe base64 + size limit)
-    let requirements = decodeRequirementsFromHeaders(response.headers);
-    if (!requirements) return response;
+    // Decode requirements
+    let requirements: s402PaymentRequirements;
+    try {
+      requirements = decodePaymentRequired(headerValue);
+    } catch {
+      return response;
+    }
 
-    // Create payment and retry
+    // Create payment once and cache — retries reuse the same payload to avoid double-spend.
+    // A new payment is only created if the server returns fresh requirements
+    // (different amount, payTo, asset, or network).
+    let cachedPayload: ReturnType<typeof encodePaymentPayload> | null = null;
+    let cachedRequirements = requirements;
+    let paymentCreated = false;
     let retries = 0;
     while (retries < maxRetries) {
-      try {
+      // Only create a new payment if requirements changed or no cached payload
+      if (!cachedPayload || cachedRequirements !== requirements) {
         const payload = await client.createPayment(requirements);
-        const encoded = encodePaymentPayload(payload);
+        cachedPayload = encodePaymentPayload(payload);
+        cachedRequirements = requirements;
+        paymentCreated = true;
+      }
 
-        // Retry with payment header
-        const retryHeaders = new Headers(init?.headers);
-        retryHeaders.set(S402_HEADERS.PAYMENT, encoded);
+      // Retry with payment header
+      const retryHeaders = new Headers(init?.headers);
+      retryHeaders.set(S402_HEADERS.PAYMENT, cachedPayload);
 
-        const retryResponse = await baseFetch(input, {
+      let retryResponse: Response;
+      try {
+        retryResponse = await baseFetch(input, {
           ...init,
           headers: retryHeaders,
         });
-
-        // If still 402, re-decode fresh requirements from the new response (F-V03 fix)
-        if (retryResponse.status === 402 && retries + 1 < maxRetries) {
-          const freshRequirements = decodeRequirementsFromHeaders(retryResponse.headers);
-          if (freshRequirements) {
-            requirements = freshRequirements;
-          }
-          retries++;
-          continue;
+      } catch (networkError) {
+        // D-17 fix: payment was sent — DO NOT silently return original 402.
+        // The server may have processed the payment. Throw a specific error
+        // so the caller knows to check on-chain state before retrying.
+        if (paymentCreated) {
+          throw new s402PaymentSentError(requirements, networkError);
         }
-
-        return retryResponse;
-      } catch {
+        // If payment wasn't created yet, safe to return original 402
         retries++;
         if (retries >= maxRetries) {
-          return response; // Return original 402
+          return response;
         }
+        continue;
       }
+
+      // If still 402, re-decode fresh requirements from the new response
+      if (retryResponse.status === 402 && retries + 1 < maxRetries) {
+        const freshHeader = retryResponse.headers.get(S402_HEADERS.PAYMENT_REQUIRED);
+        if (freshHeader) {
+          try {
+            const freshReqs = decodePaymentRequired(freshHeader);
+            // A-23 fix: compare asset + network in addition to amount + payTo
+            if (
+              freshReqs.amount !== requirements.amount ||
+              freshReqs.payTo !== requirements.payTo ||
+              freshReqs.asset !== requirements.asset ||
+              freshReqs.network !== requirements.network
+            ) {
+              requirements = freshReqs;
+            }
+          } catch {
+            // Keep existing requirements and cached payload
+          }
+        }
+        retries++;
+        continue;
+      }
+
+      return retryResponse;
     }
 
     return response;
   };
-}
-
-/**
- * Decode payment requirements from response headers.
- * Unicode-safe, size-limited, handles both s402 and x402 formats.
- */
-function decodeRequirementsFromHeaders(headers: Headers): s402PaymentRequirements | null {
-  const headerValue = headers.get(S402_HEADERS.PAYMENT_REQUIRED);
-  if (!headerValue) return null;
-
-  // Size limit defense — mirrors s402 core's 64KB cap
-  if (headerValue.length > MAX_HEADER_BYTES) return null;
-
-  try {
-    const decoded = JSON.parse(safeBase64Decode(headerValue));
-    return normalizeRequirements(decoded);
-  } catch {
-    return null;
-  }
 }

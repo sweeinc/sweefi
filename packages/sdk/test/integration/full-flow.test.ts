@@ -1,346 +1,314 @@
 /**
- * Day 6 Integration Test — Full x402 Protocol Flow
+ * Integration Test — Full s402 Protocol Flow
  *
- * Tests the complete HTTP round-trip:
+ * Tests the complete HTTP round-trip using Hono + s402Gate:
  *   Client request → 402 → parse requirements → craft payment → retry → 200
  *
- * Uses a mock facilitator (always returns valid/success) so we can test
- * the entire protocol chain without depending on Sui testnet.
+ * Uses a mock processPayment handler so we can test the entire
+ * protocol chain without depending on Sui testnet.
  *
  * What this proves:
- * - paymentGate() returns proper 402 with PAYMENT-REQUIRED header
- * - Payment requirements encode correctly (base64 JSON)
- * - PAYMENT-SIGNATURE header is parsed and forwarded to facilitator
- * - Facilitator verify/settle are called with correct request format
- * - Response is buffered until settlement completes
- * - PAYMENT-RESPONSE header is returned on success
+ * - s402Gate() returns proper 402 with payment-required header
+ * - Payment requirements encode/decode correctly (base64 JSON)
+ * - x-payment header is parsed and forwarded to processPayment handler
+ * - Settlement response header is returned on success
  * - Free routes pass through without payment
+ * - Invalid/missing scheme payloads are rejected
  */
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import express from "express";
-import type { Server } from "node:http";
-import { paymentGate } from "../../src/server/payment-gate";
+import { describe, it, expect, vi } from "vitest";
+import { Hono } from "hono";
+import { s402Gate } from "../../src/server/s402-gate";
+import type { s402GateConfig } from "../../src/server/s402-gate";
+import {
+  S402_HEADERS,
+  S402_VERSION,
+  decodePaymentRequired,
+} from "s402";
+import type { s402SettleResponse } from "s402";
 
 // ─── Test Constants ──────────────────────────────────────────────────────────
 
 const TEST_PAY_TO = "0x" + "bb".repeat(32);
-const TEST_PAYER = "0x" + "aa".repeat(32);
 const TEST_TX_DIGEST = "integration-test-tx-digest-123";
-const TEST_API_KEY = "test-integration-key";
+
+// ─── Mock Settlement ─────────────────────────────────────────────────────────
+
+function createMockProcessor() {
+  const calls: Array<{ payload: unknown; requirements: unknown }> = [];
+
+  const processPayment = vi.fn(
+    async (
+      payload: unknown,
+      requirements: unknown,
+    ): Promise<s402SettleResponse> => {
+      calls.push({ payload, requirements });
+      return {
+        success: true,
+        txDigest: TEST_TX_DIGEST,
+      };
+    },
+  );
+
+  return { processPayment, calls };
+}
+
+// ─── App Factory ─────────────────────────────────────────────────────────────
+
+function createApp(overrides?: Partial<s402GateConfig>) {
+  const { processPayment, calls } = createMockProcessor();
+
+  const app = new Hono();
+
+  app.use(
+    "/api/data",
+    s402Gate({
+      price: "1000000",
+      network: "sui:testnet",
+      payTo: TEST_PAY_TO,
+      schemes: ["exact"],
+      processPayment,
+      ...overrides,
+    }),
+  );
+
+  app.get("/api/data", (c) =>
+    c.json({ message: "premium data", temp: 72 }),
+  );
+
+  app.get("/free", (c) => c.json({ message: "free data" }));
+
+  return { app, processPayment, calls };
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function encodeBase64(obj: unknown): string {
-  return Buffer.from(JSON.stringify(obj), "utf8").toString("base64");
+  const json = JSON.stringify(obj);
+  const bytes = new TextEncoder().encode(json);
+  let binary = "";
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary);
 }
 
 function decodeBase64<T>(str: string): T {
-  return JSON.parse(Buffer.from(str, "base64").toString("utf8")) as T;
-}
-
-function getPort(server: Server): number {
-  const addr = server.address();
-  if (typeof addr === "object" && addr !== null) return addr.port;
-  throw new Error("Server not bound to a port");
-}
-
-// ─── Mock Facilitator ────────────────────────────────────────────────────────
-
-interface FacilitatorCall {
-  path: string;
-  body: Record<string, unknown>;
-  authHeader?: string;
+  const binary = atob(str);
+  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+  const json = new TextDecoder().decode(bytes);
+  return JSON.parse(json) as T;
 }
 
 /**
- * Express server that mimics the swee-facilitator's HTTP API.
- * Always returns valid/success so we can test the protocol chain.
+ * Build a minimal valid s402 exact payment payload for testing.
+ * Matches s402ExactPayload: { s402Version, scheme, payload: { transaction, signature } }
  */
-function createMockFacilitator() {
-  const app = express();
-  app.use(express.json());
-  const calls: FacilitatorCall[] = [];
-
-  // Resource server calls /supported during initialization to validate
-  // that the facilitator supports the configured scheme + network.
-  app.get("/supported", (_req, res) => {
-    res.json({
-      kinds: [
-        { x402Version: 2, scheme: "exact", network: "sui:testnet" },
-      ],
-      extensions: [],
-      signers: {},
-    });
-  });
-
-  // Verify always succeeds
-  app.post("/verify", (req, res) => {
-    calls.push({
-      path: "/verify",
-      body: req.body,
-      authHeader: req.headers.authorization as string | undefined,
-    });
-    res.json({
-      isValid: true,
-      payer: TEST_PAYER,
-    });
-  });
-
-  // Settle always succeeds
-  app.post("/settle", (req, res) => {
-    calls.push({
-      path: "/settle",
-      body: req.body,
-      authHeader: req.headers.authorization as string | undefined,
-    });
-    res.json({
-      success: true,
-      payer: TEST_PAYER,
-      transaction: TEST_TX_DIGEST,
-      network: "sui:testnet",
-    });
-  });
-
-  return { app, calls };
-}
-
-// ─── API Server ──────────────────────────────────────────────────────────────
-
-function createApiServer(facilitatorUrl: string) {
-  const app = express();
-
-  // Protected route: requires payment
-  app.use(
-    "/api/data",
-    paymentGate({
-      price: "$0.001",
-      network: "sui:testnet",
-      payTo: TEST_PAY_TO,
-      facilitatorUrl,
-      apiKey: TEST_API_KEY,
-    }),
-  );
-
-  app.get("/api/data", (_req, res) => {
-    res.json({ message: "premium data", temp: 72 });
-  });
-
-  // Free route: no payment required
-  app.get("/free", (_req, res) => {
-    res.json({ message: "free data" });
-  });
-
-  return app;
+function buildTestPayload() {
+  return {
+    s402Version: S402_VERSION,
+    scheme: "exact" as const,
+    payload: {
+      transaction: "mock-signed-transaction-bytes-base64",
+      signature: "mock-ed25519-signature-base64",
+    },
+  };
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
-describe("Full x402 Protocol Flow (Mock Facilitator)", () => {
-  let facilitatorServer: Server;
-  let apiServer: Server;
-  let facilitatorCalls: FacilitatorCall[];
-  let apiUrl: string;
-
-  beforeAll(async () => {
-    // Start mock facilitator on random port
-    const { app: facilitatorApp, calls } = createMockFacilitator();
-    facilitatorCalls = calls;
-
-    facilitatorServer = await new Promise<Server>((resolve) => {
-      const server = facilitatorApp.listen(0, () => resolve(server));
-    });
-    const facilitatorUrl = `http://localhost:${getPort(facilitatorServer)}`;
-
-    // Start API server on random port
-    const apiApp = createApiServer(facilitatorUrl);
-    apiServer = await new Promise<Server>((resolve) => {
-      const server = apiApp.listen(0, () => resolve(server));
-    });
-    apiUrl = `http://localhost:${getPort(apiServer)}`;
-  });
-
-  afterAll(() => {
-    facilitatorServer?.close();
-    apiServer?.close();
-  });
-
+describe("Full s402 Protocol Flow", () => {
   // ── 402 Response ────────────────────────────────────────────────────────
 
-  it("returns 402 with PAYMENT-REQUIRED header for unpaid request", async () => {
-    const res = await fetch(`${apiUrl}/api/data`);
+  it("returns 402 with payment-required header for unpaid request", async () => {
+    const { app } = createApp();
+    const res = await app.request("/api/data");
+
     expect(res.status).toBe(402);
 
-    const header = res.headers.get("payment-required");
+    const header = res.headers.get(S402_HEADERS.PAYMENT_REQUIRED);
     expect(header).toBeTruthy();
 
-    const paymentRequired = decodeBase64<any>(header!);
-    expect(paymentRequired.x402Version).toBe(2);
-    expect(paymentRequired.accepts).toBeInstanceOf(Array);
-    expect(paymentRequired.accepts.length).toBeGreaterThan(0);
+    const requirements = decodePaymentRequired(header!);
+    expect(requirements.s402Version).toBe(S402_VERSION);
+    expect(requirements.accepts).toContain("exact");
   });
 
-  it("payment requirements contain correct scheme, network, and payTo", async () => {
-    const res = await fetch(`${apiUrl}/api/data`);
-    const paymentRequired = decodeBase64<any>(res.headers.get("payment-required")!);
-    const req = paymentRequired.accepts[0];
+  it("payment requirements contain correct network, amount, and payTo", async () => {
+    const { app } = createApp();
+    const res = await app.request("/api/data");
+    const header = res.headers.get(S402_HEADERS.PAYMENT_REQUIRED)!;
+    const requirements = decodePaymentRequired(header);
 
-    expect(req.scheme).toBe("exact");
-    expect(req.network).toBe("sui:testnet");
-    expect(req.payTo).toBe(TEST_PAY_TO);
+    expect(requirements.network).toBe("sui:testnet");
+    expect(requirements.amount).toBe("1000000");
+    expect(requirements.payTo).toBe(TEST_PAY_TO);
   });
 
-  it("payment requirements contain resource URL", async () => {
-    const res = await fetch(`${apiUrl}/api/data`);
-    const paymentRequired = decodeBase64<any>(res.headers.get("payment-required")!);
+  it("402 body includes s402Version", async () => {
+    const { app } = createApp();
+    const res = await app.request("/api/data");
+    const body = await res.json();
 
-    expect(paymentRequired.resource).toBeDefined();
-    expect(paymentRequired.resource.url).toContain("/api/data");
+    expect(body.s402Version).toBe(S402_VERSION);
+    expect(body.error).toBe("Payment Required");
   });
 
   // ── Successful Payment ─────────────────────────────────────────────────
 
   it("returns 200 with data when valid payment is provided", async () => {
-    facilitatorCalls.length = 0;
+    const { app } = createApp();
 
-    // Step 1: Get payment requirements
-    const firstRes = await fetch(`${apiUrl}/api/data`);
-    expect(firstRes.status).toBe(402);
+    const payload = buildTestPayload();
+    const encoded = encodeBase64(payload);
 
-    const paymentRequired = decodeBase64<any>(firstRes.headers.get("payment-required")!);
-    const requirements = paymentRequired.accepts[0];
-
-    // Step 2: Construct payment payload (simulates what client SDK does after signing)
-    const paymentPayload = {
-      x402Version: 2,
-      resource: paymentRequired.resource,
-      accepted: requirements,
-      payload: {
-        signature: "mock-ed25519-signature-base64",
-        transaction: "mock-signed-transaction-bytes-base64",
-      },
-    };
-
-    // Step 3: Retry with PAYMENT-SIGNATURE header
-    const secondRes = await fetch(`${apiUrl}/api/data`, {
-      headers: {
-        "PAYMENT-SIGNATURE": encodeBase64(paymentPayload),
-      },
+    const res = await app.request("/api/data", {
+      headers: { [S402_HEADERS.PAYMENT]: encoded },
     });
 
-    expect(secondRes.status).toBe(200);
-    const body = await secondRes.json();
+    expect(res.status).toBe(200);
+    const body = await res.json();
     expect(body).toEqual({ message: "premium data", temp: 72 });
   });
 
-  // ── Facilitator Integration ────────────────────────────────────────────
+  it("calls processPayment with decoded payload and requirements", async () => {
+    const { app, processPayment } = createApp();
 
-  it("calls facilitator /verify with correct payload shape", async () => {
-    facilitatorCalls.length = 0;
+    const payload = buildTestPayload();
+    const encoded = encodeBase64(payload);
 
-    const firstRes = await fetch(`${apiUrl}/api/data`);
-    const paymentRequired = decodeBase64<any>(firstRes.headers.get("payment-required")!);
-
-    const paymentPayload = {
-      x402Version: 2,
-      resource: paymentRequired.resource,
-      accepted: paymentRequired.accepts[0],
-      payload: { signature: "sig", transaction: "tx" },
-    };
-
-    await fetch(`${apiUrl}/api/data`, {
-      headers: { "PAYMENT-SIGNATURE": encodeBase64(paymentPayload) },
+    await app.request("/api/data", {
+      headers: { [S402_HEADERS.PAYMENT]: encoded },
     });
 
-    const verifyCall = facilitatorCalls.find((c) => c.path === "/verify");
-    expect(verifyCall).toBeTruthy();
-    expect(verifyCall!.body).toHaveProperty("paymentPayload");
-    expect(verifyCall!.body).toHaveProperty("paymentRequirements");
-    expect(verifyCall!.body).toHaveProperty("x402Version", 2);
+    expect(processPayment).toHaveBeenCalledOnce();
+    const [receivedPayload, receivedRequirements] =
+      processPayment.mock.calls[0];
+
+    // Payload was decoded correctly
+    expect(receivedPayload).toMatchObject({
+      scheme: "exact",
+      payload: {
+        transaction: "mock-signed-transaction-bytes-base64",
+        signature: "mock-ed25519-signature-base64",
+      },
+    });
+
+    // Requirements match config
+    expect(receivedRequirements).toMatchObject({
+      s402Version: S402_VERSION,
+      network: "sui:testnet",
+      amount: "1000000",
+      payTo: TEST_PAY_TO,
+    });
   });
 
-  it("calls facilitator /settle after verification succeeds", async () => {
-    facilitatorCalls.length = 0;
+  it("returns payment-response header with settlement details", async () => {
+    const { app } = createApp();
 
-    const firstRes = await fetch(`${apiUrl}/api/data`);
-    const paymentRequired = decodeBase64<any>(firstRes.headers.get("payment-required")!);
+    const payload = buildTestPayload();
+    const encoded = encodeBase64(payload);
 
-    const paymentPayload = {
-      x402Version: 2,
-      resource: paymentRequired.resource,
-      accepted: paymentRequired.accepts[0],
-      payload: { signature: "sig", transaction: "tx" },
-    };
-
-    await fetch(`${apiUrl}/api/data`, {
-      headers: { "PAYMENT-SIGNATURE": encodeBase64(paymentPayload) },
+    const res = await app.request("/api/data", {
+      headers: { [S402_HEADERS.PAYMENT]: encoded },
     });
 
-    const settleCall = facilitatorCalls.find((c) => c.path === "/settle");
-    expect(settleCall).toBeTruthy();
-    expect(settleCall!.body).toHaveProperty("paymentPayload");
-    expect(settleCall!.body).toHaveProperty("paymentRequirements");
-  });
+    expect(res.status).toBe(200);
 
-  it("returns PAYMENT-RESPONSE header with settlement details", async () => {
-    const firstRes = await fetch(`${apiUrl}/api/data`);
-    const paymentRequired = decodeBase64<any>(firstRes.headers.get("payment-required")!);
-
-    const paymentPayload = {
-      x402Version: 2,
-      resource: paymentRequired.resource,
-      accepted: paymentRequired.accepts[0],
-      payload: { signature: "sig", transaction: "tx" },
-    };
-
-    const secondRes = await fetch(`${apiUrl}/api/data`, {
-      headers: { "PAYMENT-SIGNATURE": encodeBase64(paymentPayload) },
-    });
-
-    expect(secondRes.status).toBe(200);
-
-    const responseHeader = secondRes.headers.get("payment-response");
+    const responseHeader = res.headers.get(S402_HEADERS.PAYMENT_RESPONSE);
     expect(responseHeader).toBeTruthy();
 
-    const settleResponse = decodeBase64<any>(responseHeader!);
+    const settleResponse = decodeBase64<s402SettleResponse>(responseHeader!);
     expect(settleResponse.success).toBe(true);
-    expect(settleResponse.transaction).toBe(TEST_TX_DIGEST);
-    expect(settleResponse.network).toBe("sui:testnet");
-    expect(settleResponse.payer).toBe(TEST_PAYER);
+    expect(settleResponse.txDigest).toBe(TEST_TX_DIGEST);
+  });
+
+  // ── Scheme Validation ──────────────────────────────────────────────────
+
+  it("rejects payment with unaccepted scheme", async () => {
+    const { app } = createApp({ schemes: ["exact"] });
+
+    const payload = {
+      s402Version: S402_VERSION,
+      scheme: "stream",
+      payload: { transaction: "tx", signature: "sig" },
+    };
+    const encoded = encodeBase64(payload);
+
+    const res = await app.request("/api/data", {
+      headers: { [S402_HEADERS.PAYMENT]: encoded },
+    });
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain("stream");
+  });
+
+  // ── Settlement Failure ─────────────────────────────────────────────────
+
+  it("returns 402 when processPayment indicates failure", async () => {
+    const failProcessor = async (): Promise<s402SettleResponse> => ({
+      success: false,
+      error: "Insufficient balance",
+    });
+
+    const { app } = createApp({ processPayment: failProcessor });
+
+    const payload = buildTestPayload();
+    const encoded = encodeBase64(payload);
+
+    const res = await app.request("/api/data", {
+      headers: { [S402_HEADERS.PAYMENT]: encoded },
+    });
+
+    expect(res.status).toBe(402);
+    const body = await res.json();
+    expect(body.error).toBe("Insufficient balance");
+  });
+
+  // ── No processPayment Handler ──────────────────────────────────────────
+
+  it("returns 402 when no processPayment handler is configured", async () => {
+    const app = new Hono();
+    app.use(
+      "/api/data",
+      s402Gate({
+        price: "1000000",
+        network: "sui:testnet",
+        payTo: TEST_PAY_TO,
+      }),
+    );
+    app.get("/api/data", (c) => c.json({ data: "secret" }));
+
+    const payload = buildTestPayload();
+    const encoded = encodeBase64(payload);
+
+    const res = await app.request("/api/data", {
+      headers: { [S402_HEADERS.PAYMENT]: encoded },
+    });
+
+    expect(res.status).toBe(402);
+    const body = await res.json();
+    expect(body.error).toContain("not configured");
   });
 
   // ── Pass-through ───────────────────────────────────────────────────────
 
   it("free routes pass through without payment", async () => {
-    const res = await fetch(`${apiUrl}/free`);
+    const { app } = createApp();
+    const res = await app.request("/free");
+
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toEqual({ message: "free data" });
   });
 
-  // ── Auth Header Forwarding ─────────────────────────────────────────────
+  // ── Invalid Payment ────────────────────────────────────────────────────
 
-  it("forwards API key to facilitator via Authorization header", async () => {
-    facilitatorCalls.length = 0;
+  it("returns 400 for malformed payment header", async () => {
+    const { app } = createApp();
 
-    const firstRes = await fetch(`${apiUrl}/api/data`);
-    const paymentRequired = decodeBase64<any>(firstRes.headers.get("payment-required")!);
-
-    const paymentPayload = {
-      x402Version: 2,
-      resource: paymentRequired.resource,
-      accepted: paymentRequired.accepts[0],
-      payload: { signature: "sig", transaction: "tx" },
-    };
-
-    await fetch(`${apiUrl}/api/data`, {
-      headers: { "PAYMENT-SIGNATURE": encodeBase64(paymentPayload) },
+    const res = await app.request("/api/data", {
+      headers: { [S402_HEADERS.PAYMENT]: "not-valid-base64!!!" },
     });
 
-    // Verify that the HTTPFacilitatorClient forwarded the Bearer token
-    const verifyCall = facilitatorCalls.find((c) => c.path === "/verify");
-    expect(verifyCall?.authHeader).toBe(`Bearer ${TEST_API_KEY}`);
-
-    const settleCall = facilitatorCalls.find((c) => c.path === "/settle");
-    expect(settleCall?.authHeader).toBe(`Bearer ${TEST_API_KEY}`);
+    expect(res.status).toBe(400);
   });
 });
