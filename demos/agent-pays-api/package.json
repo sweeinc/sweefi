@@ -5,12 +5,12 @@
   "type": "module",
   "description": "Live agent demo: AI agent auto-pays s402-gated API on Sui testnet",
   "scripts": {
-    "demo": "tsx demo.ts",
-    "server": "tsx server.ts",
-    "agent": "tsx agent.ts"
+    "demo": "node --env-file=.env --import tsx/esm demo.ts",
+    "server": "node --env-file=.env --import tsx/esm server.ts",
+    "agent": "node --env-file=.env --import tsx/esm agent.ts"
   },
   "dependencies": {
-    "@mysten/sui": "^1.45.2",
+    "@mysten/sui": "^2.0.0",
     "s402": "^0.1.0",
     "@sweepay/core": "workspace:*",
     "@sweepay/sdk": "workspace:*",

@@ -14,7 +14,7 @@
  */
 
 import { Transaction, coinWithBalance } from '@mysten/sui/transactions';
-import type { SuiClient } from '@mysten/sui/client';
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { Signer } from '@mysten/sui/cryptography';
 import { toBase64 } from '@mysten/sui/utils';
 import type { s402DirectScheme, s402PaymentRequirements, s402SettleResponse } from 's402';
@@ -24,7 +24,7 @@ export class DirectSuiSettlement implements s402DirectScheme {
 
   constructor(
     private readonly keypair: Signer,
-    private readonly client: SuiClient,
+    private readonly client: SuiJsonRpcClient,
   ) {}
 
   async settleDirectly(

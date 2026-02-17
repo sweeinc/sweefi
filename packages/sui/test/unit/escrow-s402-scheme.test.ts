@@ -17,7 +17,7 @@ import { describe, it, expect } from "vitest";
 import { EscrowSuiFacilitatorScheme } from "../../src/s402/escrow/facilitator";
 import { EscrowSuiServerScheme } from "../../src/s402/escrow/server";
 import type { FacilitatorSuiSigner } from "../../src/signer";
-import type { DryRunTransactionBlockResponse } from "@mysten/sui/client";
+import type { DryRunTransactionBlockResponse } from "@mysten/sui/jsonRpc";
 import type {
   s402PaymentRequirements,
   s402EscrowPayload,

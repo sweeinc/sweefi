@@ -1,4 +1,4 @@
-import type { SuiClient, DryRunTransactionBlockResponse } from "@mysten/sui/client";
+import type { SuiJsonRpcClient, DryRunTransactionBlockResponse } from "@mysten/sui/jsonRpc";
 import type { Signer } from "@mysten/sui/cryptography";
 import type { Transaction } from "@mysten/sui/transactions";
 import { fromBase64, toBase64 } from "@mysten/sui/utils";
@@ -26,7 +26,7 @@ export interface ClientSuiSigner {
 
 /**
  * Facilitator-side signer for verifying, simulating, and broadcasting Sui transactions.
- * Encapsulates SuiClient operations and optional gas sponsorship signing.
+ * Encapsulates SuiJsonRpcClient operations and optional gas sponsorship signing.
  */
 export interface FacilitatorSuiSigner {
   /**
@@ -112,7 +112,7 @@ export interface FacilitatorSuiSignerConfig {
 }
 
 /**
- * Create a FacilitatorSuiSigner from a SuiClient and optional keypair.
+ * Create a FacilitatorSuiSigner from a SuiJsonRpcClient and optional keypair.
  * The keypair is only needed if this facilitator provides gas sponsorship.
  *
  * @param config - Optional configuration (custom RPC URLs)
@@ -123,9 +123,9 @@ export function toFacilitatorSuiSigner(
   config?: FacilitatorSuiSignerConfig,
   keypair?: Signer,
 ): FacilitatorSuiSigner {
-  const clientCache = new Map<string, SuiClient>();
+  const clientCache = new Map<string, SuiJsonRpcClient>();
 
-  const getClient = (network: string): SuiClient => {
+  const getClient = (network: string): SuiJsonRpcClient => {
     const cached = clientCache.get(network);
     if (cached) return cached;
 
@@ -205,10 +205,10 @@ export function toFacilitatorSuiSigner(
  * Works with Ed25519Keypair, Secp256k1Keypair, etc.
  *
  * @param keypair - Any Sui cryptographic keypair
- * @param client - SuiClient for building transactions
+ * @param client - SuiJsonRpcClient for building transactions
  * @returns A ClientSuiSigner instance
  */
-export function toClientSuiSigner(keypair: Signer, client: SuiClient): ClientSuiSigner {
+export function toClientSuiSigner(keypair: Signer, client: SuiJsonRpcClient): ClientSuiSigner {
   return {
     address: keypair.toSuiAddress(),
 

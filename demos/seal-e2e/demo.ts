@@ -22,7 +22,7 @@
  */
 
 import { SealClient, SessionKey, EncryptedObject } from "@mysten/seal";
-import { SuiClient } from "@mysten/sui/client";
+import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { Transaction } from "@mysten/sui/transactions";
 import { fromBase64, fromHex, toHex } from "@mysten/sui/utils";
@@ -77,7 +77,7 @@ function logDetail(key: string, value: string) {
 }
 
 async function signAndExecute(
-  suiClient: SuiClient,
+  suiClient: SuiJsonRpcClient,
   keypair: Ed25519Keypair,
   tx: Transaction,
   label: string
@@ -171,7 +171,7 @@ async function main() {
   const sellerAddress =
     "0x000000000000000000000000000000000000000000000000000000000000beef";
 
-  const suiClient = new SuiClient({ url: FULLNODE_URL });
+  const suiClient = new SuiJsonRpcClient({ url: FULLNODE_URL, network: "testnet" });
   const sealClient = new SealClient({
     suiClient,
     serverConfigs: SEAL_KEY_SERVERS,

@@ -20,7 +20,7 @@
 
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
-import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 import {
   S402_VERSION,
   S402_HEADERS,
@@ -48,7 +48,7 @@ const MERCHANT_ADDRESS =
   process.env.MERCHANT_ADDRESS ??
   "0x0000000000000000000000000000000000000000000000000000000000000001";
 
-const suiClient = new SuiClient({ url: getFullnodeUrl("testnet") });
+const suiClient = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl("testnet"), network: "testnet" });
 
 // ══════════════════════════════════════════════════════════════
 // Inline payment processor (acts as facilitator)

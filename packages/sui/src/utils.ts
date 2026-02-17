@@ -1,4 +1,4 @@
-import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 import { normalizeStructTag } from "@mysten/sui/utils";
 import {
   SUI_MAINNET_CAIP2,
@@ -16,18 +16,25 @@ import {
  * @param customRpcUrl - Optional custom RPC URL override
  * @returns SuiClient configured for the specified network
  */
-export function createSuiClient(network: string, customRpcUrl?: string): SuiClient {
+export function createSuiClient(network: string, customRpcUrl?: string): SuiJsonRpcClient {
+  // Extract short network name from CAIP-2 format (e.g., "sui:testnet" → "testnet")
+  const shortNetwork = caip2ToShortNetwork(network);
+
   if (customRpcUrl) {
-    return new SuiClient({ url: customRpcUrl });
+    return new SuiJsonRpcClient({ url: customRpcUrl, network: shortNetwork });
   }
 
+  return new SuiJsonRpcClient({
+    url: getJsonRpcFullnodeUrl(shortNetwork),
+    network: shortNetwork,
+  });
+}
+
+function caip2ToShortNetwork(network: string): 'mainnet' | 'testnet' | 'devnet' {
   switch (network) {
-    case SUI_MAINNET_CAIP2:
-      return new SuiClient({ url: getFullnodeUrl("mainnet") });
-    case SUI_TESTNET_CAIP2:
-      return new SuiClient({ url: getFullnodeUrl("testnet") });
-    case SUI_DEVNET_CAIP2:
-      return new SuiClient({ url: getFullnodeUrl("devnet") });
+    case SUI_MAINNET_CAIP2: return 'mainnet';
+    case SUI_TESTNET_CAIP2: return 'testnet';
+    case SUI_DEVNET_CAIP2: return 'devnet';
     default:
       throw new Error(`Unsupported Sui network: ${network}`);
   }

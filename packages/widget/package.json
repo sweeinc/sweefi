@@ -5,6 +5,9 @@
   "description": "Framework-agnostic checkout core with Vue adapter for SweePay",
   "license": "MIT",
   "author": "Danny Devs",
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "./dist/index.mjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
@@ -42,7 +45,7 @@
   },
   "dependencies": {
     "@sweepay/sui": "workspace:*",
-    "@mysten/sui": "^1.20.0"
+    "@mysten/sui": "^2.0.0"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",

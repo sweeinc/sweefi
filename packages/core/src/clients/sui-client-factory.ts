@@ -1,18 +1,15 @@
-import { SuiClient } from '@mysten/sui/client';
-import { getFullnodeUrl } from '@mysten/sui/client';
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import type { SuiNetwork } from '../types/network.js';
 
 /**
  * Create a Sui JSON-RPC client for the specified network.
  *
- * NOTE: The original SPEC called for SuiGrpcClient, but
- * SuiClient (JSON-RPC) is more widely compatible — SEAL's
- * `retrieveKeyServers` expects a SuiClient, not SuiGrpcClient.
- * We use SuiClient as the primary client type.
+ * @mysten/sui 2.x moved the JSON-RPC client to `@mysten/sui/jsonRpc`.
+ * The `network` field is now required on the constructor.
  */
-export function createSuiClient(network: SuiNetwork): SuiClient {
-  const url = getFullnodeUrl(network);
-  return new SuiClient({ url });
+export function createSuiClient(network: SuiNetwork): SuiJsonRpcClient {
+  const url = getJsonRpcFullnodeUrl(network);
+  return new SuiJsonRpcClient({ url, network });
 }
 
-export type { SuiClient };
+export type { SuiJsonRpcClient };

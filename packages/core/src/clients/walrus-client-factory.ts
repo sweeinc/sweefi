@@ -6,10 +6,8 @@ export type WalrusNetwork = Extract<SuiNetwork, 'mainnet' | 'testnet'>;
 /**
  * Create a Walrus client for the specified network.
  *
- * Uses dynamic import because @mysten/walrus@1.0.1 imports ClientCache from
- * @mysten/sui/client, but the installed @mysten/sui@1.45.2 only exports it
- * from @mysten/sui/experimental. Dynamic import defers this until runtime
- * so it doesn't break consumers who don't use Walrus.
+ * Uses dynamic import to keep @mysten/walrus as a lazy dependency —
+ * consumers who don't use Walrus don't pay the import cost.
  *
  * NOTE: SPEC originally called for `createWalrusClient(network)` but WalrusClient
  * requires a suiClient at construction. Updated signature accordingly.

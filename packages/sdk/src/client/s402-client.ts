@@ -1,8 +1,8 @@
 /**
  * s402 SDK Client — drop-in replacement for createPayingClient()
  *
- * Single client instance registers all Sui schemes (exact, stream, escrow, seal).
- * Auto-detects s402 vs x402 402 responses. Handles payment transparently.
+ * Single client instance registers all Sui schemes (exact, stream, escrow, unlock).
+ * Handles s402 402 responses and payment transparently.
  *
  * @example
  * ```typescript
@@ -16,14 +16,14 @@
  * ```
  */
 
-import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 import { s402Client } from 's402';
 import {
   ExactSuiClientScheme,
   PrepaidSuiClientScheme,
   StreamSuiClientScheme,
   EscrowSuiClientScheme,
-  SealSuiClientScheme,
+  UnlockSuiClientScheme,
   DirectSuiSettlement,
 } from '@sweepay/sui';
 import { adaptWallet } from './wallet-adapter.js';
@@ -34,11 +34,11 @@ import type { s402ClientConfig } from './s402-types.js';
 export function createS402Client(config: s402ClientConfig) {
   const { wallet, network, rpcUrl, facilitatorUrl, packageId } = config;
 
-  // Create SuiClient
+  // Create Sui JSON-RPC client (2.x: requires network param)
   const suiNetwork = network.replace('sui:', '') as 'testnet' | 'mainnet' | 'devnet';
   const suiClient = rpcUrl
-    ? new SuiClient({ url: rpcUrl })
-    : new SuiClient({ url: getFullnodeUrl(suiNetwork) });
+    ? new SuiJsonRpcClient({ url: rpcUrl, network: suiNetwork })
+    : new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(suiNetwork), network: suiNetwork });
 
   // Adapt wallet to s402 signer
   const signer = adaptWallet(wallet, suiClient);
@@ -46,7 +46,7 @@ export function createS402Client(config: s402ClientConfig) {
   // Create s402 client with all Sui schemes registered
   const client = new s402Client();
 
-  // Always register exact (required for x402 compat)
+  // Always register exact (base scheme)
   client.register(network, new ExactSuiClientScheme(signer));
 
   // Register advanced schemes if packageId is provided (needed for PTB builders)
@@ -55,7 +55,7 @@ export function createS402Client(config: s402ClientConfig) {
     client.register(network, new PrepaidSuiClientScheme(signer, sweepayConfig));
     client.register(network, new StreamSuiClientScheme(signer, sweepayConfig));
     client.register(network, new EscrowSuiClientScheme(signer, sweepayConfig));
-    client.register(network, new SealSuiClientScheme(signer, sweepayConfig));
+    client.register(network, new UnlockSuiClientScheme(signer, sweepayConfig));
   }
 
   // Wrap fetch with s402 payment handling
@@ -67,7 +67,7 @@ export function createS402Client(config: s402ClientConfig) {
   const directSettlement = new DirectSuiSettlement(wallet, suiClient);
 
   return {
-    /** Fetch with automatic s402/x402 payment handling */
+    /** Fetch with automatic s402 payment handling */
     fetch: paidFetch,
 
     /** The Sui address of the paying wallet */

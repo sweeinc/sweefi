@@ -1,6 +1,5 @@
 import React, { useMemo } from "react";
-import type { SuiClient } from "@mysten/sui/client";
-import { SuiClient as SuiRpcClient, getFullnodeUrl } from "@mysten/sui/client";
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 import type { SweepayConfig } from "@sweepay/sui/ptb";
 import type { WalletAdapter } from "../core";
 import { useSweepayCheckout } from "./useSweepayCheckout";
@@ -13,7 +12,7 @@ export interface SweepayCheckoutProps {
   feeBps?: number;
   feeRecipient?: string;
   memo?: string;
-  suiClient?: SuiClient;
+  suiClient?: SuiJsonRpcClient;
   network?: "testnet" | "mainnet" | "devnet";
   config?: SweepayConfig;
   autoConnect?: boolean;
@@ -27,8 +26,9 @@ export function SweepayCheckout(props: SweepayCheckoutProps) {
   const client = useMemo(
     () =>
       props.suiClient ??
-      new SuiRpcClient({
-        url: getFullnodeUrl(props.network ?? "testnet"),
+      new SuiJsonRpcClient({
+        url: getJsonRpcFullnodeUrl((props.network ?? "testnet") as 'testnet' | 'mainnet' | 'devnet'),
+        network: props.network ?? "testnet",
       }),
     [props.suiClient, props.network],
   );

@@ -15,7 +15,7 @@
 import { describe, it, expect } from "vitest";
 import { StreamSuiFacilitatorScheme } from "../../src/s402/stream/facilitator";
 import type { FacilitatorSuiSigner } from "../../src/signer";
-import type { DryRunTransactionBlockResponse } from "@mysten/sui/client";
+import type { DryRunTransactionBlockResponse } from "@mysten/sui/jsonRpc";
 import type {
   s402PaymentRequirements,
   s402StreamPayload,

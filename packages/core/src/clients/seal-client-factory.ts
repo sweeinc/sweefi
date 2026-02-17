@@ -1,52 +1,66 @@
-import { KeyStore } from '@mysten/seal';
-import { getAllowlistedKeyServers, retrieveKeyServers } from '@mysten/seal';
-import type { KeyServer } from '@mysten/seal';
+import { SealClient } from '@mysten/seal';
+import type { SealClientOptions, KeyServerConfig } from '@mysten/seal';
+import type { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import type { SuiNetwork } from '../types/network.js';
+import { NETWORKS } from '../types/network.js';
 
 /**
  * Configured SEAL client bundle.
  *
- * The @mysten/seal SDK has no single "SealClient" class — it exposes
- * KeyStore, SessionKey, encrypt(), and key server utilities separately.
- * This bundle provides a pre-configured KeyStore with resolved key servers
- * so consumers don't need to manage SEAL setup themselves.
+ * @mysten/seal 1.0: SealClient is the unified interface — owns key server
+ * discovery, caching, encrypt, decrypt, and fetchKeys. The old KeyStore and
+ * standalone retrieveKeyServers/getAllowlistedKeyServers are removed.
  */
 export interface SweeSealClient {
-  keyStore: KeyStore;
-  keyServers: KeyServer[];
+  client: SealClient;
   threshold: number;
   network: SuiNetwork;
 }
 
 export interface CreateSealClientOptions {
-  /** Whether to verify key server proofs of possession (slower, more secure). Default: false */
+  /**
+   * Whether to verify key server proofs of possession.
+   * Default: true in seal@1.x (was false in 0.x).
+   * Set false to skip the extra /v1/service network call on init.
+   */
   verifyKeyServers?: boolean;
+  /** Request timeout in milliseconds. Default: 10_000 */
+  timeout?: number;
 }
-
-type SealCompatibleClient = Parameters<typeof retrieveKeyServers>[0]['client'];
 
 /**
  * Create a SEAL client bundle with network-appropriate key server configuration.
- * Encapsulates key server discovery so consumers never hardcode object IDs.
+ *
+ * Synchronous construction — SealClient lazy-loads key servers on first use.
  *
  * NOTE: SEAL key servers are only available on testnet and mainnet.
- * On devnet/localnet, returns an empty key server list.
+ * On devnet/localnet, returns null (SEAL not available).
  */
-export async function createSealClient(
-  suiClient: SealCompatibleClient,
+export function createSealClient(
+  suiClient: SuiJsonRpcClient,
   network: SuiNetwork,
-  _options?: CreateSealClientOptions,
-): Promise<SweeSealClient> {
-  const keyStore = new KeyStore();
-
-  // SEAL only supports testnet and mainnet
-  if (network !== 'testnet' && network !== 'mainnet') {
-    return { keyStore, keyServers: [], threshold: 0, network };
+  options?: CreateSealClientOptions,
+): SweeSealClient | null {
+  const networkConfig = NETWORKS[network];
+  if (!networkConfig?.sealKeyServers?.length) {
+    return null; // SEAL not available on this network
   }
 
-  const objectIds = getAllowlistedKeyServers(network);
-  const keyServers = await retrieveKeyServers({ objectIds, client: suiClient });
-  const threshold = Math.ceil(keyServers.length / 2);
+  const serverConfigs: KeyServerConfig[] = networkConfig.sealKeyServers.map((s) => ({
+    objectId: s.objectId,
+    weight: s.weight,
+  }));
 
-  return { keyStore, keyServers, threshold, network };
+  const threshold = Math.ceil(serverConfigs.length / 2);
+
+  // SealClient accepts SealCompatibleClient = ClientWithExtensions<{ core: CoreClient }>
+  // SuiJsonRpcClient satisfies this since it has `core: JSONRpcCoreClient extends CoreClient`
+  const client = new SealClient({
+    suiClient: suiClient as unknown as SealClientOptions['suiClient'],
+    serverConfigs,
+    verifyKeyServers: options?.verifyKeyServers ?? true,
+    timeout: options?.timeout,
+  });
+
+  return { client, threshold, network };
 }

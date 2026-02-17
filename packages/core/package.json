@@ -41,12 +41,12 @@
     "access": "public"
   },
   "dependencies": {
-    "@mysten/seal": "^0.2.0",
+    "@mysten/seal": "^1.0.0",
     "@mysten/walrus": "^1.0.0",
     "s402": "^0.1.0"
   },
   "peerDependencies": {
-    "@mysten/sui": "^1.20.0"
+    "@mysten/sui": "^2.0.0"
   },
   "devDependencies": {
     "tsdown": "^0.20.3",

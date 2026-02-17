@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
 import { createContext, requireSigner } from "../src/context.js";
 
-vi.mock("@mysten/sui/client", () => ({
-  SuiClient: vi.fn().mockImplementation(() => ({})),
-  getFullnodeUrl: vi.fn().mockReturnValue("https://fullnode.testnet.sui.io:443"),
+vi.mock("@mysten/sui/jsonRpc", () => ({
+  SuiJsonRpcClient: vi.fn().mockImplementation(() => ({})),
+  getJsonRpcFullnodeUrl: vi.fn().mockReturnValue("https://fullnode.testnet.sui.io:443"),
 }));
 
 describe("createContext", () => {

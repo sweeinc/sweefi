@@ -1,11 +1,11 @@
 /**
- * Day 6: End-to-End Integration Test
+ * End-to-End Integration Test — s402 Protocol
  *
  * Full pipeline: client → facilitator → Sui testnet
  *
  * 1. Generate or load Ed25519 keypair
  * 2. Fund from Sui testnet faucet (or use pre-funded key)
- * 3. Client signs a payment transaction (SUI coin — faucet gives SUI, not USDC)
+ * 3. Client builds a signed payment via s402Client
  * 4. Facilitator verifies the signed payload against testnet RPC
  * 5. Facilitator settles (broadcasts) the transaction on-chain
  * 6. Verify the transaction exists on-chain with success status
@@ -18,12 +18,11 @@
  */
 import { describe, it, expect, beforeAll } from "vitest";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 import { requestSuiFromFaucetV2, getFaucetHost } from "@mysten/sui/faucet";
-import { toClientSuiSigner, toFacilitatorSuiSigner } from "@sweepay/sui";
-import { ExactSuiScheme as ClientExactSuiScheme } from "@sweepay/sui/exact/client";
-import { x402Facilitator } from "@sweepay/core/facilitator";
-import { registerExactSuiScheme } from "@sweepay/sui/exact/facilitator";
+import { toClientSuiSigner, toFacilitatorSuiSigner, ExactSuiClientScheme, ExactSuiFacilitatorScheme } from "@sweepay/sui";
+import { s402Client, s402Facilitator } from "s402";
+import type { s402PaymentRequirements } from "s402";
 
 const SUI_COIN_TYPE = "0x2::sui::SUI";
 const PAYMENT_AMOUNT = "1000000"; // 0.001 SUI (1M MIST)
@@ -31,15 +30,15 @@ const PAYMENT_AMOUNT = "1000000"; // 0.001 SUI (1M MIST)
 let skipped = false;
 let skipReason = "";
 
-describe("E2E: Client → Facilitator → Sui Testnet", () => {
+describe("E2E: s402 Client → Facilitator → Sui Testnet", () => {
   let payerKeypair: Ed25519Keypair;
   let recipientAddress: string;
-  let suiClient: SuiClient;
-  let facilitator: x402Facilitator;
-  let clientScheme: ClientExactSuiScheme;
+  let suiClient: SuiJsonRpcClient;
+  let facilitator: s402Facilitator;
+  let client: s402Client;
 
   beforeAll(async () => {
-    suiClient = new SuiClient({ url: getFullnodeUrl("testnet") });
+    suiClient = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl("testnet"), network: "testnet" });
     recipientAddress = Ed25519Keypair.generate().toSuiAddress();
 
     // Option 1: Pre-funded keypair from env (avoids faucet rate limits)
@@ -63,7 +62,7 @@ describe("E2E: Client → Facilitator → Sui Testnet", () => {
         if (err.message?.includes("Too many requests") || err.message?.includes("rate limit")) {
           skipped = true;
           skipReason = "Faucet rate-limited. Set SUI_TESTNET_PRIVATE_KEY to use a pre-funded keypair.";
-          console.warn(`⚠️  ${skipReason}`);
+          console.warn(`Warning: ${skipReason}`);
           return;
         }
         throw err;
@@ -79,21 +78,19 @@ describe("E2E: Client → Facilitator → Sui Testnet", () => {
     if (BigInt(balance.totalBalance) < BigInt(PAYMENT_AMOUNT) * 5n) {
       skipped = true;
       skipReason = `Insufficient balance: ${balance.totalBalance} MIST (need ${PAYMENT_AMOUNT}). Fund the wallet or use a different key.`;
-      console.warn(`⚠️  ${skipReason}`);
+      console.warn(`Warning: ${skipReason}`);
       return;
     }
 
-    // Set up client signer
+    // Set up s402 client with exact scheme
     const clientSigner = toClientSuiSigner(payerKeypair, suiClient);
-    clientScheme = new ClientExactSuiScheme(clientSigner);
+    client = new s402Client();
+    client.register("sui:testnet", new ExactSuiClientScheme(clientSigner));
 
-    // Set up facilitator (no keypair needed — uses client's signature directly)
-    facilitator = new x402Facilitator();
+    // Set up s402 facilitator with exact scheme
+    facilitator = new s402Facilitator();
     const facilitatorSigner = toFacilitatorSuiSigner();
-    registerExactSuiScheme(facilitator, {
-      signer: facilitatorSigner,
-      networks: ["sui:testnet"],
-    });
+    facilitator.register("sui:testnet", new ExactSuiFacilitatorScheme(facilitatorSigner));
   });
 
   function skipIfNeeded() {
@@ -104,28 +101,14 @@ describe("E2E: Client → Facilitator → Sui Testnet", () => {
     return false;
   }
 
-  function makeRequirements() {
+  function makeRequirements(): s402PaymentRequirements {
     return {
-      scheme: "exact" as const,
-      network: "sui:testnet" as const,
+      s402Version: "1",
+      accepts: ["exact"],
+      network: "sui:testnet",
       asset: SUI_COIN_TYPE,
       amount: PAYMENT_AMOUNT,
       payTo: recipientAddress,
-      maxTimeoutSeconds: 30,
-      extra: {},
-    };
-  }
-
-  async function createFullPayload(requirements: ReturnType<typeof makeRequirements>) {
-    const partial = await clientScheme.createPaymentPayload(2, requirements);
-    return {
-      ...partial,
-      resource: {
-        url: "https://test.example.com/premium/data",
-        description: "Test premium resource",
-        mimeType: "application/json",
-      },
-      accepted: requirements,
     };
   }
 
@@ -133,47 +116,42 @@ describe("E2E: Client → Facilitator → Sui Testnet", () => {
     if (skipIfNeeded()) return;
 
     const requirements = makeRequirements();
-    const payload = await createFullPayload(requirements);
-
+    const payload = await client.createPayment(requirements);
     const result = await facilitator.verify(payload, requirements);
 
-    expect(result.isValid).toBe(true);
-    expect(result.payer).toBe(payerKeypair.toSuiAddress());
+    expect(result.valid).toBe(true);
+    expect(result.payerAddress).toBe(payerKeypair.toSuiAddress());
   });
 
   it("settles a payment on Sui testnet and returns transaction digest", async () => {
     if (skipIfNeeded()) return;
 
     const requirements = makeRequirements();
-    const payload = await createFullPayload(requirements);
-
+    const payload = await client.createPayment(requirements);
     const result = await facilitator.settle(payload, requirements);
 
     expect(result.success).toBe(true);
-    expect(result.transaction).toBeTruthy();
-    expect(result.transaction.length).toBeGreaterThan(10); // Sui digests are base58, ~44 chars
-    expect(result.network).toBe("sui:testnet");
-    expect(result.payer).toBe(payerKeypair.toSuiAddress());
+    expect(result.txDigest).toBeTruthy();
+    expect(result.txDigest!.length).toBeGreaterThan(10); // Sui digests are base58, ~44 chars
   });
 
   it("settled transaction exists on-chain with success status", async () => {
     if (skipIfNeeded()) return;
 
     const requirements = makeRequirements();
-    const payload = await createFullPayload(requirements);
-
+    const payload = await client.createPayment(requirements);
     const settleResult = await facilitator.settle(payload, requirements);
     expect(settleResult.success).toBe(true);
 
     // Wait for finality
     await suiClient.waitForTransaction({
-      digest: settleResult.transaction,
+      digest: settleResult.txDigest!,
       options: { showEffects: true },
     });
 
     // Verify on-chain
     const txn = await suiClient.getTransactionBlock({
-      digest: settleResult.transaction,
+      digest: settleResult.txDigest!,
       options: { showEffects: true, showBalanceChanges: true },
     });
 
@@ -195,14 +173,13 @@ describe("E2E: Client → Facilitator → Sui Testnet", () => {
     if (skipIfNeeded()) return;
 
     const requirements = makeRequirements();
-    const payload = await createFullPayload(requirements);
+    const payload = await client.createPayment(requirements);
 
     // Tamper: change network in requirements
-    // x402 throws when no scheme is registered for the network (not isValid: false)
-    const wrongRequirements = { ...requirements, network: "sui:mainnet" as const };
+    const wrongRequirements = { ...requirements, network: "sui:mainnet" };
 
     await expect(
       facilitator.verify(payload, wrongRequirements),
-    ).rejects.toThrow(/no facilitator registered/i);
+    ).rejects.toThrow();
   });
 });

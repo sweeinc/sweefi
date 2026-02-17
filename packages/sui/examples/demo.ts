@@ -15,7 +15,7 @@
  */
 
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 import { requestSuiFromFaucetV2, getFaucetHost } from "@mysten/sui/faucet";
 import {
   testnetConfig,
@@ -41,7 +41,7 @@ const STREAM_BUDGET_CAP = 5_000_000n; // 0.005 SUI max
 const ESCROW_DEPOSIT = 2_000_000n; // 0.002 SUI
 const FEE_BPS = 50; // 0.5% fee
 
-const client = new SuiClient({ url: getFullnodeUrl("testnet") });
+const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl("testnet"), network: "testnet" });
 const config = testnetConfig;
 
 // ══════════════════════════════════════════════════════════════

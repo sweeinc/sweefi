@@ -1,15 +1,15 @@
 import { describe, it, expect, vi } from "vitest";
 import { createSweepayMcpServer } from "../src/server.js";
 
-// Mock the SuiClient to avoid real RPC calls
-vi.mock("@mysten/sui/client", () => ({
-  SuiClient: vi.fn().mockImplementation(() => ({
+// Mock the SuiJsonRpcClient to avoid real RPC calls
+vi.mock("@mysten/sui/jsonRpc", () => ({
+  SuiJsonRpcClient: vi.fn().mockImplementation(() => ({
     getBalance: vi.fn(),
     getObject: vi.fn(),
     queryEvents: vi.fn(),
     signAndExecuteTransaction: vi.fn(),
   })),
-  getFullnodeUrl: vi.fn().mockReturnValue("https://fullnode.testnet.sui.io:443"),
+  getJsonRpcFullnodeUrl: vi.fn().mockReturnValue("https://fullnode.testnet.sui.io:443"),
 }));
 
 describe("createSweepayMcpServer", () => {

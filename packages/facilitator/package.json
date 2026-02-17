@@ -6,7 +6,13 @@
   "description": "Self-hostable payment verification and settlement service for SweePay",
   "license": "MIT",
   "author": "Danny Devs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Danny-Devs/sweepay.git",
+    "directory": "packages/facilitator"
+  },
   "main": "./dist/index.mjs",
+  "files": ["dist", "Dockerfile", "fly.toml", "README.md", "LICENSE"],
   "scripts": {
     "build": "tsdown",
     "start": "node dist/index.mjs",
@@ -18,7 +24,8 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.8.0",
-    "@mysten/sui": "^1.20.0",
+    "@mysten/sui": "^2.0.0",
+    "s402": "^0.1.0",
     "@sweepay/core": "workspace:*",
     "@sweepay/sui": "workspace:*",
     "hono": "^4.0.0",

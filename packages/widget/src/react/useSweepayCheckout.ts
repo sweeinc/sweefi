@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { SuiClient } from "@mysten/sui/client";
+import type { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import type { SweepayConfig } from "@sweepay/sui/ptb";
 import {
   createCheckoutController,
@@ -10,7 +10,7 @@ import {
 
 export interface UseSweepayCheckoutOptions {
   wallet: WalletAdapter;
-  suiClient: SuiClient;
+  suiClient: SuiJsonRpcClient;
   recipient: string;
   amount: bigint;
   coinType?: string;

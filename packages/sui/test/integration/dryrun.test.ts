@@ -17,7 +17,7 @@
  */
 
 import { describe, it, beforeAll } from "vitest";
-import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import {
   testnetConfig,
@@ -37,14 +37,14 @@ const SKIP = process.env.SKIP_DRYRUN === "1" || !LIVE_TESTNET;
 const SUI_COIN_TYPE = "0x2::sui::SUI";
 const config = testnetConfig;
 
-let client: SuiClient;
+let client: SuiJsonRpcClient;
 let senderAddress: string;
 const RECIPIENT = "0x" + "22".repeat(32);
 const FEE_RECIPIENT = "0x" + "33".repeat(32);
 const ARBITER = "0x" + "77".repeat(32);
 
 beforeAll(() => {
-  client = new SuiClient({ url: getFullnodeUrl("testnet") });
+  client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl("testnet"), network: "testnet" });
   const sender = Ed25519Keypair.generate();
   senderAddress = sender.toSuiAddress();
 });

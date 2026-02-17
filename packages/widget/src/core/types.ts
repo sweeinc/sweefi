@@ -1,5 +1,5 @@
 import type { Transaction } from "@mysten/sui/transactions";
-import type { SuiClient } from "@mysten/sui/client";
+import type { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import type { SweepayConfig } from "@sweepay/sui/ptb";
 
 export type CheckoutStatus =
@@ -47,7 +47,7 @@ export interface WalletAdapter {
 
 export interface CheckoutControllerOptions {
   wallet: WalletAdapter;
-  suiClient: SuiClient;
+  suiClient: SuiJsonRpcClient;
   config: SweepayConfig;
   payment: PaymentRequest;
 }

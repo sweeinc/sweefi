@@ -2,8 +2,8 @@ import { describe, it, expect, vi } from "vitest";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { Secp256k1Keypair } from "@mysten/sui/keypairs/secp256k1";
 
-vi.mock("@mysten/sui/client", () => ({
-  SuiClient: vi.fn().mockImplementation(() => ({
+vi.mock("@mysten/sui/jsonRpc", () => ({
+  SuiJsonRpcClient: vi.fn().mockImplementation(() => ({
     getCoins: vi.fn(),
   })),
 }));
@@ -16,10 +16,10 @@ describe("adaptWallet", () => {
 
   it("converts Ed25519Keypair to ClientSuiSigner with correct interface", async () => {
     const { adaptWallet } = await import("../../src/client/wallet-adapter");
-    const { SuiClient } = await import("@mysten/sui/client");
+    const { SuiJsonRpcClient } = await import("@mysten/sui/jsonRpc");
 
     const wallet = Ed25519Keypair.generate();
-    const client = new SuiClient({ url: "https://test" });
+    const client = new SuiJsonRpcClient({ url: "https://test", network: "testnet" });
     const signer = adaptWallet(wallet, client);
 
     expect(signer).toHaveProperty("address");
@@ -30,10 +30,10 @@ describe("adaptWallet", () => {
 
   it("derives correct address from keypair", async () => {
     const { adaptWallet } = await import("../../src/client/wallet-adapter");
-    const { SuiClient } = await import("@mysten/sui/client");
+    const { SuiJsonRpcClient } = await import("@mysten/sui/jsonRpc");
 
     const wallet = Ed25519Keypair.generate();
-    const client = new SuiClient({ url: "https://test" });
+    const client = new SuiJsonRpcClient({ url: "https://test", network: "testnet" });
     const signer = adaptWallet(wallet, client);
 
     expect(signer.address).toBe(wallet.toSuiAddress());
@@ -42,10 +42,10 @@ describe("adaptWallet", () => {
 
   it("produces same address as the keypair for multiple calls", async () => {
     const { adaptWallet } = await import("../../src/client/wallet-adapter");
-    const { SuiClient } = await import("@mysten/sui/client");
+    const { SuiJsonRpcClient } = await import("@mysten/sui/jsonRpc");
 
     const wallet = Ed25519Keypair.generate();
-    const client = new SuiClient({ url: "https://test" });
+    const client = new SuiJsonRpcClient({ url: "https://test", network: "testnet" });
     const signer1 = adaptWallet(wallet, client);
     const signer2 = adaptWallet(wallet, client);
 
@@ -54,11 +54,11 @@ describe("adaptWallet", () => {
 
   it("produces different addresses for different keypairs", async () => {
     const { adaptWallet } = await import("../../src/client/wallet-adapter");
-    const { SuiClient } = await import("@mysten/sui/client");
+    const { SuiJsonRpcClient } = await import("@mysten/sui/jsonRpc");
 
     const wallet1 = Ed25519Keypair.generate();
     const wallet2 = Ed25519Keypair.generate();
-    const client = new SuiClient({ url: "https://test" });
+    const client = new SuiJsonRpcClient({ url: "https://test", network: "testnet" });
 
     const signer1 = adaptWallet(wallet1, client);
     const signer2 = adaptWallet(wallet2, client);
@@ -68,10 +68,10 @@ describe("adaptWallet", () => {
 
   it("works with Secp256k1 keypair", async () => {
     const { adaptWallet } = await import("../../src/client/wallet-adapter");
-    const { SuiClient } = await import("@mysten/sui/client");
+    const { SuiJsonRpcClient } = await import("@mysten/sui/jsonRpc");
 
     const wallet = Secp256k1Keypair.generate();
-    const client = new SuiClient({ url: "https://test" });
+    const client = new SuiJsonRpcClient({ url: "https://test", network: "testnet" });
     const signer = adaptWallet(wallet, client);
 
     expect(signer.address).toBe(wallet.toSuiAddress());

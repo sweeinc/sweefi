@@ -1,4 +1,4 @@
-import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 import type { Keypair } from "@mysten/sui/cryptography";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { TESTNET_PACKAGE_ID } from "@sweepay/sui/ptb";
@@ -10,7 +10,7 @@ import { decodeSuiPrivateKey } from "@mysten/sui/cryptography";
  * Read-only tools work without a signer; transaction tools require one.
  */
 export interface SweepayContext {
-  suiClient: SuiClient;
+  suiClient: SuiJsonRpcClient;
   signer: Keypair | null;
   config: SweepayConfig;
   network: string;
@@ -90,8 +90,8 @@ export function createContext(config?: SweepayMcpConfig): SweepayContext {
     );
   }
   const suiClient = rpcUrl
-    ? new SuiClient({ url: rpcUrl })
-    : new SuiClient({ url: getFullnodeUrl(suiNetwork as "testnet" | "mainnet" | "devnet") });
+    ? new SuiJsonRpcClient({ url: rpcUrl, network: suiNetwork })
+    : new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(suiNetwork as "testnet" | "mainnet" | "devnet"), network: suiNetwork });
 
   const packageId = config?.packageId ?? process.env.SUI_PACKAGE_ID ?? TESTNET_PACKAGE_ID;
   const protocolStateId = config?.protocolStateId ?? process.env.SUI_PROTOCOL_STATE_ID;
@@ -103,11 +103,11 @@ export function createContext(config?: SweepayMcpConfig): SweepayContext {
   if (privateKey) {
     try {
       // Try bech32 format first (suiprivkey1...)
-      const { schema, secretKey } = decodeSuiPrivateKey(privateKey);
-      if (schema === "ED25519") {
+      const { scheme, secretKey } = decodeSuiPrivateKey(privateKey);
+      if (scheme === "ED25519") {
         signer = Ed25519Keypair.fromSecretKey(secretKey);
       } else {
-        console.warn(`[sweepay-mcp] Key scheme "${schema}" is not supported. Only ED25519 keys work. Transaction tools will be disabled.`);
+        console.warn(`[sweepay-mcp] Key scheme "${scheme}" is not supported. Only ED25519 keys work. Transaction tools will be disabled.`);
       }
     } catch {
       // Fall back to raw base64

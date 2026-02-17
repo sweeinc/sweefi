@@ -1,6 +1,6 @@
 import { defineComponent, h, onMounted } from "vue";
 import type { PropType } from "vue";
-import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 import type { SweepayConfig } from "@sweepay/sui/ptb";
 import type { WalletAdapter } from "../core";
 import { useSweepayCheckout } from "./useSweepayCheckout";
@@ -15,7 +15,7 @@ export const SweepayCheckout = defineComponent({
     feeBps: { type: Number, default: 0 },
     feeRecipient: { type: String, default: undefined },
     memo: { type: String, default: undefined },
-    suiClient: { type: Object as PropType<SuiClient>, default: undefined },
+    suiClient: { type: Object as PropType<SuiJsonRpcClient>, default: undefined },
     network: { type: String as PropType<"testnet" | "mainnet" | "devnet">, default: "testnet" },
     config: { type: Object as PropType<SweepayConfig>, default: undefined },
     autoConnect: { type: Boolean, default: false },
@@ -24,8 +24,9 @@ export const SweepayCheckout = defineComponent({
   setup(props, { emit }) {
     const client =
       props.suiClient ??
-      new SuiClient({
-        url: getFullnodeUrl(props.network),
+      new SuiJsonRpcClient({
+        url: getJsonRpcFullnodeUrl(props.network as 'testnet' | 'mainnet' | 'devnet'),
+        network: props.network,
       });
 
     const checkout = useSweepayCheckout({

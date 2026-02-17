@@ -11,12 +11,13 @@
  * agents pay with crypto, no API keys or subscriptions needed.
  *
  * Usage:
- *   SUI_PRIVATE_KEY=<base64> tsx agent.ts
+ *   cp .env.example .env   # add your testnet private key
+ *   pnpm agent             # .env loaded automatically
  *   # or via demo.ts which starts both server + agent
  */
 
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 import { fromBase64 } from "@mysten/sui/utils";
 import { s402Client, S402_VERSION } from "s402";
 import { ExactSuiClientScheme, toClientSuiSigner } from "@sweepay/sui";
@@ -85,7 +86,7 @@ export async function runAgent(privateKey?: string) {
 
   const keypair = Ed25519Keypair.fromSecretKey(fromBase64(key));
   const address = keypair.getPublicKey().toSuiAddress();
-  const suiClient = new SuiClient({ url: getFullnodeUrl("testnet") });
+  const suiClient = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl("testnet"), network: "testnet" });
   const signer = toClientSuiSigner(keypair, suiClient);
 
   step(1, "Agent wallet initialized");

@@ -7,8 +7,8 @@
     "demo": "tsx demo.ts"
   },
   "dependencies": {
-    "@mysten/seal": "0.10.0",
-    "@mysten/sui": "^1.45.2",
+    "@mysten/seal": "^1.0.0",
+    "@mysten/sui": "^2.0.0",
     "@sweepay/sui": "workspace:*"
   },
   "devDependencies": {
