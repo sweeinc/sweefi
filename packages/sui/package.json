@@ -2,7 +2,7 @@
   "name": "@sweepay/sui",
   "version": "0.1.0",
   "type": "module",
-  "description": "Sui-native x402 protocol implementation for SweePay",
+  "description": "Sui-native s402 protocol implementation for SweePay",
   "license": "MIT",
   "author": "Danny Devs",
   "main": "./dist/index.mjs",
@@ -20,52 +20,14 @@
       },
       "default": "./dist/index.mjs"
     },
-    "./exact/client": {
-      "import": {
-        "types": "./dist/exact/client/index.d.mts",
-        "default": "./dist/exact/client/index.mjs"
-      },
-      "default": "./dist/exact/client/index.mjs"
-    },
-    "./exact/server": {
-      "import": {
-        "types": "./dist/exact/server/index.d.mts",
-        "default": "./dist/exact/server/index.mjs"
-      },
-      "default": "./dist/exact/server/index.mjs"
-    },
-    "./exact/facilitator": {
-      "import": {
-        "types": "./dist/exact/facilitator/index.d.mts",
-        "default": "./dist/exact/facilitator/index.mjs"
-      },
-      "default": "./dist/exact/facilitator/index.mjs"
-    },
-    "./prepaid/client": {
-      "import": {
-        "types": "./dist/prepaid/client/index.d.mts",
-        "default": "./dist/prepaid/client/index.mjs"
-      },
-      "default": "./dist/prepaid/client/index.mjs"
-    },
-    "./prepaid/server": {
-      "import": {
-        "types": "./dist/prepaid/server/index.d.mts",
-        "default": "./dist/prepaid/server/index.mjs"
-      },
-      "default": "./dist/prepaid/server/index.mjs"
-    },
-    "./prepaid/facilitator": {
-      "import": {
-        "types": "./dist/prepaid/facilitator/index.d.mts",
-        "default": "./dist/prepaid/facilitator/index.mjs"
-      },
-      "default": "./dist/prepaid/facilitator/index.mjs"
-    },
     "./ptb": {
       "import": {
         "types": "./dist/ptb/index.d.mts",
         "default": "./dist/ptb/index.mjs"
+      },
+      "require": {
+        "types": "./dist/ptb/index.d.cts",
+        "default": "./dist/ptb/index.cjs"
       },
       "default": "./dist/ptb/index.mjs"
     }
@@ -77,9 +39,15 @@
     "test:offline": "SKIP_DRYRUN=1 vitest run",
     "test:live": "SWEEPAY_LIVE_TESTNET=1 vitest run test/integration/dryrun.test.ts",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build && npm run typecheck && npm run test"
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": ["dist/**/*.mjs", "dist/**/*.cjs", "dist/**/*.d.mts", "dist/**/*.d.cts", "README.md", "LICENSE"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Danny-Devs/sweepay.git",
+    "directory": "packages/sui"
+  },
   "publishConfig": {
     "access": "public"
   },

@@ -5,8 +5,27 @@
   "description": "MCP server exposing SweePay payment tools for AI agents — the safety layer for autonomous agent commerce",
   "license": "MIT",
   "author": "Danny Devs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dannydevs/sweepay",
+    "directory": "packages/mcp"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "sui",
+    "payments",
+    "ai-agent",
+    "streaming-payments",
+    "escrow",
+    "web3"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "sideEffects": false,
   "bin": {
-    "sweepay-mcp": "./dist/index.mjs"
+    "sweepay-mcp": "./dist/cli.mjs"
   },
   "main": "./dist/index.mjs",
   "module": "./dist/index.mjs",
@@ -21,11 +40,12 @@
   },
   "scripts": {
     "build": "tsdown",
-    "start": "node dist/index.mjs",
-    "dev": "tsx src/index.ts",
+    "start": "node dist/cli.mjs",
+    "dev": "tsx src/cli.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm run build && pnpm run typecheck && pnpm run test"
   },
   "files": ["dist", "README.md", "LICENSE"],
   "publishConfig": {

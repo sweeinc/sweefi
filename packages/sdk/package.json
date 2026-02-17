@@ -39,19 +39,17 @@
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build && npm run typecheck && npm run test"
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": ["dist/**/*.mjs", "dist/**/*.cjs", "dist/**/*.d.mts", "dist/**/*.d.cts", "README.md", "LICENSE"],
   "publishConfig": {
     "access": "public"
   },
   "dependencies": {
-    "@mysten/sui": "^1.20.0",
     "s402": "^0.1.0",
     "@sweepay/core": "workspace:*",
-    "@sweepay/sui": "workspace:*",
-    "@x402/fetch": "^2.3.0",
-    "@x402/hono": "^2.3.0"
+    "@sweepay/sui": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.13.4",
@@ -63,6 +61,7 @@
     "vitest": "^3.0.5"
   },
   "peerDependencies": {
+    "@mysten/sui": "^1.20.0",
     "hono": ">=4.0.0"
   },
   "peerDependenciesMeta": {

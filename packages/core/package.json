@@ -16,34 +16,6 @@
       },
       "default": "./dist/index.mjs"
     },
-    "./types": {
-      "import": {
-        "types": "./dist/x402/types.d.mts",
-        "default": "./dist/x402/types.mjs"
-      },
-      "default": "./dist/x402/types.mjs"
-    },
-    "./client": {
-      "import": {
-        "types": "./dist/x402/client.d.mts",
-        "default": "./dist/x402/client.mjs"
-      },
-      "default": "./dist/x402/client.mjs"
-    },
-    "./server": {
-      "import": {
-        "types": "./dist/x402/server.d.mts",
-        "default": "./dist/x402/server.mjs"
-      },
-      "default": "./dist/x402/server.mjs"
-    },
-    "./facilitator": {
-      "import": {
-        "types": "./dist/x402/facilitator.d.mts",
-        "default": "./dist/x402/facilitator.mjs"
-      },
-      "default": "./dist/x402/facilitator.mjs"
-    },
     "./s402": {
       "import": {
         "types": "./dist/s402/index.d.mts",
@@ -56,18 +28,25 @@
     "build": "tsdown",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build && npm run typecheck && npm run test"
   },
   "files": ["dist", "README.md", "LICENSE"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Danny-Devs/sweepay.git",
+    "directory": "packages/core"
+  },
   "publishConfig": {
     "access": "public"
   },
   "dependencies": {
     "@mysten/seal": "^0.2.0",
-    "@mysten/sui": "^1.20.0",
     "@mysten/walrus": "^1.0.0",
-    "s402": "^0.1.0",
-    "@x402/core": "^2.3.0"
+    "s402": "^0.1.0"
+  },
+  "peerDependencies": {
+    "@mysten/sui": "^1.20.0"
   },
   "devDependencies": {
     "tsdown": "^0.20.3",

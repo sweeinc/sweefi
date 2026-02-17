@@ -1,14 +1,21 @@
 /**
  * @module @sweepay/sdk
  *
- * x402 payment middleware for AI agents on Sui.
+ * s402 payment middleware for AI agents on Sui.
  *
- * Subpath exports:
- * - @sweepay/sdk/client — createPayingClient() for AI agents that pay
- * - @sweepay/sdk/server — paymentGate() for APIs that charge
+ * Quick start:
+ *   import { createS402Client, s402Gate } from '@sweepay/sdk';
+ *
+ * Subpath exports also available:
+ * - @sweepay/sdk/client — client-side only
+ * - @sweepay/sdk/server — server-side only
  */
 
-// Re-export types only from root — use subpath imports for implementations
-export type { PayingClientConfig } from "./client/types";
-export type { PaymentGateConfig } from "./server/types";
+// Re-export primary API surface from root for convenience
+export { createS402Client, wrapFetchWithS402, adaptWallet } from "./client/index";
+export type { s402ClientConfig, s402FetchOptions } from "./client/index";
+export { s402Gate } from "./server/index";
+export type { s402GateConfig } from "./server/index";
+
+// Shared types
 export type { SuiNetwork, Price } from "./shared/types";

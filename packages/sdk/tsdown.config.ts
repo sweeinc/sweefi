@@ -8,7 +8,7 @@ export default defineConfig({
   },
   format: ["esm", "cjs"],
   dts: true,
-  sourcemap: true,
+  // Source maps excluded from npm publish via .npmignore
   target: "es2020",
   clean: true,
 });
