@@ -1,7 +1,7 @@
 import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
 import type { Keypair } from "@mysten/sui/cryptography";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import { TESTNET_PACKAGE_ID, testnetConfig } from "@sweepay/sui/ptb";
+import { TESTNET_PACKAGE_ID } from "@sweepay/sui/ptb";
 import type { SweepayConfig } from "@sweepay/sui/ptb";
 import { decodeSuiPrivateKey } from "@mysten/sui/cryptography";
 
@@ -61,6 +61,18 @@ export interface SweepayMcpConfig {
   maxAmountPerSession?: bigint;
 }
 
+function parseBigIntEnv(name: string): bigint {
+  const raw = process.env[name] ?? "0";
+  try {
+    // Strip underscores (1_000_000_000) and trailing 'n' (1000n) for user convenience
+    return BigInt(raw.replace(/_/g, "").replace(/n$/i, ""));
+  } catch {
+    throw new Error(
+      `${name}="${raw}" is not a valid integer. Use digits only (e.g., "1000000000").`
+    );
+  }
+}
+
 /**
  * Create the runtime context from config or environment variables.
  * Falls back to SUI_NETWORK, SUI_RPC_URL, SUI_PRIVATE_KEY env vars.
@@ -69,10 +81,17 @@ export function createContext(config?: SweepayMcpConfig): SweepayContext {
   const network = config?.network ?? process.env.SUI_NETWORK ?? "testnet";
   const rpcUrl = config?.rpcUrl ?? process.env.SUI_RPC_URL;
 
-  const suiNetwork = network.replace("sui:", "") as "testnet" | "mainnet" | "devnet";
+  const VALID_NETWORKS = new Set(["testnet", "mainnet", "devnet"]);
+  const suiNetwork = network.replace("sui:", "");
+  if (!rpcUrl && !VALID_NETWORKS.has(suiNetwork)) {
+    throw new Error(
+      `Invalid SUI_NETWORK "${network}". Must be "testnet", "mainnet", or "devnet". ` +
+      `For custom networks, set SUI_RPC_URL instead.`
+    );
+  }
   const suiClient = rpcUrl
     ? new SuiClient({ url: rpcUrl })
-    : new SuiClient({ url: getFullnodeUrl(suiNetwork) });
+    : new SuiClient({ url: getFullnodeUrl(suiNetwork as "testnet" | "mainnet" | "devnet") });
 
   const packageId = config?.packageId ?? process.env.SUI_PACKAGE_ID ?? TESTNET_PACKAGE_ID;
   const protocolStateId = config?.protocolStateId ?? process.env.SUI_PROTOCOL_STATE_ID;
@@ -107,8 +126,8 @@ export function createContext(config?: SweepayMcpConfig): SweepayContext {
   }
 
   const spendingLimits: SpendingLimits = {
-    maxPerTx: config?.maxAmountPerTx ?? BigInt(process.env.MCP_MAX_PER_TX ?? "0"),
-    maxPerSession: config?.maxAmountPerSession ?? BigInt(process.env.MCP_MAX_PER_SESSION ?? "0"),
+    maxPerTx: config?.maxAmountPerTx ?? parseBigIntEnv("MCP_MAX_PER_TX"),
+    maxPerSession: config?.maxAmountPerSession ?? parseBigIntEnv("MCP_MAX_PER_SESSION"),
     sessionSpent: 0n,
   };
 

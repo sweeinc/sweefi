@@ -3,6 +3,10 @@ import { createContext } from "./context.js";
 import { registerAllTools } from "./tools/index.js";
 import type { SweepayMcpConfig, SweepayContext } from "./context.js";
 
+// Single source of truth for the version reported to MCP clients.
+// Must match package.json — prepublishOnly script catches drift.
+const VERSION = "0.1.0";
+
 /**
  * Create a configured SweePay MCP server with all payment tools registered.
  *
@@ -25,7 +29,7 @@ export function createSweepayMcpServer(config?: SweepayMcpConfig): {
   const server = new McpServer(
     {
       name: "@sweepay/mcp",
-      version: "0.1.0",
+      version: VERSION,
     },
     {
       capabilities: {

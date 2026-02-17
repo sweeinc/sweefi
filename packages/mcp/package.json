@@ -7,7 +7,7 @@
   "author": "Danny Devs",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dannydevs/sweepay",
+    "url": "https://github.com/Danny-Devs/sweepay.git",
     "directory": "packages/mcp"
   },
   "keywords": [
@@ -55,8 +55,10 @@
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@sweepay/core": "workspace:*",
     "@sweepay/sui": "workspace:*",
-    "@mysten/sui": "^1.20.0",
     "zod": "^3.22.0"
+  },
+  "peerDependencies": {
+    "@mysten/sui": "^1.20.0"
   },
   "devDependencies": {
     "@types/node": "^22.13.4",

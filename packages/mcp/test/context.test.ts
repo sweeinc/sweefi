@@ -24,6 +24,34 @@ describe("createContext", () => {
     const ctx = createContext({ packageId: "0xcustom" });
     expect(ctx.config.packageId).toBe("0xcustom");
   });
+
+  it("rejects invalid network", () => {
+    expect(() => createContext({ network: "foobar" })).toThrow('Invalid SUI_NETWORK "foobar"');
+  });
+
+  it("allows custom network when rpcUrl is provided", () => {
+    const ctx = createContext({ network: "localnet", rpcUrl: "http://localhost:9000" });
+    expect(ctx.network).toBe("localnet");
+  });
+
+  it("parses spending limit env vars with underscores", () => {
+    process.env.MCP_MAX_PER_TX = "1_000_000_000";
+    try {
+      const ctx = createContext();
+      expect(ctx.spendingLimits.maxPerTx).toBe(1000000000n);
+    } finally {
+      delete process.env.MCP_MAX_PER_TX;
+    }
+  });
+
+  it("rejects invalid spending limit env vars", () => {
+    process.env.MCP_MAX_PER_TX = "not-a-number";
+    try {
+      expect(() => createContext()).toThrow('MCP_MAX_PER_TX="not-a-number" is not a valid integer');
+    } finally {
+      delete process.env.MCP_MAX_PER_TX;
+    }
+  });
 });
 
 describe("requireSigner", () => {
