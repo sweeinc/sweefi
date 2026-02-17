@@ -4,9 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  s402: workspace:*
-
 importers:
 
   .: {}
@@ -32,8 +29,8 @@ importers:
         specifier: ^4.7.0
         version: 4.11.9
       s402:
-        specifier: workspace:*
-        version: link:../../packages/s402-core
+        specifier: ^0.1.0
+        version: 0.1.2
     devDependencies:
       tsx:
         specifier: ^4.7.0
@@ -98,8 +95,8 @@ importers:
         specifier: ^1.0.0
         version: 1.0.3(@mysten/sui@2.4.0(typescript@5.9.3))
       s402:
-        specifier: workspace:*
-        version: link:../s402-core
+        specifier: ^0.1.0
+        version: 0.1.2
     devDependencies:
       tsdown:
         specifier: ^0.20.3
@@ -129,8 +126,8 @@ importers:
         specifier: ^4.0.0
         version: 4.11.9
       s402:
-        specifier: workspace:*
-        version: link:../s402-core
+        specifier: ^0.1.0
+        version: 0.1.2
       zod:
         specifier: ^3.22.0
         version: 3.25.76
@@ -209,8 +206,8 @@ importers:
         specifier: workspace:*
         version: link:../sui
       s402:
-        specifier: workspace:*
-        version: link:../s402-core
+        specifier: ^0.1.0
+        version: 0.1.2
     devDependencies:
       '@types/node':
         specifier: ^22.13.4
@@ -243,8 +240,8 @@ importers:
         specifier: workspace:*
         version: link:../core
       s402:
-        specifier: workspace:*
-        version: link:../s402-core
+        specifier: ^0.1.0
+        version: 0.1.2
     devDependencies:
       tsdown:
         specifier: ^0.20.3
@@ -1826,6 +1823,10 @@ packages:
 
   rrweb-cssom@0.8.0:
     resolution: {integrity: sha512-guoltQEx+9aMf2gDZ0s62EcV8lsXR+0w8915TC3ITdn2YueuNjdAYh/levpU9nFaoChh9RUS5ZdQMrKfVEN9tw==}
+
+  s402@0.1.2:
+    resolution: {integrity: sha512-IRxk03FzMVffYf5Zx0b/Bp9oZOBOFjgHq4iRPykDtQPS3mxstI6xXXRhFw3/ffwem4Hl1MguwLEi1VACjhOU0w==}
+    engines: {node: '>=18'}
 
   safer-buffer@2.1.2:
     resolution: {integrity: sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==}
@@ -3614,6 +3615,8 @@ snapshots:
   rrweb-cssom@0.7.1: {}
 
   rrweb-cssom@0.8.0: {}
+
+  s402@0.1.2: {}
 
   safer-buffer@2.1.2: {}
 
