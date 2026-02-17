@@ -7,27 +7,57 @@ vi.mock("@sweepay/sui/ptb", () => ({
   buildPayTx: vi.fn().mockReturnValue({ setSender: vi.fn() }),
 }));
 
+function captureHandlers(server: McpServer, ctx: SweepayContext) {
+  const handlers = new Map<string, Function>();
+  const orig = server.registerTool.bind(server);
+  const spy = vi.spyOn(server, "registerTool").mockImplementation(
+    (name: string, config: any, cb: any) => {
+      handlers.set(name, cb);
+      return orig(name, config, cb);
+    },
+  );
+  registerPayTool(server, ctx);
+  spy.mockRestore();
+  return handlers;
+}
+
 describe("sweepay_pay", () => {
-  it("registers without error", () => {
+  const makeCtx = (): SweepayContext => ({
+    suiClient: {
+      signAndExecuteTransaction: vi.fn().mockResolvedValue({
+        digest: "test_digest",
+        effects: { status: { status: "success" } },
+        objectChanges: [
+          {
+            type: "created",
+            objectType: "0x::payment::PaymentReceipt",
+            objectId: "0xreceipt123",
+          },
+        ],
+      }),
+    } as any,
+    signer: null,
+    config: { packageId: "0xtest" },
+    network: "testnet",
+    spendingLimits: { maxPerTx: 0n, maxPerSession: 0n, sessionSpent: 0n },
+  });
+
+  it("registers the pay tool", () => {
     const server = new McpServer({ name: "test", version: "0.1.0" });
-    const ctx: SweepayContext = {
-      suiClient: {
-        signAndExecuteTransaction: vi.fn().mockResolvedValue({
-          digest: "test_digest",
-          objectChanges: [
-            {
-              type: "created",
-              objectType: "0x::payment::PaymentReceipt",
-              objectId: "0xreceipt",
-            },
-          ],
-        }),
-      } as any,
-      signer: null,
-      config: { packageId: "0xtest" },
-      network: "testnet",
-    };
-    registerPayTool(server, ctx);
-    expect(true).toBe(true);
+    registerPayTool(server, makeCtx());
+  });
+
+  it("throws when no signer configured", async () => {
+    const ctx = makeCtx(); // signer: null
+    const server = new McpServer({ name: "test", version: "0.1.0" });
+    const handlers = captureHandlers(server, ctx);
+    const handler = handlers.get("sweepay_pay")!;
+
+    await expect(
+      handler({
+        recipient: "0x" + "b".repeat(64),
+        amount: "1000000000",
+      }),
+    ).rejects.toThrow("Wallet not configured");
   });
 });

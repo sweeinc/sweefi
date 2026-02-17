@@ -56,6 +56,24 @@ export function createSweepayMcpServer(config?: SweepayMcpConfig): {
     );
   }
 
+  // Warn when running on mainnet with a signer but no spending limits.
+  // On testnet/devnet there's no real money at risk. Without a signer,
+  // transaction tools are disabled anyway. If limits are already set,
+  // the operator has explicitly opted in.
+  if (
+    context.network === "mainnet" &&
+    context.signer !== null &&
+    context.spendingLimits.maxPerTx === 0n &&
+    context.spendingLimits.maxPerSession === 0n
+  ) {
+    console.warn(
+      "[sweepay-mcp] ⚠️  Running on MAINNET with NO spending limits. " +
+      "Set MCP_MAX_PER_TX and MCP_MAX_PER_SESSION (or maxAmountPerTx/maxAmountPerSession " +
+      "in config) to guard against LLM misbehavior. On-chain Mandates provide the " +
+      "real security boundary, but MCP-level limits catch mistakes early."
+    );
+  }
+
   registerAllTools(server, context, { enableAdminTools, enableProviderTools });
 
   return { server, context };

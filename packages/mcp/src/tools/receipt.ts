@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SweepayContext } from "../context.js";
-import { suiAddress } from "../utils/format.js";
+import { suiAddress, suiObjectId } from "../utils/format.js";
 
 export function registerReceiptTool(server: McpServer, ctx: SweepayContext) {
   server.registerTool(
@@ -13,7 +13,7 @@ export function registerReceiptTool(server: McpServer, ctx: SweepayContext) {
         "Returns all receipt fields including amount, payer, recipient, " +
         "timestamp, and token type. Useful for verifying payments and SEAL integration.",
       inputSchema: {
-        receiptId: z.string().describe("Receipt object ID (0x...)"),
+        receiptId: suiObjectId("Receipt"),
       },
     },
     async ({ receiptId }) => {

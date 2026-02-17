@@ -45,7 +45,10 @@ async function main() {
   console.error(`Network: ${context.network}`);
   console.error(`Package: ${context.config.packageId}`);
   console.error(walletStatus);
-  console.error(`Tools: 20 registered`);
+  const adminStatus = process.env.MCP_ENABLE_ADMIN_TOOLS === "true"
+    ? "admin tools: ENABLED"
+    : "admin tools: disabled (set MCP_ENABLE_ADMIN_TOOLS=true to enable)";
+  console.error(`Tools: registered (${adminStatus})`);
 }
 
 main().catch((err) => {

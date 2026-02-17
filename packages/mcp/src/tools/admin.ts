@@ -1,9 +1,8 @@
-import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { buildAdminPauseTx, buildAdminUnpauseTx, buildBurnAdminCapTx } from "@sweepay/sui/ptb";
 import type { SweepayContext } from "../context.js";
 import { requireSigner } from "../context.js";
-import { assertTxSuccess } from "../utils/format.js";
+import { assertTxSuccess, suiObjectId } from "../utils/format.js";
 
 export function registerAdminTools(server: McpServer, ctx: SweepayContext) {
   // ─── Read-only: check protocol status ───
@@ -69,7 +68,7 @@ export function registerAdminTools(server: McpServer, ctx: SweepayContext) {
         "Existing streams, claims, releases, refunds, and payments are unaffected. " +
         "Requires AdminCap and configured wallet.",
       inputSchema: {
-        adminCapId: z.string().describe("AdminCap object ID (owned by deployer)"),
+        adminCapId: suiObjectId("AdminCap"),
       },
     },
     async ({ adminCapId }) => {
@@ -106,7 +105,7 @@ export function registerAdminTools(server: McpServer, ctx: SweepayContext) {
         "Re-enables stream/escrow creation. " +
         "Requires AdminCap and configured wallet.",
       inputSchema: {
-        adminCapId: z.string().describe("AdminCap object ID (owned by deployer)"),
+        adminCapId: suiObjectId("AdminCap"),
       },
     },
     async ({ adminCapId }) => {
@@ -144,7 +143,7 @@ export function registerAdminTools(server: McpServer, ctx: SweepayContext) {
         "Only use when the protocol is mature and you want to remove all admin power. " +
         "Requires AdminCap and configured wallet.",
       inputSchema: {
-        adminCapId: z.string().describe("AdminCap object ID to burn (IRREVERSIBLE)"),
+        adminCapId: suiObjectId("AdminCap (IRREVERSIBLE)"),
       },
     },
     async ({ adminCapId }) => {

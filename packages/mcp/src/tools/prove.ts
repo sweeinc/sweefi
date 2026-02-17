@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { buildPayAndProveTx } from "@sweepay/sui/ptb";
 import type { SweepayContext } from "../context.js";
-import { requireSigner } from "../context.js";
+import { requireSigner, checkSpendingLimit, recordSpend } from "../context.js";
 import { resolveCoinType, formatBalance, parseAmount, assertTxSuccess, ZERO_ADDRESS, suiAddress, optionalSuiAddress } from "../utils/format.js";
 
 export function registerProveTool(server: McpServer, ctx: SweepayContext) {
@@ -44,6 +44,7 @@ export function registerProveTool(server: McpServer, ctx: SweepayContext) {
       const signer = requireSigner(ctx);
       const resolvedType = resolveCoinType(coinType);
       const amountBigint = parseAmount(amount);
+      checkSpendingLimit(ctx, amountBigint);
       const senderAddr = signer.toSuiAddress();
 
       const tx = buildPayAndProveTx(ctx.config, {
@@ -63,6 +64,7 @@ export function registerProveTool(server: McpServer, ctx: SweepayContext) {
         options: { showEffects: true, showObjectChanges: true },
       });
       assertTxSuccess(result);
+      recordSpend(ctx, amountBigint);
 
       const digest = result.digest;
       const formatted = formatBalance(amount, resolvedType);

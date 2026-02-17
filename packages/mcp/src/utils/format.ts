@@ -81,41 +81,102 @@ export function parseAmountOrZero(value: string, fieldName: string = "amount"): 
  * Known Move abort codes → structured error messages for LLM agents.
  * Mirrors the CLI's ABORT_CODES table so MCP clients get the same quality.
  */
+/**
+ * Abort codes rebuilt from Move contract source of truth.
+ * Source files: contracts/sources/{payment,stream,escrow,seal_policy,mandate,agent_mandate,prepaid,identity,admin,math}.move
+ *
+ * NOTE: admin.move codes 500-501 collide with agent_mandate.move 500-501.
+ * In practice, admin tools are gated separately and the module name in the
+ * abort error string disambiguates. We map 500-510 to agent_mandate since
+ * those are far more commonly hit by MCP agents.
+ */
 const ABORT_CODES: Record<number, { code: string; message: string; action: string; retryable: boolean; humanRequired: boolean }> = {
-  // Payment
+  // ── payment.move (0-2) ──────────────────────────────────────
   0:   { code: "INSUFFICIENT_PAYMENT", message: "Payment amount is less than required", action: "Increase the amount and retry", retryable: false, humanRequired: false },
   1:   { code: "ZERO_AMOUNT", message: "Amount cannot be zero", action: "Provide a positive amount", retryable: false, humanRequired: false },
-  // Mandate
+  2:   { code: "INVALID_FEE_BPS", message: "Fee basis points value is invalid (must be 0-10000)", action: "Provide a valid feeBps between 0 and 10000", retryable: false, humanRequired: false },
+
+  // ── stream.move (100-110) ───────────────────────────────────
+  100: { code: "STREAM_NOT_PAYER", message: "Signer is not the stream payer", action: "Use the wallet that created the stream", retryable: false, humanRequired: false },
+  101: { code: "STREAM_NOT_RECIPIENT", message: "Signer is not the stream recipient", action: "Use the recipient wallet authorized in the stream", retryable: false, humanRequired: false },
+  102: { code: "STREAM_INACTIVE", message: "Stream is not currently active", action: "The stream may have been stopped or closed. Check its status.", retryable: false, humanRequired: false },
+  103: { code: "STREAM_ALREADY_ACTIVE", message: "Stream is already active", action: "Stop the existing stream before starting a new one", retryable: false, humanRequired: false },
+  104: { code: "STREAM_ZERO_RATE", message: "Stream rate must be greater than zero", action: "Provide a positive rate_per_second value", retryable: false, humanRequired: false },
+  105: { code: "STREAM_ZERO_DEPOSIT", message: "Stream deposit must be greater than zero", action: "Provide a positive deposit amount", retryable: false, humanRequired: false },
+  106: { code: "STREAM_NOTHING_TO_CLAIM", message: "No funds available to claim from this stream", action: "Wait for more time to accrue before claiming again", retryable: true, humanRequired: false },
+  107: { code: "STREAM_INVALID_FEE_BPS", message: "Stream fee basis points is invalid", action: "Provide a valid feeBps between 0 and 10000", retryable: false, humanRequired: false },
+  108: { code: "STREAM_BUDGET_CAP_EXCEEDED", message: "Stream deposit exceeds budget cap", action: "Reduce the deposit amount or increase the budget cap", retryable: false, humanRequired: false },
+  109: { code: "STREAM_TIMEOUT_NOT_REACHED", message: "Recipient close timeout has not been reached yet", action: "Wait for the timeout period to elapse before closing", retryable: true, humanRequired: false },
+  110: { code: "STREAM_TIMEOUT_TOO_SHORT", message: "Recipient close timeout is too short", action: "Use a longer timeout value", retryable: false, humanRequired: false },
+
+  // ── escrow.move (200-213) ───────────────────────────────────
+  200: { code: "ESCROW_NOT_BUYER", message: "Signer is not the escrow buyer", action: "Use the buyer wallet that created the escrow", retryable: false, humanRequired: false },
+  201: { code: "ESCROW_NOT_SELLER", message: "Signer is not the escrow seller", action: "Use the seller wallet specified in the escrow", retryable: false, humanRequired: false },
+  202: { code: "ESCROW_NOT_ARBITER", message: "Signer is not the escrow arbiter", action: "Use the arbiter wallet specified in the escrow", retryable: false, humanRequired: false },
+  203: { code: "ESCROW_NOT_AUTHORIZED", message: "Signer is not authorized for this escrow action", action: "Check which role (buyer/seller/arbiter) is required", retryable: false, humanRequired: false },
+  204: { code: "ESCROW_DEADLINE_IN_PAST", message: "Escrow deadline is in the past", action: "Provide a future deadline timestamp", retryable: false, humanRequired: false },
+  205: { code: "ESCROW_DEADLINE_NOT_REACHED", message: "Escrow deadline has not been reached", action: "Wait for the deadline to pass before taking this action", retryable: true, humanRequired: false },
+  206: { code: "ESCROW_ALREADY_RESOLVED", message: "Escrow has already been resolved", action: "No action needed — the escrow was already completed", retryable: false, humanRequired: false },
+  207: { code: "ESCROW_NOT_DISPUTED", message: "Escrow is not in disputed state", action: "The escrow must be disputed before an arbiter can resolve it", retryable: false, humanRequired: false },
+  208: { code: "ESCROW_ALREADY_DISPUTED", message: "Escrow has already been disputed", action: "The dispute is already in progress — wait for arbiter resolution", retryable: false, humanRequired: false },
+  209: { code: "ESCROW_ZERO_AMOUNT", message: "Escrow amount must be greater than zero", action: "Provide a positive escrow amount", retryable: false, humanRequired: false },
+  210: { code: "ESCROW_INVALID_FEE_BPS", message: "Escrow fee basis points is invalid", action: "Provide a valid feeBps between 0 and 10000", retryable: false, humanRequired: false },
+  211: { code: "ESCROW_DESCRIPTION_TOO_LONG", message: "Escrow description exceeds maximum length", action: "Shorten the description", retryable: false, humanRequired: false },
+  212: { code: "ESCROW_ARBITER_IS_SELLER", message: "Arbiter cannot be the same address as the seller", action: "Use a different arbiter address", retryable: false, humanRequired: false },
+  213: { code: "ESCROW_ARBITER_IS_BUYER", message: "Arbiter cannot be the same address as the buyer", action: "Use a different arbiter address", retryable: false, humanRequired: false },
+
+  // ── seal_policy.move (300) ──────────────────────────────────
+  300: { code: "SEAL_NO_ACCESS", message: "Access denied by SEAL policy", action: "The payment receipt does not satisfy the SEAL access policy. Check that payment was made correctly.", retryable: false, humanRequired: false },
+
+  // ── mandate.move (400-405) ──────────────────────────────────
   400: { code: "MANDATE_NOT_DELEGATE", message: "Signer is not the authorized delegate for this mandate", action: "Verify the mandate ID and that your wallet is the delegate", retryable: false, humanRequired: false },
   401: { code: "MANDATE_EXPIRED", message: "Mandate has expired", action: "This requires human authorization — inform the user that the mandate has expired and wait for them to create a new one. The agent cannot create or renew mandates.", retryable: false, humanRequired: true },
-  402: { code: "MANDATE_PER_TX_EXCEEDED", message: "Amount exceeds the per-transaction spending limit", action: "Reduce the amount below the mandate's per-tx cap. Use sweepay_get_receipt or query the mandate object to see the cap.", retryable: false, humanRequired: false },
+  402: { code: "MANDATE_PER_TX_EXCEEDED", message: "Amount exceeds the per-transaction spending limit", action: "Reduce the amount below the mandate's per-tx cap. Use sweepay_inspect_mandate to see the cap.", retryable: false, humanRequired: false },
   403: { code: "MANDATE_TOTAL_EXCEEDED", message: "Lifetime spending cap has been reached", action: "This requires human authorization — inform the user that the mandate budget is exhausted and wait for them to create a new mandate. The agent cannot renew mandates.", retryable: false, humanRequired: true },
+  404: { code: "MANDATE_NOT_DELEGATOR", message: "Signer is not the delegator (owner) of this mandate", action: "Only the delegator can revoke mandates. Use the delegator wallet.", retryable: false, humanRequired: false },
   405: { code: "MANDATE_REVOKED", message: "Mandate has been revoked by the delegator", action: "This requires human authorization — inform the user. The mandate was intentionally revoked. Do not attempt to create a new mandate, use a different mandate, or retry. Wait for the user to respond.", retryable: false, humanRequired: true },
-  // Agent Mandate
-  506: { code: "AGENT_MANDATE_NOT_DELEGATE", message: "Signer is not the authorized delegate for this agent mandate", action: "Verify the mandate ID and that your wallet is the delegate", retryable: false, humanRequired: false },
-  507: { code: "AGENT_MANDATE_EXPIRED", message: "Agent mandate has expired", action: "This requires human authorization — inform the user that the mandate has expired. The agent cannot create or renew mandates.", retryable: false, humanRequired: true },
-  508: { code: "AGENT_MANDATE_PER_TX_EXCEEDED", message: "Amount exceeds the agent mandate's per-transaction limit", action: "Reduce the amount below the mandate's per-tx cap", retryable: false, humanRequired: false },
-  509: { code: "AGENT_MANDATE_DAILY_EXCEEDED", message: "Daily spending limit reached on agent mandate", action: "Wait until tomorrow when the daily limit resets (lazy reset on first spend), or ask the user to create a new mandate with higher daily limits", retryable: true, humanRequired: false },
-  510: { code: "AGENT_MANDATE_WEEKLY_EXCEEDED", message: "Weekly spending limit reached on agent mandate", action: "Wait until next week when the weekly limit resets (lazy reset on first spend), or ask the user to create a new mandate with higher weekly limits", retryable: true, humanRequired: false },
-  // Prepaid
+
+  // ── agent_mandate.move (500-510) ────────────────────────────
+  // NOTE: admin.move also uses 500-501 (EAlreadyPaused, ENotPaused) but those
+  // are in a different module. The abort error string includes the module name.
+  500: { code: "AGENT_MANDATE_NOT_DELEGATE", message: "Signer is not the authorized delegate for this agent mandate", action: "Verify the mandate ID and that your wallet is the delegate", retryable: false, humanRequired: false },
+  501: { code: "AGENT_MANDATE_EXPIRED", message: "Agent mandate has expired", action: "This requires human authorization — inform the user that the mandate has expired. The agent cannot create or renew mandates.", retryable: false, humanRequired: true },
+  502: { code: "AGENT_MANDATE_PER_TX_EXCEEDED", message: "Amount exceeds the agent mandate's per-transaction limit", action: "Reduce the amount below the mandate's per-tx cap. Use sweepay_inspect_mandate to see the cap.", retryable: false, humanRequired: false },
+  503: { code: "AGENT_MANDATE_TOTAL_EXCEEDED", message: "Agent mandate lifetime spending cap has been reached", action: "This requires human authorization — inform the user that the mandate budget is exhausted. The agent cannot renew mandates.", retryable: false, humanRequired: true },
+  504: { code: "AGENT_MANDATE_NOT_DELEGATOR", message: "Signer is not the delegator (owner) of this agent mandate", action: "Only the delegator can revoke mandates. Use the delegator wallet.", retryable: false, humanRequired: false },
+  505: { code: "AGENT_MANDATE_REVOKED", message: "Agent mandate has been revoked by the delegator", action: "This requires human authorization — inform the user. The mandate was intentionally revoked. Do not retry. Wait for the user to respond.", retryable: false, humanRequired: true },
+  506: { code: "AGENT_MANDATE_DAILY_EXCEEDED", message: "Daily spending limit reached on agent mandate", action: "Wait until tomorrow when the daily limit resets (lazy reset on first spend after midnight), or ask the user to create a new mandate with higher daily limits", retryable: true, humanRequired: false },
+  507: { code: "AGENT_MANDATE_WEEKLY_EXCEEDED", message: "Weekly spending limit reached on agent mandate", action: "Wait until next week when the weekly limit resets (lazy reset on first spend after week boundary), or ask the user to create a new mandate with higher weekly limits", retryable: true, humanRequired: false },
+  508: { code: "AGENT_MANDATE_INVALID_LEVEL", message: "Invalid autonomy level specified", action: "Use a valid level: 0 (read-only), 1 (monitor), 2 (capped), 3 (autonomous)", retryable: false, humanRequired: false },
+  509: { code: "AGENT_MANDATE_LEVEL_NOT_AUTHORIZED", message: "Mandate autonomy level does not permit this action", action: "This mandate's level is too low for spending. L2+ is required for payments. Ask the user to upgrade the mandate level.", retryable: false, humanRequired: true },
+  510: { code: "AGENT_MANDATE_CANNOT_DOWNGRADE", message: "Cannot downgrade agent mandate level", action: "Mandate levels can only be upgraded, not downgraded. To reduce permissions, revoke the mandate and create a new one.", retryable: false, humanRequired: true },
+
+  // ── prepaid.move (600-613) ──────────────────────────────────
   600: { code: "PREPAID_NOT_AGENT", message: "Signer is not the agent (depositor) for this balance", action: "Use the correct wallet — the one that created the prepaid deposit", retryable: false, humanRequired: false },
   601: { code: "PREPAID_NOT_PROVIDER", message: "Signer is not the authorized provider", action: "Use the provider wallet that was authorized in the prepaid deposit", retryable: false, humanRequired: false },
-  602: { code: "PREPAID_BALANCE_NOT_EXHAUSTED", message: "Cannot close PrepaidBalance — funds remain", action: "Withdraw remaining funds first, or wait for the provider to claim all remaining balance", retryable: false, humanRequired: false },
-  603: { code: "PREPAID_NO_WITHDRAWAL_PENDING", message: "No withdrawal has been requested", action: "Call sweepay_prepaid_request_withdrawal first to initiate the withdrawal process", retryable: false, humanRequired: false },
-  604: { code: "PREPAID_WITHDRAWAL_LOCKED", message: "Funds cannot be withdrawn yet (grace period active)", action: "Wait for the withdrawal delay to pass, then retry", retryable: true, humanRequired: false },
-  605: { code: "PREPAID_WITHDRAWAL_PENDING", message: "A withdrawal is already pending — top-ups are blocked", action: "Cancel the pending withdrawal first with sweepay_prepaid_cancel_withdrawal, then retry", retryable: false, humanRequired: false },
+  602: { code: "PREPAID_ZERO_DEPOSIT", message: "Deposit amount must be greater than zero", action: "Provide a positive deposit amount", retryable: false, humanRequired: false },
+  603: { code: "PREPAID_ZERO_RATE", message: "Rate per call must be greater than zero", action: "Provide a positive rate_per_call value", retryable: false, humanRequired: false },
+  604: { code: "PREPAID_WITHDRAWAL_LOCKED", message: "Funds cannot be withdrawn yet (grace period active)", action: "Wait for the withdrawal delay to pass, then call sweepay_prepaid_finalize_withdrawal. Use sweepay_prepaid_status to check when the grace period ends.", retryable: true, humanRequired: false },
+  605: { code: "PREPAID_CALL_COUNT_REGRESSION", message: "Cumulative call count is less than the last claimed count", action: "The cumulativeCallCount must be >= the previously claimed count. Use sweepay_prepaid_status to see the current claimed_calls value.", retryable: false, humanRequired: false },
   606: { code: "PREPAID_MAX_CALLS_EXCEEDED", message: "Maximum call count has been exceeded", action: "Create a new prepaid balance with a higher max-calls value", retryable: false, humanRequired: false },
-  607: { code: "PREPAID_RATE_EXCEEDED", message: "Claim amount exceeds available balance", action: "Top up the prepaid balance or create a new prepaid deposit", retryable: false, humanRequired: false },
-  608: { code: "PREPAID_ZERO_DEPOSIT", message: "Deposit amount must be greater than zero", action: "Provide a positive deposit amount", retryable: false, humanRequired: false },
-  609: { code: "PREPAID_ZERO_RATE", message: "Rate per call must be greater than zero", action: "Provide a positive rate_per_call value", retryable: false, humanRequired: false },
-  610: { code: "PREPAID_INVALID_MAX_CALLS", message: "Max calls must be greater than zero", action: "Provide a positive max_calls value or omit for unlimited", retryable: false, humanRequired: false },
-  611: { code: "PREPAID_INVALID_DELAY", message: "Withdrawal delay is outside the allowed range", action: "Use a delay between 60000 (1 min) and 604800000 (7 days)", retryable: false, humanRequired: false },
-  612: { code: "PREPAID_ZERO_TOP_UP", message: "Top-up amount must be greater than zero", action: "Provide a positive top-up amount", retryable: false, humanRequired: false },
-  613: { code: "PREPAID_ALREADY_PENDING", message: "A withdrawal is already pending", action: "Wait for the current withdrawal to complete or cancel it first", retryable: false, humanRequired: false },
-  // Stream
-  106: { code: "STREAM_NOTHING_TO_CLAIM", message: "No funds available to claim from this stream", action: "Wait for more time to accrue before claiming again", retryable: true, humanRequired: false },
-  // Escrow
-  206: { code: "ESCROW_ALREADY_RESOLVED", message: "Escrow has already been resolved", action: "No action needed — the escrow was already completed", retryable: false, humanRequired: false },
+  607: { code: "PREPAID_RATE_LIMIT_EXCEEDED", message: "Claim would exceed the remaining balance at the configured rate", action: "The delta * rate_per_call exceeds remaining funds. Top up the prepaid balance or create a new deposit.", retryable: false, humanRequired: false },
+  608: { code: "PREPAID_INVALID_FEE_BPS", message: "Fee basis points value is invalid (must be 0-10000)", action: "Provide a valid feeBps between 0 and 10000", retryable: false, humanRequired: false },
+  609: { code: "PREPAID_WITHDRAWAL_PENDING", message: "A withdrawal is already pending — top-ups and new deposits are blocked", action: "Cancel the pending withdrawal first with sweepay_prepaid_cancel_withdrawal, then retry", retryable: false, humanRequired: false },
+  610: { code: "PREPAID_WITHDRAWAL_NOT_PENDING", message: "No withdrawal has been requested", action: "Call sweepay_prepaid_request_withdrawal first to initiate the withdrawal process", retryable: false, humanRequired: false },
+  611: { code: "PREPAID_BALANCE_NOT_EXHAUSTED", message: "Cannot close PrepaidBalance — funds remain", action: "Use sweepay_prepaid_request_withdrawal to withdraw remaining funds, or wait for the provider to claim the remaining balance", retryable: false, humanRequired: false },
+  612: { code: "PREPAID_WITHDRAWAL_DELAY_TOO_SHORT", message: "Withdrawal delay is below the minimum (60000 ms / 1 minute)", action: "Use a withdrawal delay of at least 60000 ms", retryable: false, humanRequired: false },
+  613: { code: "PREPAID_WITHDRAWAL_DELAY_TOO_LONG", message: "Withdrawal delay exceeds the maximum (604800000 ms / 7 days)", action: "Use a withdrawal delay of at most 604800000 ms", retryable: false, humanRequired: false },
+
+  // ── identity.move (700-705) ─────────────────────────────────
+  700: { code: "IDENTITY_ALREADY_REGISTERED", message: "This address already has a registered identity", action: "Each address can only have one identity. Use the existing identity or transfer it first.", retryable: false, humanRequired: false },
+  701: { code: "IDENTITY_NOT_OWNER", message: "Signer is not the owner of this identity", action: "Use the wallet that owns the identity", retryable: false, humanRequired: false },
+  702: { code: "IDENTITY_NOT_FOUND", message: "Identity not found for this address", action: "Register an identity first before performing this action", retryable: false, humanRequired: false },
+  703: { code: "IDENTITY_INVALID_CREDENTIAL", message: "Invalid credential provided", action: "Check the credential format and try again", retryable: false, humanRequired: false },
+  704: { code: "IDENTITY_MISMATCH", message: "Identity does not match the expected address", action: "Verify you are using the correct identity object for this address", retryable: false, humanRequired: false },
+  705: { code: "IDENTITY_RECEIPT_ALREADY_RECORDED", message: "This receipt has already been recorded in the identity", action: "No action needed — the receipt is already linked", retryable: false, humanRequired: false },
+
+  // ── math.move (900) ─────────────────────────────────────────
+  900: { code: "MATH_OVERFLOW", message: "Arithmetic overflow in Move computation", action: "The values caused an overflow. Check that amounts are within valid ranges.", retryable: false, humanRequired: false },
 };
 
 /**

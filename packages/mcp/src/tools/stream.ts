@@ -2,8 +2,8 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { buildCreateStreamTx, buildCreateStreamWithTimeoutTx, buildCloseTx, buildRecipientCloseTx } from "@sweepay/sui/ptb";
 import type { SweepayContext } from "../context.js";
-import { requireSigner } from "../context.js";
-import { resolveCoinType, formatBalance, parseAmount, assertTxSuccess, ZERO_ADDRESS, suiAddress, optionalSuiAddress } from "../utils/format.js";
+import { requireSigner, checkSpendingLimit, recordSpend } from "../context.js";
+import { resolveCoinType, formatBalance, parseAmount, assertTxSuccess, ZERO_ADDRESS, suiAddress, suiObjectId, optionalSuiAddress } from "../utils/format.js";
 
 export function registerStreamTools(server: McpServer, ctx: SweepayContext) {
   server.registerTool(
@@ -42,6 +42,7 @@ export function registerStreamTools(server: McpServer, ctx: SweepayContext) {
       const signer = requireSigner(ctx);
       const resolvedType = resolveCoinType(coinType);
       const deposit = parseAmount(depositAmount, "depositAmount");
+      checkSpendingLimit(ctx, deposit);
       const rate = parseAmount(ratePerSecond, "ratePerSecond");
 
       const tx = buildCreateStreamTx(ctx.config, {
@@ -61,6 +62,7 @@ export function registerStreamTools(server: McpServer, ctx: SweepayContext) {
         options: { showEffects: true, showObjectChanges: true },
       });
       assertTxSuccess(result);
+      recordSpend(ctx, deposit);
 
       const meterObj = result.objectChanges?.find(
         (c) => c.type === "created" && c.objectType?.includes("StreamingMeter"),
@@ -116,6 +118,7 @@ export function registerStreamTools(server: McpServer, ctx: SweepayContext) {
       const signer = requireSigner(ctx);
       const resolvedType = resolveCoinType(coinType);
       const deposit = parseAmount(depositAmount, "depositAmount");
+      checkSpendingLimit(ctx, deposit);
       const rate = parseAmount(ratePerSecond, "ratePerSecond");
       const timeout = parseAmount(recipientCloseTimeoutMs, "recipientCloseTimeoutMs");
 
@@ -137,6 +140,7 @@ export function registerStreamTools(server: McpServer, ctx: SweepayContext) {
         options: { showEffects: true, showObjectChanges: true },
       });
       assertTxSuccess(result);
+      recordSpend(ctx, deposit);
 
       const meterObj = result.objectChanges?.find(
         (c) => c.type === "created" && c.objectType?.includes("StreamingMeter"),
@@ -165,7 +169,7 @@ export function registerStreamTools(server: McpServer, ctx: SweepayContext) {
         "and the remaining deposit is refunded to the payer. The meter object is consumed. " +
         "Requires a configured wallet.",
       inputSchema: {
-        meterId: z.string().describe("StreamingMeter object ID (0x...)"),
+        meterId: suiObjectId("StreamingMeter"),
         coinType: z.string().optional().describe('Token type of the stream. Defaults to "SUI".'),
       },
     },
@@ -208,7 +212,7 @@ export function registerStreamTools(server: McpServer, ctx: SweepayContext) {
         "any remaining balance is refunded to the payer. " +
         "Requires a configured wallet (must be the stream recipient).",
       inputSchema: {
-        meterId: z.string().describe("StreamingMeter object ID (0x...)"),
+        meterId: suiObjectId("StreamingMeter"),
         coinType: z.string().optional().describe('Token type of the stream. Defaults to "SUI".'),
       },
     },

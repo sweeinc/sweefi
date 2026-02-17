@@ -7,8 +7,8 @@ import {
   buildDisputeEscrowTx,
 } from "@sweepay/sui/ptb";
 import type { SweepayContext } from "../context.js";
-import { requireSigner } from "../context.js";
-import { resolveCoinType, formatBalance, parseAmount, assertTxSuccess, ZERO_ADDRESS, suiAddress, optionalSuiAddress } from "../utils/format.js";
+import { requireSigner, checkSpendingLimit, recordSpend } from "../context.js";
+import { resolveCoinType, formatBalance, parseAmount, assertTxSuccess, ZERO_ADDRESS, suiAddress, suiObjectId, optionalSuiAddress } from "../utils/format.js";
 
 export function registerEscrowTools(server: McpServer, ctx: SweepayContext) {
   // ── Create Escrow ──────────────────────────────────────────
@@ -49,13 +49,15 @@ export function registerEscrowTools(server: McpServer, ctx: SweepayContext) {
     async ({ seller, arbiter, amount, deadlineMs, coinType, memo, feeBps, feeRecipient }) => {
       const signer = requireSigner(ctx);
       const resolvedType = resolveCoinType(coinType);
+      const depositAmount = parseAmount(amount);
+      checkSpendingLimit(ctx, depositAmount);
 
       const tx = buildCreateEscrowTx(ctx.config, {
         coinType: resolvedType,
         sender: signer.toSuiAddress(),
         seller,
         arbiter,
-        depositAmount: parseAmount(amount),
+        depositAmount,
         deadlineMs: parseAmount(deadlineMs, "deadlineMs"),
         feeBps: feeBps ?? 0,
         feeRecipient: feeRecipient ?? ZERO_ADDRESS,
@@ -68,6 +70,7 @@ export function registerEscrowTools(server: McpServer, ctx: SweepayContext) {
         options: { showEffects: true, showObjectChanges: true },
       });
       assertTxSuccess(result);
+      recordSpend(ctx, depositAmount);
 
       const escrowObj = result.objectChanges?.find(
         (c) => c.type === "created" && c.objectType?.includes("Escrow"),
@@ -108,7 +111,7 @@ export function registerEscrowTools(server: McpServer, ctx: SweepayContext) {
         "The Escrow object is consumed (deleted). " +
         "Requires a configured wallet.",
       inputSchema: {
-        escrowId: z.string().describe("Escrow object ID (0x...)"),
+        escrowId: suiObjectId("Escrow"),
         coinType: z.string().optional().describe('Token type of the escrow. Defaults to "SUI".'),
       },
     },
@@ -164,7 +167,7 @@ export function registerEscrowTools(server: McpServer, ctx: SweepayContext) {
         "No fee is charged on refunds. The Escrow object is consumed. " +
         "Requires a configured wallet.",
       inputSchema: {
-        escrowId: z.string().describe("Escrow object ID (0x...)"),
+        escrowId: suiObjectId("Escrow"),
         coinType: z.string().optional().describe('Token type of the escrow. Defaults to "SUI".'),
       },
     },
@@ -213,7 +216,7 @@ export function registerEscrowTools(server: McpServer, ctx: SweepayContext) {
         "The Escrow object is mutated, not consumed. " +
         "Requires a configured wallet.",
       inputSchema: {
-        escrowId: z.string().describe("Escrow object ID (0x...)"),
+        escrowId: suiObjectId("Escrow"),
         coinType: z.string().optional().describe('Token type of the escrow. Defaults to "SUI".'),
       },
     },

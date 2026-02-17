@@ -2,8 +2,8 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { buildCreateInvoiceTx, buildPayInvoiceTx } from "@sweepay/sui/ptb";
 import type { SweepayContext } from "../context.js";
-import { requireSigner } from "../context.js";
-import { resolveCoinType, formatBalance, parseAmount, assertTxSuccess, ZERO_ADDRESS, suiAddress, optionalSuiAddress } from "../utils/format.js";
+import { requireSigner, checkSpendingLimit, recordSpend } from "../context.js";
+import { resolveCoinType, formatBalance, parseAmount, assertTxSuccess, ZERO_ADDRESS, suiAddress, suiObjectId, optionalSuiAddress } from "../utils/format.js";
 
 export function registerInvoiceTools(server: McpServer, ctx: SweepayContext) {
   server.registerTool(
@@ -72,7 +72,7 @@ export function registerInvoiceTools(server: McpServer, ctx: SweepayContext) {
         "(prevents replay). A PaymentReceipt is minted and sent to the payer. " +
         "Requires a configured wallet.",
       inputSchema: {
-        invoiceId: z.string().describe("Invoice object ID (0x...)"),
+        invoiceId: suiObjectId("Invoice"),
         amount: z.string().describe("Amount to send (must be >= invoice expected amount)"),
         coinType: z
           .string()
@@ -83,12 +83,14 @@ export function registerInvoiceTools(server: McpServer, ctx: SweepayContext) {
     async ({ invoiceId, amount, coinType }) => {
       const signer = requireSigner(ctx);
       const resolvedType = resolveCoinType(coinType);
+      const amountBigint = parseAmount(amount);
+      checkSpendingLimit(ctx, amountBigint);
 
       const tx = buildPayInvoiceTx(ctx.config, {
         coinType: resolvedType,
         sender: signer.toSuiAddress(),
         invoiceId,
-        amount: parseAmount(amount),
+        amount: amountBigint,
       });
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
@@ -97,6 +99,7 @@ export function registerInvoiceTools(server: McpServer, ctx: SweepayContext) {
         options: { showEffects: true, showObjectChanges: true },
       });
       assertTxSuccess(result);
+      recordSpend(ctx, amountBigint);
 
       const receiptObj = result.objectChanges?.find(
         (c) => c.type === "created" && c.objectType?.includes("PaymentReceipt"),
