@@ -1,12 +1,15 @@
 import type { Context, Next } from "hono";
-import { timingSafeEqual } from "node:crypto";
+import { timingSafeEqual, createHash } from "node:crypto";
 
 /**
  * Constant-time string comparison to prevent timing attacks.
+ * Uses SHA-256 hashing so both sides are always the same length,
+ * preventing length-oracle side-channel leaks.
  */
 function constantTimeCompare(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  const ha = createHash("sha256").update(a).digest();
+  const hb = createHash("sha256").update(b).digest();
+  return timingSafeEqual(ha, hb);
 }
 
 /**
@@ -22,7 +25,12 @@ export function apiKeyAuth(validKeys: Set<string>) {
     }
 
     const key = authHeader.slice(7);
-    const isValid = [...validKeys].some((k) => constantTimeCompare(key, k));
+    // Always iterate ALL keys to prevent timing side-channel that leaks
+    // key position or set size. Do NOT use .some() — it short-circuits.
+    let isValid = false;
+    for (const k of validKeys) {
+      if (constantTimeCompare(key, k)) isValid = true;
+    }
     if (!isValid) {
       return c.json({ error: "Invalid API key" }, 403);
     }

@@ -6,7 +6,7 @@ import { apiKeyAuth } from "./auth/api-key";
 import { RateLimiter } from "./middleware/rate-limiter";
 import { requestLogger } from "./middleware/logger";
 import { UsageTracker } from "./metering/usage-tracker";
-import { registerMeteringHooks, meteringContext } from "./metering/hooks";
+import { meteringContext } from "./metering/hooks";
 import type { Config } from "./config";
 
 /**
@@ -16,9 +16,6 @@ import type { Config } from "./config";
 export function createApp(config: Config) {
   const facilitator = createFacilitator(config);
   const usageTracker = new UsageTracker();
-
-  // Wire metering hooks into facilitator lifecycle
-  registerMeteringHooks(facilitator, usageTracker, config.FEE_BPS);
 
   const app = new Hono();
 
@@ -38,15 +35,15 @@ export function createApp(config: Config) {
   app.use("/supported", apiKeyAuth(validKeys));
   app.use("/s402/*", apiKeyAuth(validKeys));
 
-  // Metering context propagates API key into facilitator hooks via AsyncLocalStorage.
-  // Must be AFTER auth (needs apiKey) and BEFORE routes (settle triggers hooks).
+  // Metering context propagates API key for inline metering in route handlers.
+  // Must be AFTER auth (needs apiKey) and BEFORE routes.
   app.use("/settle", meteringContext());
   app.use("/s402/process", meteringContext());
 
   app.use("*", rateLimiter.middleware());
 
-  // Mount facilitator routes (verify, settle, supported)
-  const routes = createRoutes(facilitator);
+  // Mount facilitator routes (verify, settle, supported, s402/process)
+  const routes = createRoutes(facilitator, usageTracker, config.FEE_BPS);
   app.route("/", routes);
 
   return { app, usageTracker };

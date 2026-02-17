@@ -2,107 +2,54 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { UsageTracker } from "../src/metering/usage-tracker";
 import {
-  registerMeteringHooks,
+  recordSettlement,
   meteringContext,
   requestApiKey,
 } from "../src/metering/hooks";
+import type { s402SettleResponse, s402PaymentRequirements } from "s402";
 
-/**
- * Creates a mock facilitator that captures the onAfterSettle callback
- * so tests can invoke it manually with controlled context.
- */
-function createHookCapture() {
-  let captured: ((ctx: any) => Promise<void>) | null = null;
-  const mockFacilitator = {
-    onAfterSettle: vi.fn((hook: (ctx: any) => Promise<void>) => {
-      captured = hook;
-      return mockFacilitator; // chainable
-    }),
-  };
+/** Build realistic s402 requirements for testing. */
+function makeRequirements(overrides?: Partial<s402PaymentRequirements>): s402PaymentRequirements {
   return {
-    facilitator: mockFacilitator as any,
-    fire: (ctx: any) => {
-      if (!captured) throw new Error("No hook registered");
-      return captured(ctx);
-    },
+    s402Version: "1",
+    accepts: ["exact"],
+    network: overrides?.network ?? "sui:testnet",
+    asset: "0x2::sui::SUI",
+    amount: overrides?.amount ?? "1000000",
+    payTo: "0x" + "b".repeat(64),
+    ...overrides,
   };
 }
 
-/** Build a realistic FacilitatorSettleResultContext for testing. */
-function makeSettleContext(overrides?: {
-  amount?: string;
-  network?: string;
-  transaction?: string;
-  payer?: string;
-}) {
+/** Build a realistic s402SettleResponse for testing. */
+function makeSettleResult(overrides?: Partial<s402SettleResponse>): s402SettleResponse {
   return {
-    paymentPayload: {
-      x402Version: 2,
-      resource: { url: "https://api.example.com/data" },
-      accepted: {},
-      payload: {},
-    },
-    requirements: {
-      scheme: "exact",
-      network: overrides?.network ?? "sui:testnet",
-      asset: "0x2::sui::SUI",
-      amount: overrides?.amount ?? "1000000",
-      payTo: "0x" + "b".repeat(64),
-      maxTimeoutSeconds: 300,
-      extra: {},
-    },
-    result: {
-      success: true,
-      payer: overrides?.payer ?? "0x" + "a".repeat(64),
-      transaction: overrides?.transaction ?? "ABCDtxdigest123",
-      network: overrides?.network ?? "sui:testnet",
-    },
+    success: true,
+    txDigest: overrides?.txDigest ?? "ABCDtxdigest123",
+    ...overrides,
   };
 }
 
-describe("registerMeteringHooks", () => {
+describe("recordSettlement", () => {
   let tracker: UsageTracker;
 
   beforeEach(() => {
     tracker = new UsageTracker();
   });
 
-  it("registers an onAfterSettle hook on the facilitator", () => {
-    const { facilitator } = createHookCapture();
-    registerMeteringHooks(facilitator, tracker, 50);
-    expect(facilitator.onAfterSettle).toHaveBeenCalledOnce();
-  });
-
-  it("records settlement when API key is in AsyncLocalStorage", async () => {
-    const { facilitator, fire } = createHookCapture();
-    registerMeteringHooks(facilitator, tracker, 50);
-
-    await requestApiKey.run("test-key-123", () => fire(makeSettleContext()));
-
+  it("records settlement in usage tracker", () => {
+    recordSettlement(tracker, "test-key-123", makeRequirements(), makeSettleResult(), 50);
     expect(tracker.getTotalSettled("test-key-123")).toBe(1000000n);
   });
 
-  it("skips recording when no API key in context", async () => {
-    const { facilitator, fire } = createHookCapture();
-    registerMeteringHooks(facilitator, tracker, 50);
-
-    // Fire hook outside AsyncLocalStorage — no API key available
-    await fire(makeSettleContext());
-
-    expect(tracker.getAllRecords().size).toBe(0);
-  });
-
-  it("records correct settlement details (amount, network, txDigest)", async () => {
-    const { facilitator, fire } = createHookCapture();
-    registerMeteringHooks(facilitator, tracker, 50);
-
-    const ctx = makeSettleContext({
-      amount: "5000000",
-      network: "sui:mainnet",
-      transaction: "mainnet-tx-abc",
-    });
-
-    await requestApiKey.run("prod-key", () => fire(ctx));
+  it("records correct settlement details (amount, network, txDigest)", () => {
+    recordSettlement(
+      tracker,
+      "prod-key",
+      makeRequirements({ amount: "5000000", network: "sui:mainnet" }),
+      makeSettleResult({ txDigest: "mainnet-tx-abc" }),
+      50,
+    );
 
     const records = tracker.getAllRecords().get("prod-key");
     expect(records).toHaveLength(1);
@@ -113,13 +60,15 @@ describe("registerMeteringHooks", () => {
     });
   });
 
-  it("logs structured settlement event with calculated fee", async () => {
-    const { facilitator, fire } = createHookCapture();
+  it("logs structured settlement event with calculated fee", () => {
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    registerMeteringHooks(facilitator, tracker, 50);
 
-    await requestApiKey.run("log-key-abc", () =>
-      fire(makeSettleContext({ amount: "1000000" })),
+    recordSettlement(
+      tracker,
+      "log-key-abcdefgh",
+      makeRequirements({ amount: "1000000" }),
+      makeSettleResult(),
+      50,
     );
 
     expect(consoleSpy).toHaveBeenCalledOnce();
@@ -135,36 +84,23 @@ describe("registerMeteringHooks", () => {
     consoleSpy.mockRestore();
   });
 
-  it("handles multiple settlements per API key", async () => {
-    const { facilitator, fire } = createHookCapture();
-    registerMeteringHooks(facilitator, tracker, 100);
-
-    await requestApiKey.run("multi-key", async () => {
-      await fire(makeSettleContext({ amount: "1000000", transaction: "tx-1" }));
-      await fire(makeSettleContext({ amount: "2000000", transaction: "tx-2" }));
-    });
+  it("handles multiple settlements per API key", () => {
+    recordSettlement(tracker, "multi-key", makeRequirements({ amount: "1000000" }), makeSettleResult({ txDigest: "tx-1" }), 100);
+    recordSettlement(tracker, "multi-key", makeRequirements({ amount: "2000000" }), makeSettleResult({ txDigest: "tx-2" }), 100);
 
     expect(tracker.getTotalSettled("multi-key")).toBe(3000000n);
     expect(tracker.getAllRecords().get("multi-key")).toHaveLength(2);
   });
 
-  it("isolates settlements across different API keys", async () => {
-    const { facilitator, fire } = createHookCapture();
-    registerMeteringHooks(facilitator, tracker, 50);
-
-    await requestApiKey.run("key-a", () =>
-      fire(makeSettleContext({ amount: "1000000" })),
-    );
-    await requestApiKey.run("key-b", () =>
-      fire(makeSettleContext({ amount: "3000000" })),
-    );
+  it("isolates settlements across different API keys", () => {
+    recordSettlement(tracker, "key-a", makeRequirements({ amount: "1000000" }), makeSettleResult(), 50);
+    recordSettlement(tracker, "key-b", makeRequirements({ amount: "3000000" }), makeSettleResult(), 50);
 
     expect(tracker.getTotalSettled("key-a")).toBe(1000000n);
     expect(tracker.getTotalSettled("key-b")).toBe(3000000n);
   });
 
-  it("does not crash if tracker.record throws", async () => {
-    const { facilitator, fire } = createHookCapture();
+  it("does not crash if tracker.record throws", () => {
     const brokenTracker = {
       record: () => { throw new Error("storage full"); },
       getTotalSettled: () => 0n,
@@ -172,10 +108,9 @@ describe("registerMeteringHooks", () => {
     } as unknown as UsageTracker;
 
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    registerMeteringHooks(facilitator, brokenTracker, 50);
 
-    // Should not throw — hook catches and logs the error
-    await requestApiKey.run("crash-key", () => fire(makeSettleContext()));
+    // Should not throw — catches and logs the error
+    recordSettlement(brokenTracker, "crash-key", makeRequirements(), makeSettleResult(), 50);
 
     expect(errorSpy).toHaveBeenCalledOnce();
     expect(errorSpy.mock.calls[0][0]).toContain("[metering]");
