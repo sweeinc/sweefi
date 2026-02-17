@@ -5,7 +5,8 @@
  * Shows the complete flow: API → 402 → auto-pay → data.
  *
  * Usage:
- *   SUI_PRIVATE_KEY=<base64 Ed25519 key> pnpm demo
+ *   cp .env.example .env   # add your testnet private key
+ *   pnpm demo              # .env loaded automatically
  *
  * Requirements:
  *   - Funded Sui testnet wallet (need ~0.01 SUI for gas + payments)

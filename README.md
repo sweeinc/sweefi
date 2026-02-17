@@ -120,18 +120,17 @@ AI Agent (Claude, GPT, Cursor, etc.)
 
 | Package | Description | Tests |
 |---------|-------------|-------|
-| [`s402`](packages/s402-core) | Chain-agnostic HTTP 402 protocol spec (zero deps) | 112 |
-| [`@sweepay/sui`](packages/sui) | Sui PTB builders for all contract operations | 116 |
+| [`s402`](packages/s402-core) | Chain-agnostic HTTP 402 protocol spec (zero deps) | 207 |
 | [`@sweepay/core`](packages/core) | Shared types, network configs, client factories | 54 |
-| [`@sweepay/sui`](packages/sui) | 18 PTB builders for all contract operations | 123 |
-| [`@sweepay/facilitator`](packages/facilitator) | Self-hostable payment verification service | 41 |
-| [`@sweepay/mcp`](packages/mcp) | MCP server with 16 AI agent tools | 36 |
-| [`@sweepay/sdk`](packages/sdk) | Client + server SDK (3-line integration) | 39 |
+| [`@sweepay/sui`](packages/sui) | 18 PTB builders for all contract operations | 114 |
+| [`@sweepay/sdk`](packages/sdk) | Client + server SDK (3-line integration) | 6 |
+| [`@sweepay/facilitator`](packages/facilitator) | Self-hostable payment verification service | 37 |
+| [`@sweepay/mcp`](packages/mcp) | MCP server with 16 AI agent tools | 40 |
+| [`@sweepay/cli`](packages/cli) | CLI tool — wallet, pay, prepaid, mandates | 42 |
 | [`@sweepay/widget`](packages/widget) | Checkout UI — Vue + React adapters | 6 |
-| [`s402`](../s402) | Protocol types, HTTP encoding, compat layer | 118 |
 | [`sweepay-contracts`](contracts) | 8 Move modules on Sui testnet (v7) | 226 |
 
-**Total: 640+ tests (417 TypeScript + 226 Move)**
+**Total: 732 tests (506 TypeScript + 226 Move)**
 
 ## Try It Now
 
@@ -299,7 +298,7 @@ No admin keys control user funds.
 
 ## Smart Contracts
 
-Deployed on Sui testnet v6. 6 modules, 101 Move tests, AdminCap + ProtocolState for governance.
+Deployed on Sui testnet v7. 8 modules, 226 Move test annotations (158 positive + 68 negative-path), AdminCap + ProtocolState for governance.
 
 | Module | Purpose |
 |--------|---------|
@@ -307,10 +306,12 @@ Deployed on Sui testnet v6. 6 modules, 101 Move tests, AdminCap + ProtocolState 
 | `stream` | Streaming micropayments with budget caps |
 | `escrow` | Time-locked escrow with arbiter disputes |
 | `seal_policy` | SEAL integration for pay-to-decrypt |
-| `mandate` | AP2 agent spending authorization |
+| `mandate` | Basic AP2 spending delegation + revocation |
+| `agent_mandate` | L0-L3 progressive autonomy with lazy daily/weekly reset |
+| `prepaid` | Deposit-based agent budgets with rate-capped batch claims |
 | `admin` | AdminCap, ProtocolState, pause/unpause/burn |
 
-Package ID (testnet v6): `0xc80485e9182c607c41e16c2606abefa7ce9b7f78d809054e99486a20d62167d5`
+Package ID (testnet v7): `0xc80485e9182c607c41e16c2606abefa7ce9b7f78d809054e99486a20d62167d5`
 
 Token-gated SEAL (standalone): `0xbf9f9d63cbe53f21ac81af068e25e2c736fa2b0537c7e34d7d2862e330fe4fbc`
 

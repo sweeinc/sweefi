@@ -16,16 +16,26 @@ The agent never knows prices upfront — it discovers them from 402 responses.
 ## Quick Start
 
 ```bash
-# 1. Get a funded testnet wallet
-#    Export your private key (base64 Ed25519)
-#    Get testnet SUI: https://faucet.sui.io
-
-# 2. Install dependencies
+# 1. Install dependencies
 pnpm install
 
+# 2. Set up your wallet key
+#    Copy the example env file and add your testnet private key:
+cp .env.example .env
+
+#    Export from Sui CLI:
+sui keytool export --key-identity <alias> --json | jq -r '.exportedPrivateKey'
+
+#    Paste the base64 key into .env (SUI_PRIVATE_KEY=...)
+#    Get testnet SUI: https://faucet.sui.io
+
 # 3. Run the full demo
-SUI_PRIVATE_KEY=<your-base64-key> pnpm demo
+pnpm demo
 ```
+
+> **Security**: Never pass private keys on the command line — they end up in
+> shell history and `ps` output. The `.env` file is gitignored and loaded
+> automatically via Node's `--env-file` flag (Node 20.6+).
 
 ## Endpoints
 
