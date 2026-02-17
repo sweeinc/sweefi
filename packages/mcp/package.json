@@ -58,7 +58,7 @@
     "zod": "^3.22.0"
   },
   "peerDependencies": {
-    "@mysten/sui": "^1.20.0"
+    "@mysten/sui": ">=1.20.0 || ^2.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.13.4",

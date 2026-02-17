@@ -5,10 +5,10 @@
 ## Project Overview
 
 **SweePay** is open-source agentic payment infrastructure for Sui.
-- Monorepo with 6 TS packages + Move smart contracts
+- Monorepo with 8 TS packages + Move smart contracts
 - Applying for Sui DeFi Moonshots program ($500K grant)
 - Competing with BEEP (justbeep.it) — proprietary alternative
-- 396 total tests (312 TypeScript + 84 Move)
+- 732 total tests (506 TypeScript + 226 Move)
 
 ## Repository Structure
 
@@ -25,11 +25,13 @@ sweepay-project/
 │       ├── prepaid.move          # Deposit-based agent budgets, batch-claim
 │       └── admin.move            # Emergency pause, admin capabilities
 ├── packages/
-│   ├── core/                     # Shared types, client factories, s402 protocol, constants (54 tests)
-│   ├── sui/                      # 18 PTB builders for all contract ops (123 tests)
-│   ├── sdk/                      # Client + server SDK, 3-line integration (39 tests)
-│   ├── facilitator/              # Self-hostable payment verification (41 tests)
-│   ├── mcp/                      # MCP server, 16 AI agent tools (36 tests)
+│   ├── s402-core/                # s402 protocol — HTTP 402 wire format, zero deps (207 tests)
+│   ├── core/                     # Shared types, client factories, constants (54 tests)
+│   ├── sui/                      # 18 PTB builders for all contract ops (114 tests)
+│   ├── sdk/                      # Client + server SDK, 3-line integration (6 tests)
+│   ├── facilitator/              # Self-hostable payment verification (37 tests)
+│   ├── mcp/                      # MCP server, 30+5 AI agent tools (79 tests)
+│   ├── cli/                      # CLI tool — wallet, pay, prepaid, mandates (42 tests)
 │   └── widget/                   # Framework-agnostic checkout core + Vue adapter (6 tests)
 ├── GRANT-APPLICATION.md          # Sui DeFi Moonshots grant application
 ├── BATTLE-PLAN.md                # Competitive strategy vs BEEP
@@ -89,29 +91,59 @@ Package ID: `0xc80485e9182c607c41e16c2606abefa7ce9b7f78d809054e99486a20d62167d5`
 ## Architecture Decisions
 
 1. **Sign-first model**: Client signs PTB, facilitator verifies + broadcasts
-2. **s402 protocol**: Sui-native payment protocol (HTTP 402 based, x402 wire-format compatible)
+2. **s402 protocol**: Sui-native HTTP 402 payment protocol
 3. **Hono over Express**: Lighter, edge-compatible
 4. **tsdown bundler**: NOT tsup (tsup is EOL)
 5. **Composable PTBs**: `buildPayAndProveTx()` combines pay + receipt transfer atomically (see ADR-001 in packages/sui/)
-6. **MCP-native**: 16 tools registered on MCP server for AI agent discovery
+6. **MCP-native**: 30 tools (+ 5 opt-in) registered on MCP server for AI agent discovery
 7. **dApp Kit for wallets**: No vendor lock-in
 
 ## Key Dependencies
 
-- `@mysten/sui@^1.20.0` — Sui TypeScript SDK
-- `@modelcontextprotocol/sdk@^1.9.0` — MCP server SDK
-- `@x402/core@^2.3.0` — x402 protocol types
+- `@mysten/sui` — Sui TypeScript SDK (peerDep: `>=1.20.0 || ^2.0.0`)
+- `@modelcontextprotocol/sdk@^1.26.0` — MCP server SDK
+- `s402@^0.1.0` — s402 payment protocol core
 - `hono@^4.0.0` — Web framework (facilitator)
 - `zod@^3.22.0` — Runtime validation
 
-## MCP Server (16 Tools)
+## MCP Server (30 Default + 5 Opt-In Tools)
 
-The MCP package registers 16 tools: 4 read-only + 12 transaction.
+The MCP package registers 30 tools by default + 5 opt-in (admin + provider).
 
-Read-only: `check_balance`, `check_payment`, `get_receipt`, `supported_tokens`
-Transaction: `pay`, `pay_and_prove`, `create_invoice`, `pay_invoice`, `start_stream`, `stop_stream`, `recipient_close_stream`, `create_escrow`, `release_escrow`, `refund_escrow`, `dispute_escrow`
+**Payments** (4): `pay`, `pay_and_prove`, `create_invoice`, `pay_invoice`
+**Streaming** (4): `start_stream`, `start_stream_with_timeout`, `stop_stream`, `recipient_close_stream`
+**Escrow** (4): `create_escrow`, `release_escrow`, `refund_escrow`, `dispute_escrow`
+**Prepaid** (7): `prepaid_deposit`, `prepaid_top_up`, `prepaid_request_withdrawal`, `prepaid_finalize_withdrawal`, `prepaid_cancel_withdrawal`, `prepaid_agent_close`, `prepaid_status`
+**Mandates** (7): `create_mandate`, `create_agent_mandate`, `basic_mandated_pay`, `agent_mandated_pay`, `revoke_mandate`, `create_registry`, `inspect_mandate`
+**Read-Only** (4): `check_balance`, `check_payment`, `get_receipt`, `supported_tokens`
+**Opt-In Provider** (`MCP_ENABLE_PROVIDER_TOOLS=true`): `prepaid_claim`
+**Opt-In Admin** (`MCP_ENABLE_ADMIN_TOOLS=true`): `protocol_status`, `pause_protocol`, `unpause_protocol`, `burn_admin_cap`
 
 All tool names prefixed with `sweepay_`. Transaction tools require `SUI_PRIVATE_KEY` env var.
+
+## Packaging & Publishing Conventions
+
+**Publish order** (workspace deps must publish first):
+```
+@sweepay/core → @sweepay/sui → @sweepay/mcp + @sweepay/sdk + @sweepay/facilitator
+```
+
+**Build tool**: `tsdown` (NOT tsup — tsup is EOL). Config in each package's `tsdown.config.ts`.
+
+**Source maps**: INCLUDE in published packages. MCP servers and facilitators run as subprocesses — stack traces need readable paths. The size overhead is trivial (~164KB for MCP). The `files` array should be `["dist", "README.md", "LICENSE"]` which includes `.map` files.
+
+**CLI/library split pattern** (applies to `@sweepay/mcp`, `@sweepay/facilitator`):
+- `src/index.ts` — Pure re-exports only. No side effects. Imported as a library.
+- `src/cli.ts` — Shebang + `main()` + stdio transport. Used by `bin` in package.json.
+- ESM has no `require.main === module`. Calling `main()` at module level in `index.ts` would start a server on every `import`.
+
+**peerDependencies**: `@mysten/sui` is a peer dep (`>=1.20.0 || ^2.0.0`), not a direct dep. This avoids duplicate SDK instances when consumers also use the Sui SDK.
+
+**prepublishOnly gate**: Every package must have `"prepublishOnly": "pnpm run build && pnpm run typecheck && pnpm run test"`. This ensures nothing publishes broken.
+
+**Version constant**: `server.ts` has a `VERSION` constant that must match `package.json`. The prepublishOnly script catches drift at publish time (typecheck + test).
+
+**workspace:\* protocol**: `pnpm publish` automatically rewrites `workspace:*` to real versions. NEVER use `npm publish` — it would publish literal `workspace:*` strings.
 
 ## Common Pitfalls
 
