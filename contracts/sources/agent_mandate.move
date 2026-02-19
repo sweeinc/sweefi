@@ -1,4 +1,4 @@
-/// SweePay AgentMandate — tiered spending authorization with periodic caps
+/// SweeFi AgentMandate — tiered spending authorization with periodic caps
 ///
 /// Extends the basic Mandate concept with:
 ///   - Mandate levels (L0-L3): progressive autonomy from read-only to autonomous
@@ -10,13 +10,13 @@
 /// first spend after the period boundary. This is the same pattern as
 /// prepaid.move's withdrawal timing — check Clock, reset if past deadline.
 ///
-/// Uses the same RevocationRegistry from sweepay::mandate for revocation.
+/// Uses the same RevocationRegistry from sweefi::mandate for revocation.
 ///
 /// Error codes: 500-series (mandate=400, agent_mandate=500)
 #[allow(lint(self_transfer), unused_const)]
-module sweepay::agent_mandate {
+module sweefi::agent_mandate {
     use sui::clock::Clock;
-    use sweepay::mandate::{ Self as mandate, RevocationRegistry };
+    use sweefi::mandate::{ Self as mandate, RevocationRegistry };
 
     // ══════════════════════════════════════════════════════════════
     // Constants
@@ -331,6 +331,11 @@ module sweepay::agent_mandate {
         ctx: &TxContext,
     ) {
         assert!(ctx.sender() == mandate.delegator, ENotDelegator);
+        // F-06: Prevent setting a limit below what's already been spent in the current period.
+        // This would instantly freeze spending until the next period reset, surprising delegators.
+        // (0 = no limit, so bypass the check when the new limit means "unlimited")
+        assert!(new_daily_limit == 0 || new_daily_limit >= mandate.daily_spent, EDailyLimitExceeded);
+        assert!(new_weekly_limit == 0 || new_weekly_limit >= mandate.weekly_spent, EWeeklyLimitExceeded);
         mandate.max_per_tx = new_max_per_tx;
         mandate.daily_limit = new_daily_limit;
         mandate.weekly_limit = new_weekly_limit;

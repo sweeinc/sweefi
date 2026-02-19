@@ -1,4 +1,4 @@
-/// SweePay Streaming Micropayments — the Moonshot star
+/// SweeFi Streaming Micropayments — the Moonshot star
 ///
 /// "The first protocol where an agent pays $0.0003/second for inference,
 /// with on-chain budget caps, automatic settlement, and zero pre-funding."
@@ -14,7 +14,7 @@
 ///   - rate_per_second for human-readable rates, ms precision internally
 ///   - Overflow-safe: all rate * time calculations use u128 intermediate
 ///   - Fee splitting on claims (same model as payment.move)
-module sweepay::stream {
+module sweefi::stream {
     use sui::coin::{Self, Coin};
     use sui::balance::Balance;
     use sui::event;
@@ -22,8 +22,8 @@ module sweepay::stream {
     use sui::dynamic_field;
     use std::type_name;
     use std::ascii;
-    use sweepay::admin;
-    use sweepay::math;
+    use sweefi::admin;
+    use sweefi::math;
 
     // ══════════════════════════════════════════════════════════════
     // Error codes
@@ -172,6 +172,9 @@ module sweepay::stream {
         assert!(rate_per_second > 0, EZeroRate);
         assert!(fee_bps <= 10_000, EInvalidFeeBps);
         assert!(budget_cap > 0, EBudgetCapExceeded);
+        // H-5: Deposit must not exceed budget_cap — excess is unclaimable and
+        // only refundable via close(), making the stream appear overfunded.
+        assert!(deposit_value <= budget_cap, EBudgetCapExceeded);
 
         let now_ms = clock.timestamp_ms();
         let payer = ctx.sender();
@@ -228,6 +231,9 @@ module sweepay::stream {
         assert!(rate_per_second > 0, EZeroRate);
         assert!(fee_bps <= 10_000, EInvalidFeeBps);
         assert!(budget_cap > 0, EBudgetCapExceeded);
+        // H-5: Deposit must not exceed budget_cap — excess is unclaimable and
+        // only refundable via close(), making the stream appear overfunded.
+        assert!(deposit_value <= budget_cap, EBudgetCapExceeded);
         assert!(recipient_close_timeout_ms >= MIN_RECIPIENT_CLOSE_TIMEOUT_MS, ETimeoutTooShort);
         assert!(recipient_close_timeout_ms <= MAX_RECIPIENT_CLOSE_TIMEOUT_MS, ETimeoutTooShort);
 
@@ -425,7 +431,9 @@ module sweepay::stream {
         // shift the clock backward so the accrual window carries forward.
         if (meter.paused_at_ms > meter.last_claim_ms) {
             let pre_pause_elapsed = meter.paused_at_ms - meter.last_claim_ms;
-            meter.last_claim_ms = now_ms - pre_pause_elapsed;
+            // H-4: Saturation guard — cap at 0 if pre_pause_elapsed > now_ms
+            // (defensive against u64 underflow on pathological clock values)
+            meter.last_claim_ms = if (pre_pause_elapsed <= now_ms) { now_ms - pre_pause_elapsed } else { 0 };
         } else {
             // Already claimed while paused (paused_at_ms = 0), or no accrual
             meter.last_claim_ms = now_ms;
@@ -792,8 +800,8 @@ module sweepay::stream {
             (raw as u64)
         };
 
-        // Cap at budget remaining
-        let budget_remaining = budget_cap - total_claimed;
+        // Cap at budget remaining (F-11: guard against total_claimed > budget_cap invariant break)
+        let budget_remaining = if (budget_cap > total_claimed) { budget_cap - total_claimed } else { 0 };
         if (accrued > budget_remaining) {
             budget_remaining
         } else {

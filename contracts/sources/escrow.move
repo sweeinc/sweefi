@@ -1,4 +1,4 @@
-/// SweePay Escrow Contract — time-locked vault with arbiter dispute resolution
+/// SweeFi Escrow Contract — time-locked vault with arbiter dispute resolution
 ///
 /// Third and final contract. Enables trustless commerce via:
 ///   - Clock-based deadlines (ms precision via sui::clock::Clock)
@@ -23,15 +23,15 @@
 ///   - No fee on refund (buyer shouldn't pay for failed delivery)
 ///   - Error codes: 200-series (payment=0-series, stream=100-series)
 #[allow(lint(self_transfer), unused_const)]
-module sweepay::escrow {
+module sweefi::escrow {
     use sui::coin::{Self, Coin};
     use sui::balance::Balance;
     use sui::event;
     use sui::clock::Clock;
     use std::type_name;
     use std::ascii;
-    use sweepay::admin;
-    use sweepay::math;
+    use sweefi::admin;
+    use sweefi::math;
 
     // ══════════════════════════════════════════════════════════════
     // Error codes (200-series)
@@ -51,6 +51,7 @@ module sweepay::escrow {
     const EDescriptionTooLong: u64 = 211;
     const EArbiterIsSeller: u64 = 212;
     const EArbiterIsBuyer: u64 = 213;
+    const EBuyerIsSeller: u64 = 214;
 
     // ══════════════════════════════════════════════════════════════
     // State constants
@@ -60,6 +61,10 @@ module sweepay::escrow {
     const STATE_DISPUTED: u8 = 1;
     const STATE_RELEASED: u8 = 2;
     const STATE_REFUNDED: u8 = 3;
+
+    /// Minimum deposit: 1,000,000 base units (0.001 SUI or 1 USDC).
+    /// Prevents dust-deposit spam creating near-empty shared escrow objects.
+    const MIN_DEPOSIT: u64 = 1_000_000;
 
     // ══════════════════════════════════════════════════════════════
     // Types
@@ -170,7 +175,8 @@ module sweepay::escrow {
         let now_ms = clock.timestamp_ms();
         let deposit_value = deposit.value();
 
-        assert!(deposit_value > 0, EZeroAmount);
+        // H-6: Enforce minimum deposit to prevent dust spam on shared objects
+        assert!(deposit_value >= MIN_DEPOSIT, EZeroAmount);
         assert!(deadline_ms > now_ms, EDeadlineInPast);
         assert!(fee_bps <= 10_000, EInvalidFeeBps);
         assert!(description.length() <= 1024, EDescriptionTooLong);
@@ -182,6 +188,9 @@ module sweepay::escrow {
         // Prevent buyer == arbiter: buyer could dispute() then release() as arbiter,
         // self-approving without seller delivery. Same bypass vector, reversed role.
         assert!(arbiter != buyer, EArbiterIsBuyer);
+        // F-07: Prevent buyer == seller — same party on both sides defeats the
+        // trustless commerce guarantee entirely.
+        assert!(buyer != seller, EBuyerIsSeller);
 
         let escrow = Escrow<T> {
             id: object::new(ctx),

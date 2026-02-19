@@ -1,4 +1,4 @@
-/// SweePay Prepaid Balance — the Agent Killer Feature
+/// SweeFi Prepaid Balance — the Agent Killer Feature
 ///
 /// "The first protocol where an AI agent deposits $5, makes 1,000 API calls,
 /// and the provider claims earned funds — all with 3 on-chain transactions."
@@ -33,15 +33,15 @@
 ///   - Funds at risk = current PrepaidBalance.balance at time of key loss
 ///   - Mitigation: use small deposits + frequent refill cycles
 ///   - Future: governance-gated emergency drain after long dormancy period
-module sweepay::prepaid {
+module sweefi::prepaid {
     use sui::coin::{Self, Coin};
     use sui::balance::Balance;
     use sui::event;
     use sui::clock::Clock;
     use std::type_name;
     use std::ascii;
-    use sweepay::admin;
-    use sweepay::math;
+    use sweefi::admin;
+    use sweefi::math;
 
     // ══════════════════════════════════════════════════════════════
     // Error codes (600-series)
@@ -71,6 +71,10 @@ module sweepay::prepaid {
 
     /// Maximum withdrawal delay: 7 days (604,800,000 ms) — matches stream.move
     const MAX_WITHDRAWAL_DELAY_MS: u64 = 604_800_000;
+
+    /// Minimum deposit: 1,000,000 base units (0.001 SUI or 1 USDC).
+    /// Prevents dust-deposit spam that creates near-empty shared objects.
+    const MIN_DEPOSIT: u64 = 1_000_000;
 
     // ══════════════════════════════════════════════════════════════
     // Types
@@ -175,7 +179,8 @@ module sweepay::prepaid {
         admin::assert_not_paused(protocol_state);
 
         let amount = coin.value();
-        assert!(amount > 0, EZeroDeposit);
+        // H-6: Enforce minimum deposit to prevent dust spam on shared objects
+        assert!(amount >= MIN_DEPOSIT, EZeroDeposit);
         assert!(rate_per_call > 0, EZeroRate);
         assert!(fee_bps <= 10_000, EInvalidFeeBps);
         assert!(withdrawal_delay_ms >= MIN_WITHDRAWAL_DELAY_MS, EWithdrawalDelayTooShort);

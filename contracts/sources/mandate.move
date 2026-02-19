@@ -1,4 +1,4 @@
-/// SweePay Mandate — AP2-compatible agent spending authorization
+/// SweeFi Mandate — AP2-compatible agent spending authorization
 ///
 /// A Mandate authorizes a delegate (AI agent) to spend on behalf of a
 /// delegator (human). Mandates are OWNED by the delegate for efficiency:
@@ -16,7 +16,7 @@
 ///
 /// Error codes: 400-series (payment=0, stream=100, escrow=200, seal=300, mandate=400)
 #[allow(lint(self_transfer))]
-module sweepay::mandate {
+module sweefi::mandate {
     use sui::clock::Clock;
     use sui::dynamic_field as df;
 
@@ -134,7 +134,9 @@ module sweepay::mandate {
         clock: &Clock,
         ctx: &TxContext,
     ) {
-        // Check revocation first
+        // C-2: Verify this is the delegator's own registry — prevents delegate passing
+        // an empty registry they control to bypass the delegator's revocation.
+        assert!(registry.owner == mandate.delegator, ENotDelegator);
         let key = RevokedKey { mandate_id: object::id(mandate) };
         assert!(!df::exists_(&registry.id, key), ERevoked);
 
