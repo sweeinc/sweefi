@@ -36,7 +36,6 @@
   "dependencies": {
     "@sweefi/sdk": "workspace:*",
     "@sweefi/sui": "workspace:*",
-    "@sweefi/sdk": "workspace:*",
     "@mysten/sui": "^2.0.0"
   },
   "devDependencies": {

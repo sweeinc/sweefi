@@ -11,6 +11,9 @@
  * - @sweefi/sdk/server — server-side only
  */
 
+// s402 protocol layer — re-exported so SDK consumers don't need a separate import
+export * from 's402';
+
 // Re-export primary API surface from root for convenience
 export { createS402Client, wrapFetchWithS402, adaptWallet } from "./client/index";
 export type { s402ClientConfig, s402FetchOptions } from "./client/index";

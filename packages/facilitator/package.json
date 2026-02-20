@@ -26,7 +26,6 @@
     "@hono/node-server": "^1.8.0",
     "@mysten/sui": "^2.0.0",
     "s402": "^0.1.0",
-    "@sweefi/core": "workspace:*",
     "@sweefi/sui": "workspace:*",
     "hono": "^4.0.0",
     "zod": "^3.22.0"

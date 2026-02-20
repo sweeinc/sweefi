@@ -52,8 +52,7 @@
     "access": "public"
   },
   "dependencies": {
-    "s402": "^0.1.0",
-    "@sweefi/core": "workspace:*"
+    "s402": "^0.1.0"
   },
   "peerDependencies": {
     "@mysten/sui": "^2.0.0"
