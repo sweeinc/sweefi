@@ -23,7 +23,7 @@ export type { s402GateConfig } from "./server/index";
 // Shared types
 export type { SuiNetwork, Price } from "./shared/types";
 
-// Core — types, clients, errors, config (merged from @sweefi/core)
+// Shared types, clients, errors, and config
 export type { MessageEnvelope, MessageType } from "./types/message-envelope.js";
 export { createMessageEnvelope } from "./types/message-envelope.js";
 export type { NetworkConfig, SealKeyServerConfig } from "./types/network.js";

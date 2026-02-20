@@ -5,7 +5,7 @@
  * The env-var-only model is deliberate: zero stored state means zero drift,
  * zero exfiltration surface, and one-line agent provisioning.
  *
- * TODO: When @sweefi/core gains a shared createContext(), use that instead.
+ * Context is intentionally self-contained — no cross-package shared context needed.
  */
 
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";

@@ -12,7 +12,6 @@
   "dependencies": {
     "@mysten/sui": "^2.0.0",
     "s402": "^0.1.0",
-    "@sweefi/core": "workspace:*",
     "@sweefi/sdk": "workspace:*",
     "@sweefi/sui": "workspace:*",
     "hono": "^4.7.0",
