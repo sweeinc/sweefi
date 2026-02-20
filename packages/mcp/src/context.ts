@@ -1,18 +1,18 @@
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 import type { Keypair } from "@mysten/sui/cryptography";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import { TESTNET_PACKAGE_ID } from "@sweepay/sui/ptb";
-import type { SweepayConfig } from "@sweepay/sui/ptb";
+import { TESTNET_PACKAGE_ID } from "@sweefi/sui/ptb";
+import type { SweefiConfig } from "@sweefi/sui/ptb";
 import { decodeSuiPrivateKey } from "@mysten/sui/cryptography";
 
 /**
  * Runtime context shared across all MCP tools.
  * Read-only tools work without a signer; transaction tools require one.
  */
-export interface SweepayContext {
+export interface SweefiContext {
   suiClient: SuiJsonRpcClient;
   signer: Keypair | null;
-  config: SweepayConfig;
+  config: SweefiConfig;
   network: string;
   /** Spending limits enforced by the MCP server. */
   spendingLimits: SpendingLimits;
@@ -39,7 +39,7 @@ export interface SpendingLimits {
   sessionSpent: bigint;
 }
 
-export interface SweepayMcpConfig {
+export interface SweefiMcpConfig {
   /** Sui network: "testnet" | "mainnet" | "devnet" */
   network?: string;
   /** Custom RPC URL (overrides network default) */
@@ -77,7 +77,7 @@ function parseBigIntEnv(name: string): bigint {
  * Create the runtime context from config or environment variables.
  * Falls back to SUI_NETWORK, SUI_RPC_URL, SUI_PRIVATE_KEY env vars.
  */
-export function createContext(config?: SweepayMcpConfig): SweepayContext {
+export function createContext(config?: SweefiMcpConfig): SweefiContext {
   const network = config?.network ?? process.env.SUI_NETWORK ?? "testnet";
   const rpcUrl = config?.rpcUrl ?? process.env.SUI_RPC_URL;
 
@@ -95,7 +95,7 @@ export function createContext(config?: SweepayMcpConfig): SweepayContext {
 
   const packageId = config?.packageId ?? process.env.SUI_PACKAGE_ID ?? TESTNET_PACKAGE_ID;
   const protocolStateId = config?.protocolStateId ?? process.env.SUI_PROTOCOL_STATE_ID;
-  const sweepayConfig: SweepayConfig = { packageId, protocolStateId };
+  const sweefiConfig: SweefiConfig = { packageId, protocolStateId };
 
   const privateKey = config?.privateKey ?? process.env.SUI_PRIVATE_KEY;
   let signer: Keypair | null = null;
@@ -107,7 +107,7 @@ export function createContext(config?: SweepayMcpConfig): SweepayContext {
       if (scheme === "ED25519") {
         signer = Ed25519Keypair.fromSecretKey(secretKey);
       } else {
-        console.warn(`[sweepay-mcp] Key scheme "${scheme}" is not supported. Only ED25519 keys work. Transaction tools will be disabled.`);
+        console.warn(`[sweefi-mcp] Key scheme "${scheme}" is not supported. Only ED25519 keys work. Transaction tools will be disabled.`);
       }
     } catch {
       // Fall back to raw base64
@@ -117,7 +117,7 @@ export function createContext(config?: SweepayMcpConfig): SweepayContext {
       } catch {
         // Do NOT log error details — they may contain key material fragments.
         console.error(
-          `[sweepay-mcp] Failed to parse SUI_PRIVATE_KEY. ` +
+          `[sweefi-mcp] Failed to parse SUI_PRIVATE_KEY. ` +
           `Ensure it is a valid bech32 (suiprivkey1...) or base64-encoded Ed25519 key. ` +
           `Transaction tools will be disabled.`
         );
@@ -131,7 +131,7 @@ export function createContext(config?: SweepayMcpConfig): SweepayContext {
     sessionSpent: 0n,
   };
 
-  return { suiClient, signer, config: sweepayConfig, network, spendingLimits };
+  return { suiClient, signer, config: sweefiConfig, network, spendingLimits };
 }
 
 /**
@@ -145,7 +145,7 @@ export function createContext(config?: SweepayMcpConfig): SweepayContext {
  *
  * On success, debits the session total (caller must only call after a successful tx).
  */
-export function checkSpendingLimit(ctx: SweepayContext, amount: bigint): void {
+export function checkSpendingLimit(ctx: SweefiContext, amount: bigint): void {
   // D-02: Guard against zero/negative amounts reaching the spending check
   if (amount <= 0n) {
     throw new Error(
@@ -176,14 +176,14 @@ export function checkSpendingLimit(ctx: SweepayContext, amount: bigint): void {
  * Record a successful spend against the session limit.
  * Call ONLY after a transaction succeeds.
  */
-export function recordSpend(ctx: SweepayContext, amount: bigint): void {
+export function recordSpend(ctx: SweefiContext, amount: bigint): void {
   ctx.spendingLimits.sessionSpent += amount;
 }
 
 /**
  * Ensure a signer is available. Throws a clear error if not.
  */
-export function requireSigner(ctx: SweepayContext): Keypair {
+export function requireSigner(ctx: SweefiContext): Keypair {
   if (!ctx.signer) {
     throw new Error(
       "Wallet not configured. Set SUI_PRIVATE_KEY environment variable " +

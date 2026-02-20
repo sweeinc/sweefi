@@ -1,10 +1,10 @@
-# SweePay SEAL E2E Demo — Atomic Pay-to-Decrypt
+# SweeFi SEAL E2E Demo — Atomic Pay-to-Decrypt
 
 > Live on Sui testnet. Real transactions. Verifiable on-chain.
 
 ## What This Demonstrates
 
-The full pay-to-decrypt flow using SweePay escrow + SEAL encryption + Walrus storage:
+The full pay-to-decrypt flow using SweeFi escrow + SEAL encryption + Walrus storage:
 
 ```
 Seller                                    Buyer
@@ -30,7 +30,7 @@ Seller                                    Buyer
 ## Run It
 
 ```bash
-# From sweepay-project root
+# From sweefi-project root
 cd demos/seal-e2e
 pnpm install
 
@@ -57,7 +57,7 @@ Need testnet SUI? Visit https://faucet.sui.io
 
 ```
 ┌──────────────┐     ┌──────────────────┐     ┌──────────────┐
-│ Buyer Wallet │────►│ SweePay Escrow   │────►│ EscrowReceipt│
+│ Buyer Wallet │────►│ SweeFi Escrow   │────►│ EscrowReceipt│
 │ (Ed25519)    │     │ (shared object)  │     │ (owned obj)  │
 └──────────────┘     └──────────────────┘     └──────┬───────┘
                                                       │
@@ -98,7 +98,7 @@ This function is called by SEAL key servers in dry-run. If it doesn't abort, dec
 
 ## Dependencies
 
-- `@sweepay/sui` — PTB builders for escrow create/release
+- `@sweefi/sui` — PTB builders for escrow create/release
 - `@mysten/seal` — SEAL encryption/decryption client
 - `@mysten/sui` — Sui client, keypairs, transactions
 - Walrus testnet — Blob storage (publisher + aggregator)

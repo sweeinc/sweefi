@@ -1,8 +1,8 @@
 /**
- * Configuration for interacting with deployed SweePay contracts.
+ * Configuration for interacting with deployed SweeFi contracts.
  * Each network has its own package ID — pass the right one for your environment.
  */
-export interface SweepayConfig {
+export interface SweefiConfig {
   /** On-chain package address (e.g., "0xabc...def") */
   packageId: string;
   /**

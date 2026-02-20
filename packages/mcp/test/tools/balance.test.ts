@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerBalanceTool } from "../../src/tools/balance.js";
-import type { SweepayContext } from "../../src/context.js";
+import type { SweefiContext } from "../../src/context.js";
 
-describe("sweepay_check_balance", () => {
-  function createMockContext(): SweepayContext {
+describe("sweefi_check_balance", () => {
+  function createMockContext(): SweefiContext {
     return {
       suiClient: {
         getBalance: vi.fn().mockResolvedValue({

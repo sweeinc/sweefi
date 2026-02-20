@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerMandateTools } from "../../src/tools/mandate.js";
-import type { SweepayContext } from "../../src/context.js";
+import type { SweefiContext } from "../../src/context.js";
 
-vi.mock("@sweepay/sui/ptb", () => ({
+vi.mock("@sweefi/sui/ptb", () => ({
   buildCreateMandateTx: vi.fn().mockReturnValue({ setSender: vi.fn() }),
   buildCreateAgentMandateTx: vi.fn().mockReturnValue({ setSender: vi.fn() }),
   buildMandatedPayTx: vi.fn().mockReturnValue({ setSender: vi.fn() }),
@@ -12,7 +12,7 @@ vi.mock("@sweepay/sui/ptb", () => ({
   buildCreateRegistryTx: vi.fn().mockReturnValue({ setSender: vi.fn() }),
 }));
 
-function captureHandlers(server: McpServer, ctx: SweepayContext) {
+function captureHandlers(server: McpServer, ctx: SweefiContext) {
   const handlers = new Map<string, Function>();
   const orig = server.registerTool.bind(server);
   const spy = vi.spyOn(server, "registerTool").mockImplementation(
@@ -27,7 +27,7 @@ function captureHandlers(server: McpServer, ctx: SweepayContext) {
 }
 
 describe("mandate tools", () => {
-  const makeAgentMandateCtx = (): SweepayContext => ({
+  const makeAgentMandateCtx = (): SweefiContext => ({
     suiClient: {
       getObject: vi.fn().mockResolvedValue({
         data: {
@@ -57,7 +57,7 @@ describe("mandate tools", () => {
     spendingLimits: { maxPerTx: 0n, maxPerSession: 0n, sessionSpent: 0n },
   });
 
-  const makeBasicMandateCtx = (): SweepayContext => ({
+  const makeBasicMandateCtx = (): SweefiContext => ({
     suiClient: {
       getObject: vi.fn().mockResolvedValue({
         data: {
@@ -87,12 +87,12 @@ describe("mandate tools", () => {
     registerMandateTools(server, makeAgentMandateCtx());
   });
 
-  describe("sweepay_inspect_mandate handler", () => {
+  describe("sweefi_inspect_mandate handler", () => {
     it("formats AgentMandate with tiered details", async () => {
       const ctx = makeAgentMandateCtx();
       const server = new McpServer({ name: "test", version: "0.1.0" });
       const handlers = captureHandlers(server, ctx);
-      const handler = handlers.get("sweepay_inspect_mandate")!;
+      const handler = handlers.get("sweefi_inspect_mandate")!;
 
       const result = await handler({ mandateId: "0x" + "d".repeat(64) });
       const text = result.content[0].text;
@@ -113,7 +113,7 @@ describe("mandate tools", () => {
       const ctx = makeAgentMandateCtx();
       const server = new McpServer({ name: "test", version: "0.1.0" });
       const handlers = captureHandlers(server, ctx);
-      const handler = handlers.get("sweepay_inspect_mandate")!;
+      const handler = handlers.get("sweefi_inspect_mandate")!;
 
       const result = await handler({ mandateId: "0x" + "d".repeat(64) });
       // max_total (100B) - total_spent (10B) = 90B remaining
@@ -124,7 +124,7 @@ describe("mandate tools", () => {
       const ctx = makeBasicMandateCtx();
       const server = new McpServer({ name: "test", version: "0.1.0" });
       const handlers = captureHandlers(server, ctx);
-      const handler = handlers.get("sweepay_inspect_mandate")!;
+      const handler = handlers.get("sweefi_inspect_mandate")!;
 
       const result = await handler({ mandateId: "0x" + "d".repeat(64) });
       const text = result.content[0].text;
@@ -145,7 +145,7 @@ describe("mandate tools", () => {
       });
       const server = new McpServer({ name: "test", version: "0.1.0" });
       const handlers = captureHandlers(server, ctx);
-      const handler = handlers.get("sweepay_inspect_mandate")!;
+      const handler = handlers.get("sweefi_inspect_mandate")!;
 
       const result = await handler({ mandateId: "0x" + "d".repeat(64) });
       expect(result.content[0].text).toContain("Mandate not found");
@@ -171,7 +171,7 @@ describe("mandate tools", () => {
       });
       const server = new McpServer({ name: "test", version: "0.1.0" });
       const handlers = captureHandlers(server, ctx);
-      const handler = handlers.get("sweepay_inspect_mandate")!;
+      const handler = handlers.get("sweefi_inspect_mandate")!;
 
       const result = await handler({ mandateId: "0x" + "d".repeat(64) });
       // Should fall back to "unknown" instead of crashing
@@ -203,7 +203,7 @@ describe("mandate tools", () => {
       });
       const server = new McpServer({ name: "test", version: "0.1.0" });
       const handlers = captureHandlers(server, ctx);
-      const handler = handlers.get("sweepay_inspect_mandate")!;
+      const handler = handlers.get("sweefi_inspect_mandate")!;
 
       const result = await handler({ mandateId: "0x" + "d".repeat(64) });
       const text = result.content[0].text;
@@ -213,12 +213,12 @@ describe("mandate tools", () => {
     });
   });
 
-  describe("sweepay_create_mandate handler", () => {
+  describe("sweefi_create_mandate handler", () => {
     it("throws when no signer configured", async () => {
       const ctx = makeAgentMandateCtx(); // signer: null
       const server = new McpServer({ name: "test", version: "0.1.0" });
       const handlers = captureHandlers(server, ctx);
-      const handler = handlers.get("sweepay_create_mandate")!;
+      const handler = handlers.get("sweefi_create_mandate")!;
 
       await expect(
         handler({
@@ -231,12 +231,12 @@ describe("mandate tools", () => {
     });
   });
 
-  describe("sweepay_revoke_mandate handler", () => {
+  describe("sweefi_revoke_mandate handler", () => {
     it("throws when no signer configured", async () => {
       const ctx = makeAgentMandateCtx(); // signer: null
       const server = new McpServer({ name: "test", version: "0.1.0" });
       const handlers = captureHandlers(server, ctx);
-      const handler = handlers.get("sweepay_revoke_mandate")!;
+      const handler = handlers.get("sweefi_revoke_mandate")!;
 
       await expect(
         handler({

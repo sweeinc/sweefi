@@ -1,6 +1,6 @@
 import { computed, ref } from "vue";
 import type { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
-import type { SweepayConfig } from "@sweepay/sui/ptb";
+import type { SweefiConfig } from "@sweefi/sui/ptb";
 import {
   createCheckoutController,
   createDefaultConfig,
@@ -8,7 +8,7 @@ import {
   type WalletAdapter,
 } from "../core";
 
-export interface UseSweepayCheckoutOptions {
+export interface UseSweefiCheckoutOptions {
   wallet: WalletAdapter;
   suiClient: SuiJsonRpcClient;
   recipient: string;
@@ -17,10 +17,10 @@ export interface UseSweepayCheckoutOptions {
   feeBps?: number;
   feeRecipient?: string;
   memo?: string;
-  config?: SweepayConfig;
+  config?: SweefiConfig;
 }
 
-export function useSweepayCheckout(options: UseSweepayCheckoutOptions) {
+export function useSweefiCheckout(options: UseSweefiCheckoutOptions) {
   const controller = createCheckoutController({
     wallet: options.wallet,
     suiClient: options.suiClient,

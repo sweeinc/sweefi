@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { SuiObjectChange } from "@mysten/sui/jsonRpc";
 import {
   buildCreateMandateTx,
   buildCreateAgentMandateTx,
@@ -7,8 +8,8 @@ import {
   buildAgentMandatedPayTx,
   buildRevokeMandateTx,
   buildCreateRegistryTx,
-} from "@sweepay/sui/ptb";
-import type { SweepayContext } from "../context.js";
+} from "@sweefi/sui/ptb";
+import type { SweefiContext } from "../context.js";
 import { requireSigner, checkSpendingLimit, recordSpend } from "../context.js";
 import { resolveCoinType, formatBalance, parseAmount, parseAmountOrZero, assertTxSuccess, ZERO_ADDRESS, suiAddress, suiObjectId, optionalSuiAddress } from "../utils/format.js";
 
@@ -19,17 +20,17 @@ const LEVEL_NAMES: Record<number, string> = {
   3: "L3 (Autonomous)",
 };
 
-export function registerMandateTools(server: McpServer, ctx: SweepayContext) {
+export function registerMandateTools(server: McpServer, ctx: SweefiContext) {
   // ── Create Registry ──────────────────────────────────────────
   server.registerTool(
-    "sweepay_create_registry",
+    "sweefi_create_registry",
     {
       title: "Create Revocation Registry",
       description:
         "Create a revocation registry for mandate management. Each delegator (human) needs " +
         "one registry — a shared object used to check whether mandates have been revoked. " +
         "Create this BEFORE creating any mandates. The registry ID is required for " +
-        "sweepay_basic_mandated_pay, sweepay_agent_mandated_pay, and sweepay_revoke_mandate. " +
+        "sweefi_basic_mandated_pay, sweefi_agent_mandated_pay, and sweefi_revoke_mandate. " +
         "Requires a configured wallet.",
       inputSchema: {},
     },
@@ -48,7 +49,7 @@ export function registerMandateTools(server: McpServer, ctx: SweepayContext) {
       assertTxSuccess(result);
 
       const registryObj = result.objectChanges?.find(
-        (c) => c.type === "created" && c.objectType?.includes("RevocationRegistry"),
+        (c: SuiObjectChange) => c.type === "created" && c.objectType?.includes("RevocationRegistry"),
       );
       const registryId = registryObj && "objectId" in registryObj ? registryObj.objectId : "unknown";
 
@@ -70,14 +71,14 @@ export function registerMandateTools(server: McpServer, ctx: SweepayContext) {
 
   // ── Create Mandate (Basic) ───────────────────────────────────
   server.registerTool(
-    "sweepay_create_mandate",
+    "sweefi_create_mandate",
     {
       title: "Create Spending Mandate",
       description:
         "Create a basic spending mandate authorizing an agent to pay on your behalf. " +
         "The mandate has a per-transaction limit, lifetime cap, and expiry. " +
-        "The agent receives the mandate object and can use it with sweepay_basic_mandated_pay. " +
-        "For tiered autonomy with daily/weekly caps, use sweepay_create_agent_mandate instead. " +
+        "The agent receives the mandate object and can use it with sweefi_basic_mandated_pay. " +
+        "For tiered autonomy with daily/weekly caps, use sweefi_create_agent_mandate instead. " +
         "Requires a configured wallet (you are the delegator/human).",
       inputSchema: {
         delegate: suiAddress("Agent/delegate"),
@@ -110,7 +111,7 @@ export function registerMandateTools(server: McpServer, ctx: SweepayContext) {
       assertTxSuccess(result);
 
       const mandateObj = result.objectChanges?.find(
-        (c) => c.type === "created" && c.objectType?.includes("Mandate") && !c.objectType?.includes("AgentMandate"),
+        (c: SuiObjectChange) => c.type === "created" && c.objectType?.includes("Mandate") && !c.objectType?.includes("AgentMandate"),
       );
       const mandateId = mandateObj && "objectId" in mandateObj ? mandateObj.objectId : "unknown";
 
@@ -127,7 +128,7 @@ export function registerMandateTools(server: McpServer, ctx: SweepayContext) {
               `Expires: ${new Date(Number(expiresAtMs)).toISOString()}\n` +
               `TX Digest: ${result.digest}\n` +
               `Network: ${ctx.network}\n\n` +
-              `The agent can now use sweepay_basic_mandated_pay to spend within these limits.`,
+              `The agent can now use sweefi_basic_mandated_pay to spend within these limits.`,
           },
         ],
       };
@@ -136,7 +137,7 @@ export function registerMandateTools(server: McpServer, ctx: SweepayContext) {
 
   // ── Create Agent Mandate (Tiered) ────────────────────────────
   server.registerTool(
-    "sweepay_create_agent_mandate",
+    "sweefi_create_agent_mandate",
     {
       title: "Create Agent Mandate (Tiered)",
       description:
@@ -192,7 +193,7 @@ export function registerMandateTools(server: McpServer, ctx: SweepayContext) {
       assertTxSuccess(result);
 
       const mandateObj = result.objectChanges?.find(
-        (c) => c.type === "created" && c.objectType?.includes("AgentMandate"),
+        (c: SuiObjectChange) => c.type === "created" && c.objectType?.includes("AgentMandate"),
       );
       const mandateId = mandateObj && "objectId" in mandateObj ? mandateObj.objectId : "unknown";
       const levelName = LEVEL_NAMES[level] ?? `L${level}`;
@@ -213,7 +214,7 @@ export function registerMandateTools(server: McpServer, ctx: SweepayContext) {
               `Expires: ${new Date(Number(expiresAtMs)).toISOString()}\n` +
               `TX Digest: ${result.digest}\n` +
               `Network: ${ctx.network}\n\n` +
-              `The agent can now use sweepay_agent_mandated_pay to spend within these limits.`,
+              `The agent can now use sweefi_agent_mandated_pay to spend within these limits.`,
           },
         ],
       };
@@ -222,14 +223,14 @@ export function registerMandateTools(server: McpServer, ctx: SweepayContext) {
 
   // ── Basic Mandated Pay ─────────────────────────────────────
   server.registerTool(
-    "sweepay_basic_mandated_pay",
+    "sweefi_basic_mandated_pay",
     {
       title: "Pay Using Basic Mandate",
       description:
-        "Make a payment using a basic mandate (created with sweepay_create_mandate). " +
+        "Make a payment using a basic mandate (created with sweefi_create_mandate). " +
         "The mandate's per-tx and lifetime caps are checked atomically with the payment. " +
         "Every mandated payment checks the revocation registry — if revoked, the transaction fails. " +
-        "For agent mandates (with daily/weekly caps), use sweepay_agent_mandated_pay instead. " +
+        "For agent mandates (with daily/weekly caps), use sweefi_agent_mandated_pay instead. " +
         "Requires a configured wallet (must be the delegate/agent who owns the mandate).",
       inputSchema: {
         mandateId: suiObjectId("Mandate"),
@@ -277,7 +278,7 @@ export function registerMandateTools(server: McpServer, ctx: SweepayContext) {
 
       const formatted = formatBalance(amount, resolvedType);
       const receiptObj = result.objectChanges?.find(
-        (c) => c.type === "created" && c.objectType?.includes("PaymentReceipt"),
+        (c: SuiObjectChange) => c.type === "created" && c.objectType?.includes("PaymentReceipt"),
       );
       const receiptId = receiptObj && "objectId" in receiptObj ? receiptObj.objectId : "unknown";
 
@@ -302,15 +303,15 @@ export function registerMandateTools(server: McpServer, ctx: SweepayContext) {
 
   // ── Agent Mandated Pay ─────────────────────────────────────
   server.registerTool(
-    "sweepay_agent_mandated_pay",
+    "sweefi_agent_mandated_pay",
     {
       title: "Pay Using Agent Mandate",
       description:
-        "Make a payment using an agent mandate (created with sweepay_create_agent_mandate). " +
+        "Make a payment using an agent mandate (created with sweefi_create_agent_mandate). " +
         "Checks per-tx, daily, weekly, and lifetime caps atomically with the payment. " +
         "Daily/weekly counters use lazy reset — they reset on the first spend after the period boundary. " +
         "Every mandated payment checks the revocation registry — if revoked, the transaction fails. " +
-        "For basic mandates (per-tx + lifetime only), use sweepay_basic_mandated_pay instead. " +
+        "For basic mandates (per-tx + lifetime only), use sweefi_basic_mandated_pay instead. " +
         "Requires a configured wallet (must be the delegate/agent who owns the mandate).",
       inputSchema: {
         mandateId: suiObjectId("AgentMandate"),
@@ -358,7 +359,7 @@ export function registerMandateTools(server: McpServer, ctx: SweepayContext) {
 
       const formatted = formatBalance(amount, resolvedType);
       const receiptObj = result.objectChanges?.find(
-        (c) => c.type === "created" && c.objectType?.includes("PaymentReceipt"),
+        (c: SuiObjectChange) => c.type === "created" && c.objectType?.includes("PaymentReceipt"),
       );
       const receiptId = receiptObj && "objectId" in receiptObj ? receiptObj.objectId : "unknown";
 
@@ -383,14 +384,14 @@ export function registerMandateTools(server: McpServer, ctx: SweepayContext) {
 
   // ── Revoke Mandate ───────────────────────────────────────────
   server.registerTool(
-    "sweepay_revoke_mandate",
+    "sweefi_revoke_mandate",
     {
       title: "Revoke Mandate",
       description:
         "Instantly revoke a mandate, preventing the agent from making any further payments. " +
         "Adds the mandate ID to the revocation registry. Works for both basic and agent mandates " +
         "(they share the same revocation registry). " +
-        "The agent's next sweepay_basic_mandated_pay or sweepay_agent_mandated_pay will fail with MANDATE_REVOKED. " +
+        "The agent's next sweefi_basic_mandated_pay or sweefi_agent_mandated_pay will fail with MANDATE_REVOKED. " +
         "Requires a configured wallet (must be the delegator who owns the registry).",
       inputSchema: {
         registryId: suiObjectId("RevocationRegistry"),
@@ -436,7 +437,7 @@ export function registerMandateTools(server: McpServer, ctx: SweepayContext) {
 
   // ── Inspect Mandate (read-only) ──────────────────────────────
   server.registerTool(
-    "sweepay_inspect_mandate",
+    "sweefi_inspect_mandate",
     {
       title: "Inspect Mandate",
       description:

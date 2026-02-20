@@ -1,5 +1,5 @@
 import { Transaction, coinWithBalance } from "@mysten/sui/transactions";
-import type { SweepayConfig, PayParams } from "./types";
+import type { SweefiConfig, PayParams } from "./types";
 import { SUI_CLOCK } from "./deployments";
 
 // ══════════════════════════════════════════════════════════════
@@ -94,7 +94,7 @@ export interface UpdateMandateCapsParams {
  * Called by the delegator (human) to authorize an agent with tiered spending caps.
  */
 export function buildCreateAgentMandateTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: CreateAgentMandateParams,
 ): Transaction {
   const tx = new Transaction();
@@ -125,7 +125,7 @@ export function buildCreateAgentMandateTx(
  * Flow: validate_and_spend (revocation check + debit mandate) → pay_and_keep (execute payment)
  */
 export function buildAgentMandatedPayTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: AgentMandatedPayParams,
 ): Transaction {
   const tx = new Transaction();
@@ -177,7 +177,7 @@ export const buildAgentMandatedPayCheckedTx = buildAgentMandatedPayTx;
  * Called by the delegator (human). Cannot downgrade — use revoke + recreate.
  */
 export function buildUpgradeMandateLevelTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: UpgradeMandateLevelParams,
 ): Transaction {
   const tx = new Transaction();
@@ -200,7 +200,7 @@ export function buildUpgradeMandateLevelTx(
  * Called by the delegator. Useful when upgrading L1→L2 (need to set spending caps).
  */
 export function buildUpdateMandateCapsTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: UpdateMandateCapsParams,
 ): Transaction {
   const tx = new Transaction();

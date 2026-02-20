@@ -1,5 +1,5 @@
 /**
- * SweePay SEAL E2E Demo — Atomic Pay-to-Decrypt on Sui Testnet
+ * SweeFi SEAL E2E Demo — Atomic Pay-to-Decrypt on Sui Testnet
  *
  * Demonstrates the full flow:
  *   1. Buyer creates escrow (deposit SUI, set seller + arbiter)
@@ -10,7 +10,7 @@
  *   6. Decrypted content verified
  *
  * The SEAL key servers validate the EscrowReceipt via dry-run of
- * sweepay::seal_policy::seal_approve. No centralized access control.
+ * sweefi::seal_policy::seal_approve. No centralized access control.
  *
  * Usage:
  *   SUI_PRIVATE_KEY=<base64 Ed25519 key> pnpm demo
@@ -31,7 +31,7 @@ import {
   buildReleaseEscrowTx,
   testnetConfig,
   TESTNET_PACKAGE_ID,
-} from "@sweepay/sui/ptb";
+} from "@sweefi/sui/ptb";
 
 // ──────────────────────────────────────────────────────────────
 // Configuration
@@ -154,7 +154,7 @@ async function downloadFromWalrus(blobId: string): Promise<Uint8Array> {
 
 async function main() {
   console.log("╔══════════════════════════════════════════════════════╗");
-  console.log("║  SweePay SEAL E2E Demo — Atomic Pay-to-Decrypt      ║");
+  console.log("║  SweeFi SEAL E2E Demo — Atomic Pay-to-Decrypt      ║");
   console.log("║  Network: Sui Testnet | Package: v6                  ║");
   console.log("╚══════════════════════════════════════════════════════╝");
 

@@ -1,10 +1,10 @@
 import React, { useMemo } from "react";
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
-import type { SweepayConfig } from "@sweepay/sui/ptb";
+import type { SweefiConfig } from "@sweefi/sui/ptb";
 import type { WalletAdapter } from "../core";
-import { useSweepayCheckout } from "./useSweepayCheckout";
+import { useSweefiCheckout } from "./useSweefiCheckout";
 
-export interface SweepayCheckoutProps {
+export interface SweefiCheckoutProps {
   wallet: WalletAdapter;
   recipient: string;
   amount: bigint | number | string;
@@ -14,7 +14,7 @@ export interface SweepayCheckoutProps {
   memo?: string;
   suiClient?: SuiJsonRpcClient;
   network?: "testnet" | "mainnet" | "devnet";
-  config?: SweepayConfig;
+  config?: SweefiConfig;
   autoConnect?: boolean;
   onConnected?: (payload: { address: string }) => void;
   onSimulated?: () => void;
@@ -22,7 +22,7 @@ export interface SweepayCheckoutProps {
   onError?: (error: unknown) => void;
 }
 
-export function SweepayCheckout(props: SweepayCheckoutProps) {
+export function SweefiCheckout(props: SweefiCheckoutProps) {
   const client = useMemo(
     () =>
       props.suiClient ??
@@ -33,7 +33,7 @@ export function SweepayCheckout(props: SweepayCheckoutProps) {
     [props.suiClient, props.network],
   );
 
-  const checkout = useSweepayCheckout({
+  const checkout = useSweefiCheckout({
     wallet: props.wallet,
     suiClient: client,
     recipient: props.recipient,
@@ -54,13 +54,13 @@ export function SweepayCheckout(props: SweepayCheckoutProps) {
   }, []);
 
   return (
-    <div className="sweepay-checkout">
+    <div className="sweefi-checkout">
       <p>Status: {checkout.state.status}</p>
       <p>Wallet: {checkout.state.address ?? "not connected"}</p>
       {checkout.state.error ? <p>Error: {checkout.state.error}</p> : null}
       {checkout.state.digest ? <p>Digest: {checkout.state.digest}</p> : null}
 
-      <div className="sweepay-actions">
+      <div className="sweefi-actions">
         <button
           type="button"
           onClick={() =>

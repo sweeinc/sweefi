@@ -1,11 +1,11 @@
 import { s402Facilitator } from "s402";
-import { toFacilitatorSuiSigner } from "@sweepay/sui";
+import { toFacilitatorSuiSigner } from "@sweefi/sui";
 import {
   ExactSuiFacilitatorScheme,
   PrepaidSuiFacilitatorScheme,
   StreamSuiFacilitatorScheme,
   EscrowSuiFacilitatorScheme,
-} from "@sweepay/sui";
+} from "@sweefi/sui";
 import type { Config } from "./config";
 
 /**
@@ -26,7 +26,7 @@ export function createFacilitator(config: Config): s402Facilitator {
   // Package ID for event anti-spoofing verification. When set, facilitator
   // scheme handlers verify that Move events originate from this package,
   // preventing attackers from deploying contracts that emit fake events.
-  const packageId = config.SWEEPAY_PACKAGE_ID;
+  const packageId = config.SWEEFI_PACKAGE_ID;
 
   const networks = ["sui:testnet", "sui:mainnet"];
 

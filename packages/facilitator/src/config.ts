@@ -19,8 +19,8 @@ const envSchema = z.object({
   /** Optional: Custom RPC URL for Sui testnet */
   SUI_TESTNET_RPC: z.string().url().optional(),
 
-  /** Optional: SweePay Move package ID for event verification (anti-spoofing) */
-  SWEEPAY_PACKAGE_ID: z.string().optional(),
+  /** Optional: SweeFi Move package ID for event verification (anti-spoofing) */
+  SWEEFI_PACKAGE_ID: z.string().optional(),
 
   /** Log level */
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),

@@ -74,6 +74,6 @@ This is the endgame but requires Nautilus TEE infrastructure to mature on Sui.
 
 ## References
 
-- `sweepay/contracts/sources/prepaid.move` — contract implementation with trust model comments
+- `sweefi/contracts/sources/prepaid.move` — contract implementation with trust model comments
 - Cetus $223M overflow — motivates u128 intermediate math in claim calculation
 - Nautilus TEE documentation — endgame for hardware-attested usage proofs

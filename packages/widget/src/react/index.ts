@@ -1,3 +1,3 @@
-export { SweepayCheckout } from "./SweepayCheckout";
-export type { SweepayCheckoutProps } from "./SweepayCheckout";
-export { useSweepayCheckout } from "./useSweepayCheckout";
+export { SweefiCheckout } from "./SweefiCheckout";
+export type { SweefiCheckoutProps } from "./SweefiCheckout";
+export { useSweefiCheckout } from "./useSweefiCheckout";

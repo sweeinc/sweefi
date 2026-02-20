@@ -1,14 +1,14 @@
 {
-  "name": "@sweepay/facilitator",
+  "name": "@sweefi/facilitator",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Self-hostable payment verification and settlement service for SweePay",
-  "license": "MIT",
+  "description": "Self-hostable payment verification and settlement service for SweeFi",
+  "license": "Apache-2.0",
   "author": "Danny Devs",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Danny-Devs/sweepay.git",
+    "url": "https://github.com/sweeinc/sweefi.git",
     "directory": "packages/facilitator"
   },
   "main": "./dist/index.mjs",
@@ -26,8 +26,8 @@
     "@hono/node-server": "^1.8.0",
     "@mysten/sui": "^2.0.0",
     "s402": "^0.1.0",
-    "@sweepay/core": "workspace:*",
-    "@sweepay/sui": "workspace:*",
+    "@sweefi/core": "workspace:*",
+    "@sweefi/sui": "workspace:*",
     "hono": "^4.0.0",
     "zod": "^3.22.0"
   },

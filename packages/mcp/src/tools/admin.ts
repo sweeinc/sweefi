@@ -1,17 +1,17 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { buildAdminPauseTx, buildAdminUnpauseTx, buildBurnAdminCapTx } from "@sweepay/sui/ptb";
-import type { SweepayContext } from "../context.js";
+import { buildAdminPauseTx, buildAdminUnpauseTx, buildBurnAdminCapTx } from "@sweefi/sui/ptb";
+import type { SweefiContext } from "../context.js";
 import { requireSigner } from "../context.js";
 import { assertTxSuccess, suiObjectId } from "../utils/format.js";
 
-export function registerAdminTools(server: McpServer, ctx: SweepayContext) {
+export function registerAdminTools(server: McpServer, ctx: SweefiContext) {
   // ─── Read-only: check protocol status ───
   server.registerTool(
-    "sweepay_protocol_status",
+    "sweefi_protocol_status",
     {
       title: "Check Protocol Status",
       description:
-        "Check whether the SweePay protocol is paused or active. " +
+        "Check whether the SweeFi protocol is paused or active. " +
         "When paused, new stream/escrow creation is blocked but existing " +
         "operations (claim, release, refund) continue normally. " +
         "No wallet required.",
@@ -60,7 +60,7 @@ export function registerAdminTools(server: McpServer, ctx: SweepayContext) {
 
   // ─── Transaction: pause protocol ───
   server.registerTool(
-    "sweepay_pause_protocol",
+    "sweefi_pause_protocol",
     {
       title: "Pause Protocol",
       description:
@@ -89,7 +89,7 @@ export function registerAdminTools(server: McpServer, ctx: SweepayContext) {
       return {
         content: [{
           type: "text" as const,
-          text: `Protocol PAUSED successfully.\n\nTX Digest: ${result.digest}\nNetwork: ${ctx.network}\n\nNew stream/escrow creation is now blocked. Use sweepay_unpause_protocol to resume.`,
+          text: `Protocol PAUSED successfully.\n\nTX Digest: ${result.digest}\nNetwork: ${ctx.network}\n\nNew stream/escrow creation is now blocked. Use sweefi_unpause_protocol to resume.`,
         }],
       };
     },
@@ -97,7 +97,7 @@ export function registerAdminTools(server: McpServer, ctx: SweepayContext) {
 
   // ─── Transaction: unpause protocol ───
   server.registerTool(
-    "sweepay_unpause_protocol",
+    "sweefi_unpause_protocol",
     {
       title: "Unpause Protocol",
       description:
@@ -134,7 +134,7 @@ export function registerAdminTools(server: McpServer, ctx: SweepayContext) {
 
   // ─── Transaction: burn admin cap ───
   server.registerTool(
-    "sweepay_burn_admin_cap",
+    "sweefi_burn_admin_cap",
     {
       title: "Burn Admin Cap (IRREVERSIBLE)",
       description:

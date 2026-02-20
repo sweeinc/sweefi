@@ -1,6 +1,6 @@
 #[test_only]
-module sweepay::mandate_tests {
-    use sweepay::mandate;
+module sweefi::mandate_tests {
+    use sweefi::mandate;
     use sui::test_scenario as ts;
     use sui::clock;
     use sui::sui::SUI;

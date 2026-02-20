@@ -1,13 +1,14 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { buildCreateStreamTx, buildCreateStreamWithTimeoutTx, buildCloseTx, buildRecipientCloseTx } from "@sweepay/sui/ptb";
-import type { SweepayContext } from "../context.js";
+import type { SuiObjectChange } from "@mysten/sui/jsonRpc";
+import { buildCreateStreamTx, buildCreateStreamWithTimeoutTx, buildCloseTx, buildRecipientCloseTx } from "@sweefi/sui/ptb";
+import type { SweefiContext } from "../context.js";
 import { requireSigner, checkSpendingLimit, recordSpend } from "../context.js";
 import { resolveCoinType, formatBalance, parseAmount, assertTxSuccess, ZERO_ADDRESS, suiAddress, suiObjectId, optionalSuiAddress } from "../utils/format.js";
 
-export function registerStreamTools(server: McpServer, ctx: SweepayContext) {
+export function registerStreamTools(server: McpServer, ctx: SweefiContext) {
   server.registerTool(
-    "sweepay_start_stream",
+    "sweefi_start_stream",
     {
       title: "Start Streaming Payment",
       description:
@@ -16,7 +17,7 @@ export function registerStreamTools(server: McpServer, ctx: SweepayContext) {
         "The recipient can claim accrued funds at any time. The payer can pause, resume, " +
         "or close the stream. If the payer disappears, the recipient can force-close after " +
         "the timeout period (permissionless recovery — no admin needed). " +
-        "This is SweePay's safety guardrail for AI agent spending. " +
+        "This is SweeFi's safety guardrail for AI agent spending. " +
         "Note: The stream is a shared object (goes through Sui consensus on each operation). " +
         "Requires a configured wallet.",
       inputSchema: {
@@ -65,7 +66,7 @@ export function registerStreamTools(server: McpServer, ctx: SweepayContext) {
       recordSpend(ctx, deposit);
 
       const meterObj = result.objectChanges?.find(
-        (c) => c.type === "created" && c.objectType?.includes("StreamingMeter"),
+        (c: SuiObjectChange) => c.type === "created" && c.objectType?.includes("StreamingMeter"),
       );
       const meterId = meterObj && "objectId" in meterObj ? meterObj.objectId : "unknown";
       const formatted = formatBalance(depositAmount, resolvedType);
@@ -74,7 +75,7 @@ export function registerStreamTools(server: McpServer, ctx: SweepayContext) {
         content: [
           {
             type: "text" as const,
-            text: `Stream started!\n\nMeter ID: ${meterId}\nDeposit: ${formatted}\nRate: ${ratePerSecond} per second\nRecipient: ${recipient}\nTX Digest: ${result.digest}\nNetwork: ${ctx.network}\n\nThe recipient can now claim accrued funds. Use sweepay_stop_stream to close.`,
+            text: `Stream started!\n\nMeter ID: ${meterId}\nDeposit: ${formatted}\nRate: ${ratePerSecond} per second\nRecipient: ${recipient}\nTX Digest: ${result.digest}\nNetwork: ${ctx.network}\n\nThe recipient can now claim accrued funds. Use sweefi_stop_stream to close.`,
           },
         ],
       };
@@ -82,14 +83,14 @@ export function registerStreamTools(server: McpServer, ctx: SweepayContext) {
   );
 
   server.registerTool(
-    "sweepay_start_stream_with_timeout",
+    "sweefi_start_stream_with_timeout",
     {
       title: "Start Streaming Payment with Custom Timeout",
       description:
         "Start a streaming micropayment with a custom recipient_close timeout (v6 feature). " +
-        "Same as sweepay_start_stream, but allows configuring how long the recipient must wait " +
+        "Same as sweefi_start_stream, but allows configuring how long the recipient must wait " +
         "before force-closing an abandoned stream. Minimum: 1 day. Default (if you use " +
-        "sweepay_start_stream instead): 7 days. Use shorter timeouts for time-sensitive services, " +
+        "sweefi_start_stream instead): 7 days. Use shorter timeouts for time-sensitive services, " +
         "longer for high-value long-running streams. " +
         "Requires a configured wallet.",
       inputSchema: {
@@ -143,7 +144,7 @@ export function registerStreamTools(server: McpServer, ctx: SweepayContext) {
       recordSpend(ctx, deposit);
 
       const meterObj = result.objectChanges?.find(
-        (c) => c.type === "created" && c.objectType?.includes("StreamingMeter"),
+        (c: SuiObjectChange) => c.type === "created" && c.objectType?.includes("StreamingMeter"),
       );
       const meterId = meterObj && "objectId" in meterObj ? meterObj.objectId : "unknown";
       const formatted = formatBalance(depositAmount, resolvedType);
@@ -161,7 +162,7 @@ export function registerStreamTools(server: McpServer, ctx: SweepayContext) {
   );
 
   server.registerTool(
-    "sweepay_stop_stream",
+    "sweefi_stop_stream",
     {
       title: "Stop Streaming Payment",
       description:
@@ -202,7 +203,7 @@ export function registerStreamTools(server: McpServer, ctx: SweepayContext) {
   );
 
   server.registerTool(
-    "sweepay_recipient_close_stream",
+    "sweefi_recipient_close_stream",
     {
       title: "Recipient Close Abandoned Stream",
       description:

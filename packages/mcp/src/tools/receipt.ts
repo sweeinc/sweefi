@@ -1,11 +1,12 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { SweepayContext } from "../context.js";
+import type { SuiEvent } from "@mysten/sui/jsonRpc";
+import type { SweefiContext } from "../context.js";
 import { suiAddress, suiObjectId } from "../utils/format.js";
 
-export function registerReceiptTool(server: McpServer, ctx: SweepayContext) {
+export function registerReceiptTool(server: McpServer, ctx: SweefiContext) {
   server.registerTool(
-    "sweepay_get_receipt",
+    "sweefi_get_receipt",
     {
       title: "Get Receipt",
       description:
@@ -52,7 +53,7 @@ export function registerReceiptTool(server: McpServer, ctx: SweepayContext) {
   );
 
   server.registerTool(
-    "sweepay_check_payment",
+    "sweefi_check_payment",
     {
       title: "Check Payment History",
       description:
@@ -93,7 +94,7 @@ export function registerReceiptTool(server: McpServer, ctx: SweepayContext) {
       }
 
       // Filter events involving this address
-      const relevant = events.data.filter((e) => {
+      const relevant = events.data.filter((e: SuiEvent) => {
         const parsed = e.parsedJson as Record<string, unknown> | undefined;
         return parsed?.payer === address || parsed?.recipient === address;
       });
@@ -109,7 +110,7 @@ export function registerReceiptTool(server: McpServer, ctx: SweepayContext) {
         };
       }
 
-      const lines = relevant.map((e) => {
+      const lines = relevant.map((e: SuiEvent) => {
         const p = e.parsedJson as Record<string, unknown>;
         return `TX: ${e.id.txDigest}\n  Amount: ${p.amount}\n  Payer: ${p.payer}\n  Recipient: ${p.recipient}\n  Timestamp: ${e.timestampMs}`;
       });

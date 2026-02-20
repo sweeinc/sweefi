@@ -1,15 +1,15 @@
 import { Transaction, coinWithBalance } from "@mysten/sui/transactions";
-import type { SweepayConfig, PrepaidDepositParams, PrepaidClaimParams, PrepaidOpParams, PrepaidTopUpParams } from "./types";
+import type { SweefiConfig, PrepaidDepositParams, PrepaidClaimParams, PrepaidOpParams, PrepaidTopUpParams } from "./types";
 import { SUI_CLOCK } from "./deployments";
 import { assertFeeBps, assertPositive } from "./assert";
 
 /** u64::MAX as string — use as max_calls for unlimited prepaid balances */
 export const UNLIMITED_CALLS = "18446744073709551615";
 
-function requireProtocolState(config: SweepayConfig, fn: string): string {
+function requireProtocolState(config: SweefiConfig, fn: string): string {
   if (!config.protocolStateId) {
     throw new Error(
-      `${fn}: SweepayConfig.protocolStateId is required for prepaid deposit/top-up. ` +
+      `${fn}: SweefiConfig.protocolStateId is required for prepaid deposit/top-up. ` +
       "Set it to the shared ProtocolState object ID from your deployment.",
     );
   }
@@ -25,7 +25,7 @@ function requireProtocolState(config: SweepayConfig, fn: string): string {
  * maximum loss.
  */
 export function buildDepositTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: PrepaidDepositParams,
 ): Transaction {
   assertPositive(params.amount, "amount", "buildDepositTx");
@@ -66,7 +66,7 @@ export function buildDepositTx(
  * Claims are allowed during pending withdrawal (provider's grace period).
  */
 export function buildClaimTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: PrepaidClaimParams,
 ): Transaction {
   const tx = new Transaction();
@@ -91,7 +91,7 @@ export function buildClaimTx(
  * After withdrawal_delay_ms, agent calls buildFinalizeWithdrawalTx.
  */
 export function buildRequestWithdrawalTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: PrepaidOpParams,
 ): Transaction {
   const tx = new Transaction();
@@ -115,7 +115,7 @@ export function buildRequestWithdrawalTx(
  * Fails with EWithdrawalLocked if called before the delay has elapsed.
  */
 export function buildFinalizeWithdrawalTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: PrepaidOpParams,
 ): Transaction {
   const tx = new Transaction();
@@ -138,7 +138,7 @@ export function buildFinalizeWithdrawalTx(
  * Re-enables normal operation (top-up becomes possible again).
  */
 export function buildCancelWithdrawalTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: PrepaidOpParams,
 ): Transaction {
   const tx = new Transaction();
@@ -160,7 +160,7 @@ export function buildCancelWithdrawalTx(
  * Destructures the shared object, returning the storage rebate.
  */
 export function buildAgentCloseTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: PrepaidOpParams,
 ): Transaction {
   const tx = new Transaction();
@@ -183,7 +183,7 @@ export function buildAgentCloseTx(
  * Destructures the shared object, returning the storage rebate.
  */
 export function buildProviderCloseTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: PrepaidOpParams,
 ): Transaction {
   const tx = new Transaction();
@@ -206,7 +206,7 @@ export function buildProviderCloseTx(
  * Blocked during pending withdrawal (would conflict with finalize).
  */
 export function buildTopUpTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: PrepaidTopUpParams,
 ): Transaction {
   const protocolStateId = requireProtocolState(config, "buildTopUpTx");

@@ -19,7 +19,7 @@ import {
   PrepaidSuiFacilitatorScheme,
 } from "../../src/index";
 
-describe("@sweepay/sui", () => {
+describe("@sweefi/sui", () => {
   it("should export s402 scheme classes", () => {
     expect(ExactSuiClientScheme).toBeDefined();
     expect(ExactSuiFacilitatorScheme).toBeDefined();

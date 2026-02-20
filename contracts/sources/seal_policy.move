@@ -1,6 +1,6 @@
-/// SweePay SEAL Policy — pay-to-decrypt via EscrowReceipt
+/// SweeFi SEAL Policy — pay-to-decrypt via EscrowReceipt
 ///
-/// Integrates SweePay escrow with Sui SEAL (Secret Encryption and Access Library).
+/// Integrates SweeFi escrow with Sui SEAL (Secret Encryption and Access Library).
 /// Enables the pay-to-decrypt pattern:
 ///
 ///   1. Buyer creates escrow → escrow_id is known immediately
@@ -21,8 +21,8 @@
 ///
 /// Error codes: 300-series (payment=0, stream=100, escrow=200, seal=300)
 #[allow(lint(self_transfer))]
-module sweepay::seal_policy {
-    use sweepay::escrow;
+module sweefi::seal_policy {
+    use sweefi::escrow;
 
     const ENoAccess: u64 = 300;
 

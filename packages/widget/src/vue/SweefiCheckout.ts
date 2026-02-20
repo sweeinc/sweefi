@@ -1,12 +1,12 @@
 import { defineComponent, h, onMounted } from "vue";
 import type { PropType } from "vue";
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
-import type { SweepayConfig } from "@sweepay/sui/ptb";
+import type { SweefiConfig } from "@sweefi/sui/ptb";
 import type { WalletAdapter } from "../core";
-import { useSweepayCheckout } from "./useSweepayCheckout";
+import { useSweefiCheckout } from "./useSweefiCheckout";
 
-export const SweepayCheckout = defineComponent({
-  name: "SweepayCheckout",
+export const SweefiCheckout = defineComponent({
+  name: "SweefiCheckout",
   props: {
     wallet: { type: Object as PropType<WalletAdapter>, required: true },
     recipient: { type: String, required: true },
@@ -17,7 +17,7 @@ export const SweepayCheckout = defineComponent({
     memo: { type: String, default: undefined },
     suiClient: { type: Object as PropType<SuiJsonRpcClient>, default: undefined },
     network: { type: String as PropType<"testnet" | "mainnet" | "devnet">, default: "testnet" },
-    config: { type: Object as PropType<SweepayConfig>, default: undefined },
+    config: { type: Object as PropType<SweefiConfig>, default: undefined },
     autoConnect: { type: Boolean, default: false },
   },
   emits: ["connected", "simulated", "paid", "error"],
@@ -29,7 +29,7 @@ export const SweepayCheckout = defineComponent({
         network: props.network,
       });
 
-    const checkout = useSweepayCheckout({
+    const checkout = useSweefiCheckout({
       wallet: props.wallet,
       suiClient: client,
       recipient: props.recipient,
@@ -79,14 +79,14 @@ export const SweepayCheckout = defineComponent({
     });
 
     return () =>
-      h("div", { class: "sweepay-checkout" }, [
+      h("div", { class: "sweefi-checkout" }, [
         h("p", `Status: ${checkout.state.value.status}`),
         checkout.state.value.address
           ? h("p", `Wallet: ${checkout.state.value.address}`)
           : h("p", "Wallet: not connected"),
         checkout.state.value.error ? h("p", `Error: ${checkout.state.value.error}`) : null,
         checkout.state.value.digest ? h("p", `Digest: ${checkout.state.value.digest}`) : null,
-        h("div", { class: "sweepay-actions" }, [
+        h("div", { class: "sweefi-actions" }, [
           h(
             "button",
             {

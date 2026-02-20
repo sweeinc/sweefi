@@ -1,19 +1,20 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { SuiObjectChange } from "@mysten/sui/jsonRpc";
 import {
   buildCreateEscrowTx,
   buildReleaseEscrowTx,
   buildRefundEscrowTx,
   buildDisputeEscrowTx,
-} from "@sweepay/sui/ptb";
-import type { SweepayContext } from "../context.js";
+} from "@sweefi/sui/ptb";
+import type { SweefiContext } from "../context.js";
 import { requireSigner, checkSpendingLimit, recordSpend } from "../context.js";
 import { resolveCoinType, formatBalance, parseAmount, assertTxSuccess, ZERO_ADDRESS, suiAddress, suiObjectId, optionalSuiAddress } from "../utils/format.js";
 
-export function registerEscrowTools(server: McpServer, ctx: SweepayContext) {
+export function registerEscrowTools(server: McpServer, ctx: SweefiContext) {
   // ── Create Escrow ──────────────────────────────────────────
   server.registerTool(
-    "sweepay_create_escrow",
+    "sweefi_create_escrow",
     {
       title: "Create Escrow",
       description:
@@ -73,7 +74,7 @@ export function registerEscrowTools(server: McpServer, ctx: SweepayContext) {
       recordSpend(ctx, depositAmount);
 
       const escrowObj = result.objectChanges?.find(
-        (c) => c.type === "created" && c.objectType?.includes("Escrow"),
+        (c: SuiObjectChange) => c.type === "created" && c.objectType?.includes("Escrow"),
       );
       const escrowId = escrowObj && "objectId" in escrowObj ? escrowObj.objectId : "unknown";
       const formatted = formatBalance(amount, resolvedType);
@@ -101,7 +102,7 @@ export function registerEscrowTools(server: McpServer, ctx: SweepayContext) {
 
   // ── Release Escrow ─────────────────────────────────────────
   server.registerTool(
-    "sweepay_release_escrow",
+    "sweefi_release_escrow",
     {
       title: "Release Escrow Funds",
       description:
@@ -133,7 +134,7 @@ export function registerEscrowTools(server: McpServer, ctx: SweepayContext) {
       assertTxSuccess(result);
 
       const receiptObj = result.objectChanges?.find(
-        (c) => c.type === "created" && c.objectType?.includes("EscrowReceipt"),
+        (c: SuiObjectChange) => c.type === "created" && c.objectType?.includes("EscrowReceipt"),
       );
       const receiptId = receiptObj && "objectId" in receiptObj ? receiptObj.objectId : "unknown";
 
@@ -157,7 +158,7 @@ export function registerEscrowTools(server: McpServer, ctx: SweepayContext) {
 
   // ── Refund Escrow ──────────────────────────────────────────
   server.registerTool(
-    "sweepay_refund_escrow",
+    "sweefi_refund_escrow",
     {
       title: "Refund Escrow",
       description:
@@ -206,7 +207,7 @@ export function registerEscrowTools(server: McpServer, ctx: SweepayContext) {
 
   // ── Dispute Escrow ─────────────────────────────────────────
   server.registerTool(
-    "sweepay_dispute_escrow",
+    "sweefi_dispute_escrow",
     {
       title: "Dispute Escrow",
       description:

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { createSweepayMcpServer } from "../src/server.js";
+import { createSweefiMcpServer } from "../src/server.js";
 
 // Mock the SuiJsonRpcClient to avoid real RPC calls
 vi.mock("@mysten/sui/jsonRpc", () => ({
@@ -12,9 +12,9 @@ vi.mock("@mysten/sui/jsonRpc", () => ({
   getJsonRpcFullnodeUrl: vi.fn().mockReturnValue("https://fullnode.testnet.sui.io:443"),
 }));
 
-describe("createSweepayMcpServer", () => {
+describe("createSweefiMcpServer", () => {
   it("creates server with default config", () => {
-    const { server, context } = createSweepayMcpServer();
+    const { server, context } = createSweefiMcpServer();
     expect(server).toBeDefined();
     expect(context).toBeDefined();
     expect(context.network).toBe("testnet");
@@ -22,13 +22,13 @@ describe("createSweepayMcpServer", () => {
   });
 
   it("creates server with custom network", () => {
-    const { context } = createSweepayMcpServer({ network: "mainnet" });
+    const { context } = createSweefiMcpServer({ network: "mainnet" });
     expect(context.network).toBe("mainnet");
   });
 
   it("creates server with custom package ID", () => {
     const customId = "0x1234567890abcdef";
-    const { context } = createSweepayMcpServer({ packageId: customId });
+    const { context } = createSweefiMcpServer({ packageId: customId });
     expect(context.config.packageId).toBe(customId);
   });
 });

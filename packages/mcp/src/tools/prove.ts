@@ -1,13 +1,13 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { buildPayAndProveTx } from "@sweepay/sui/ptb";
-import type { SweepayContext } from "../context.js";
+import { buildPayAndProveTx } from "@sweefi/sui/ptb";
+import type { SweefiContext } from "../context.js";
 import { requireSigner, checkSpendingLimit, recordSpend } from "../context.js";
 import { resolveCoinType, formatBalance, parseAmount, assertTxSuccess, ZERO_ADDRESS, suiAddress, optionalSuiAddress } from "../utils/format.js";
 
-export function registerProveTool(server: McpServer, ctx: SweepayContext) {
+export function registerProveTool(server: McpServer, ctx: SweefiContext) {
   server.registerTool(
-    "sweepay_pay_and_prove",
+    "sweefi_pay_and_prove",
     {
       title: "Atomic Pay-to-Access (SEAL)",
       description:

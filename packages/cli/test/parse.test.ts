@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { resolveCoinType, parseAmount, parseDuration, validateAddress, validateObjectId, parseBigIntFlag, assertTxSuccess } from "../src/parse";
 import { CliError } from "../src/context";
-import { COIN_TYPES, TESTNET_COIN_TYPES } from "@sweepay/core";
+import { COIN_TYPES, TESTNET_COIN_TYPES } from "@sweefi/sdk";
 
 describe("resolveCoinType", () => {
   it("defaults to SUI", () => {

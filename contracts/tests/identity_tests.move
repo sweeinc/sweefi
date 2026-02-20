@@ -1,12 +1,12 @@
 #[test_only]
-module sweepay::identity_tests {
+module sweefi::identity_tests {
     use sui::test_scenario as ts;
     use sui::clock;
     use sui::coin;
     use sui::sui::SUI;
-    use sweepay::identity;
-    use sweepay::payment;
-    use sweepay::admin;
+    use sweefi::identity;
+    use sweefi::payment;
+    use sweefi::admin;
 
     const AGENT: address = @0xA1;
     const AGENT_B: address = @0xA2;

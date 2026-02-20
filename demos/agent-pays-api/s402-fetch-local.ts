@@ -1,7 +1,7 @@
 /**
  * Local s402 fetch wrapper for the demo.
  *
- * Simplified version of @sweepay/sdk's wrapFetchWithS402.
+ * Simplified version of @sweefi/sdk's wrapFetchWithS402.
  * Intercepts 402 responses, auto-creates payment, retries.
  */
 

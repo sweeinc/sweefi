@@ -1,10 +1,10 @@
-# @sweepay/sdk
+# @sweefi/sdk
 
 Add payments to any app in 3 lines of code.
 
-`@sweepay/sdk` implements the [s402 protocol](https://github.com/Danny-Devs/sweepay) on Sui — the open standard for machine-to-machine payments over HTTP. Drop it into an AI agent to pay any s402-gated API automatically, or add it to your server to start charging for your API endpoints.
+`@sweefi/sdk` implements the [s402 protocol](https://github.com/sweeinc/sweefi) on Sui — the open standard for machine-to-machine payments over HTTP. Drop it into an AI agent to pay any s402-gated API automatically, or add it to your server to start charging for your API endpoints.
 
-Part of the [SweePay](https://github.com/Danny-Devs/sweepay) ecosystem.
+**Apache 2.0 open source.** Part of the [SweeFi](https://github.com/sweeinc/sweefi) ecosystem.
 
 ---
 
@@ -12,17 +12,17 @@ Part of the [SweePay](https://github.com/Danny-Devs/sweepay) ecosystem.
 
 | Who you are | What you need | Import |
 |---|---|---|
-| Building an AI agent or client app | Auto-pay APIs that return 402 | `@sweepay/sdk/client` |
-| Running an API that should charge per call | Gate routes behind payments | `@sweepay/sdk/server` |
+| Building an AI agent or client app | Auto-pay APIs that return 402 | `@sweefi/sdk/client` |
+| Running an API that should charge per call | Gate routes behind payments | `@sweefi/sdk/server` |
 
-Both paths are also available from the root import (`@sweepay/sdk`).
+Both paths are also available from the root import (`@sweefi/sdk`).
 
 ---
 
 ## Install
 
 ```bash
-npm install @sweepay/sdk @mysten/sui
+npm install @sweefi/sdk @mysten/sui
 # For server-side gating with Hono:
 npm install hono
 ```
@@ -34,7 +34,7 @@ npm install hono
 Give your agent a wallet. Every request to a paid API is handled transparently: the fetch call goes out, the server responds with 402, your agent pays, and the request is retried with a payment header — all in one `await`.
 
 ```typescript
-import { createS402Client } from '@sweepay/sdk/client';
+import { createS402Client } from '@sweefi/sdk/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
 const wallet = Ed25519Keypair.generate(); // or load from env
@@ -56,8 +56,8 @@ const client = createS402Client({
 
   // Optional
   rpcUrl: 'https://fullnode.testnet.sui.io',  // custom RPC endpoint
-  facilitatorUrl: 'https://your-facilitator.example.com', // default: SweePay hosted
-  packageId: '0xYOUR_SWEEPAY_PACKAGE_ID',    // required for stream/escrow/seal schemes
+  facilitatorUrl: 'https://your-facilitator.example.com', // default: SweeFi hosted
+  packageId: '0xYOUR_SWEEFI_PACKAGE_ID',    // required for stream/escrow/seal schemes
 });
 ```
 
@@ -77,7 +77,7 @@ client.facilitatorUrl   // resolved facilitator URL
 `wrapFetchWithS402` is also exported for cases where you have an existing fetch instance and want to upgrade it rather than replace it:
 
 ```typescript
-import { wrapFetchWithS402 } from '@sweepay/sdk/client';
+import { wrapFetchWithS402 } from '@sweefi/sdk/client';
 
 const paidFetch = wrapFetchWithS402(myCustomFetch, s402Client, {
   facilitatorUrl: 'https://your-facilitator.example.com',
@@ -93,7 +93,7 @@ const paidFetch = wrapFetchWithS402(myCustomFetch, s402Client, {
 
 ```typescript
 import { Hono } from 'hono';
-import { s402Gate } from '@sweepay/sdk/server';
+import { s402Gate } from '@sweefi/sdk/server';
 
 const app = new Hono();
 
@@ -208,15 +208,15 @@ The package ships three entry points so you only bundle what you use:
 
 ```typescript
 // Root — both client and server
-import { createS402Client, s402Gate } from '@sweepay/sdk';
+import { createS402Client, s402Gate } from '@sweefi/sdk';
 
 // Client only — safe in browser, edge, and agent environments
-import { createS402Client, wrapFetchWithS402, adaptWallet } from '@sweepay/sdk/client';
-import type { s402ClientConfig, s402FetchOptions } from '@sweepay/sdk/client';
+import { createS402Client, wrapFetchWithS402, adaptWallet } from '@sweefi/sdk/client';
+import type { s402ClientConfig, s402FetchOptions } from '@sweefi/sdk/client';
 
 // Server only — Hono middleware, Node.js and edge runtimes
-import { s402Gate } from '@sweepay/sdk/server';
-import type { s402GateConfig } from '@sweepay/sdk/server';
+import { s402Gate } from '@sweefi/sdk/server';
+import type { s402GateConfig } from '@sweefi/sdk/server';
 ```
 
 ---
@@ -226,7 +226,7 @@ import type { s402GateConfig } from '@sweepay/sdk/server';
 `client.fetch` throws `s402PaymentSentError` when a payment was submitted but the follow-up response was lost due to a network error. This is intentionally distinct from a normal fetch rejection — the payment may have already settled on-chain.
 
 ```typescript
-import { s402PaymentSentError } from '@sweepay/sdk/client';
+import { s402PaymentSentError } from '@sweefi/sdk/client';
 
 try {
   const res = await client.fetch('https://api.example.com/data');
@@ -254,13 +254,12 @@ try {
 
 | Package | Purpose |
 |---|---|
-| [`@sweepay/sdk`](https://www.npmjs.com/package/@sweepay/sdk) | This package — high-level SDK for clients and servers |
-| [`@sweepay/mcp`](https://www.npmjs.com/package/@sweepay/mcp) | 30 payment tools for Claude, Cursor, and any MCP-compatible AI |
-| [`@sweepay/sui`](https://www.npmjs.com/package/@sweepay/sui) | Low-level Sui payment primitives |
-| [`@sweepay/core`](https://www.npmjs.com/package/@sweepay/core) | Protocol types and shared utilities |
+| [`@sweefi/sdk`](https://www.npmjs.com/package/@sweefi/sdk) | This package — high-level SDK for clients and servers (includes types and client factories) |
+| [`@sweefi/mcp`](https://www.npmjs.com/package/@sweefi/mcp) | 30 payment tools for Claude, Cursor, and any MCP-compatible AI |
+| [`@sweefi/sui`](https://www.npmjs.com/package/@sweefi/sui) | Low-level Sui PTB builders for every on-chain operation |
 
 ---
 
 ## License
 
-MIT — [https://github.com/Danny-Devs/sweepay](https://github.com/Danny-Devs/sweepay)
+Apache 2.0 — [https://github.com/sweeinc/sweefi](https://github.com/sweeinc/sweefi)

@@ -1,5 +1,5 @@
 import { Transaction, coinWithBalance } from "@mysten/sui/transactions";
-import type { SweepayConfig, PayParams } from "./types";
+import type { SweefiConfig, PayParams } from "./types";
 import { SUI_CLOCK } from "./deployments";
 import { assertFeeBps, assertPositive } from "./assert";
 
@@ -31,7 +31,7 @@ export interface PayAndProveParams extends PayParams {
  * @returns The built Transaction, ready to sign and execute
  */
 export function buildPayAndProveTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: PayAndProveParams,
 ): Transaction {
   assertPositive(params.amount, "amount", "buildPayAndProveTx");

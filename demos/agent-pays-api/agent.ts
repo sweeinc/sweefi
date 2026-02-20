@@ -20,7 +20,7 @@ import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 import { fromBase64 } from "@mysten/sui/utils";
 import { s402Client, S402_VERSION } from "s402";
-import { ExactSuiClientScheme, toClientSuiSigner } from "@sweepay/sui";
+import { ExactSuiClientScheme, toClientSuiSigner } from "@sweefi/sui";
 import { wrapFetchWithS402 } from "./s402-fetch-local.js";
 
 // ══════════════════════════════════════════════════════════════

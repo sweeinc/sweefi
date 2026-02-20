@@ -1,5 +1,5 @@
 /**
- * sweepay pay-402 --url <URL> [--method GET|POST] [--body "..."] [--header "K: V"]
+ * sweefi pay-402 --url <URL> [--method GET|POST] [--body "..."] [--header "K: V"]
  *
  * The Trojan horse command. When an API responds with HTTP 402 Payment Required,
  * this command handles everything: reads the s402 headers, signs the payment,
@@ -12,8 +12,8 @@
  *   3. Return both the API response AND what was paid
  */
 
-import { createS402Client } from "@sweepay/sdk/client";
-import { S402_HEADERS, decodePaymentRequired } from "@sweepay/core";
+import { createS402Client } from "@sweefi/sdk/client";
+import { S402_HEADERS, decodePaymentRequired } from "@sweefi/sdk";
 import type { CliContext } from "../context.js";
 import { requireSigner, CliError } from "../context.js";
 import { outputSuccess } from "../output.js";
@@ -24,7 +24,7 @@ export async function pay402(
   flags: { url?: string; method?: string; body?: string; header?: string[]; human?: boolean },
 ): Promise<void> {
   if (!flags.url) {
-    throw new CliError("MISSING_ARGS", "Usage: sweepay pay-402 --url <URL>", false, "Example: sweepay pay-402 --url https://api.example.com/premium/data");
+    throw new CliError("MISSING_ARGS", "Usage: sweefi pay-402 --url <URL>", false, "Example: sweefi pay-402 --url https://api.example.com/premium/data");
   }
 
   // Validate URL before making network requests

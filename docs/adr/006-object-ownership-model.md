@@ -11,7 +11,7 @@ Sui has two fundamental object categories that affect performance, scalability, 
 1. **Owned objects**: Belong to a single address. Transactions using only owned objects skip consensus — they execute on a single validator via fast-path (sub-second finality, ~200ms). No contention possible.
 2. **Shared objects**: Accessible by multiple addresses. Transactions touching shared objects go through Sui's consensus (Narwhal/Bullshark) — higher latency (~2-3 seconds), potential contention under high throughput on the same object.
 
-SweePay must choose the correct ownership model for each on-chain object. The wrong choice either:
+SweeFi must choose the correct ownership model for each on-chain object. The wrong choice either:
 - Makes objects inaccessible to necessary parties (owned when it should be shared), or
 - Adds unnecessary consensus overhead to hot paths (shared when it could be owned)
 
@@ -39,7 +39,7 @@ Object decision:
 
 ### Payment Hot Path: Pure Owned Objects
 
-The most common SweePay operation — single payment — touches only owned objects:
+The most common SweeFi operation — single payment — touches only owned objects:
 
 ```
 pay<T>():
@@ -49,7 +49,7 @@ pay<T>():
           Coin<T>        (owned, transferred to fee_recipient)
 ```
 
-No shared objects. No consensus. Fast-path execution. This means SweePay payments scale linearly with validator throughput — there's no shared-object contention bottleneck.
+No shared objects. No consensus. Fast-path execution. This means SweeFi payments scale linearly with validator throughput — there's no shared-object contention bottleneck.
 
 This is a critical advantage over designs that use a shared "payment ledger" or "protocol registry" — those create a consensus bottleneck on every payment.
 
@@ -87,10 +87,10 @@ This is the correct combination for bearer credentials (see ADR-005). The receip
 
 ### Positive
 
-- **Payment throughput**: No shared-object bottleneck on the most common operation. SweePay payments can saturate Sui's owned-object throughput (~100k+ TPS theoretical).
+- **Payment throughput**: No shared-object bottleneck on the most common operation. SweeFi payments can saturate Sui's owned-object throughput (~100k+ TPS theoretical).
 - **Predictable latency**: Payments = fast path (~200ms). Streams/escrows = consensus path (~2-3s). Users and integrators can set expectations accordingly.
 - **Correct access control**: Owned objects are inherently access-controlled — only the owner can use them in transactions. No additional `assert!(sender == owner)` checks needed for receipts and invoices.
-- **No global contention**: Unlike designs with a shared protocol registry, SweePay has no single shared object that all transactions must touch. Each stream and escrow is independent.
+- **No global contention**: Unlike designs with a shared protocol registry, SweeFi has no single shared object that all transactions must touch. Each stream and escrow is independent.
 
 ### Negative
 
@@ -99,7 +99,7 @@ This is the correct combination for bearer credentials (see ADR-005). The receip
 
 ### Object Ability Reference
 
-| Ability | Meaning | SweePay Usage |
+| Ability | Meaning | SweeFi Usage |
 |---------|---------|---------------|
 | `key` | Can be an on-chain object with unique ID | All objects |
 | `store` | Can be transferred, wrapped, stored in other objects | Receipts only (bearer credentials) |

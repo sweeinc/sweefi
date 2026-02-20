@@ -1,12 +1,12 @@
 /**
- * sweepay prepaid deposit <provider> <amount> [--coin SUI|USDC] [--rate <base-units-per-call>] [--max-calls <n>]
- * sweepay prepaid status [balance-id]
+ * sweefi prepaid deposit <provider> <amount> [--coin SUI|USDC] [--rate <base-units-per-call>] [--max-calls <n>]
+ * sweefi prepaid status [balance-id]
  *
- * Prepaid balances are SweePay's killer feature: deposit once, consume many API calls.
+ * Prepaid balances are SweeFi's killer feature: deposit once, consume many API calls.
  * 500x cheaper than per-call payments for high-frequency agent operations.
  */
 
-import { buildPrepaidDepositTx } from "@sweepay/sui/ptb";
+import { buildPrepaidDepositTx } from "@sweefi/sui/ptb";
 import type { CliContext } from "../context.js";
 import { requireSigner, CliError } from "../context.js";
 import { outputSuccess, formatBalance, explorerUrl } from "../output.js";
@@ -23,7 +23,7 @@ export async function prepaidDeposit(
   flags: { coin?: string; rate?: string; maxCalls?: string; dryRun?: boolean; human?: boolean },
 ): Promise<void> {
   if (args.length < 2) {
-    throw new CliError("MISSING_ARGS", "Usage: sweepay prepaid deposit <provider> <amount>", false, "Example: sweepay prepaid deposit 0xProvider... 10 --coin SUI --rate 10000");
+    throw new CliError("MISSING_ARGS", "Usage: sweefi prepaid deposit <provider> <amount>", false, "Example: sweefi prepaid deposit 0xProvider... 10 --coin SUI --rate 10000");
   }
 
   const signer = requireSigner(ctx);
@@ -97,7 +97,7 @@ export async function prepaidDeposit(
 
 export async function prepaidStatus(ctx: CliContext, args: string[], flags: { human?: boolean }): Promise<void> {
   if (args.length < 1) {
-    throw new CliError("MISSING_ARGS", "Usage: sweepay prepaid status <balance-id>", false, "Pass the PrepaidBalance object ID");
+    throw new CliError("MISSING_ARGS", "Usage: sweefi prepaid status <balance-id>", false, "Pass the PrepaidBalance object ID");
   }
 
   const balanceId = validateObjectId(args[0], "Balance ID");
@@ -161,7 +161,7 @@ export async function prepaidList(ctx: CliContext, args: string[], flags: { huma
     address,
     count: items.length,
     balances: items,
-    ...(items.length === 0 && { message: "No prepaid balances found. Create one with: sweepay prepaid deposit <provider> <amount>" }),
+    ...(items.length === 0 && { message: "No prepaid balances found. Create one with: sweefi prepaid deposit <provider> <amount>" }),
     network: ctx.network,
   }, flags.human ?? false);
 }

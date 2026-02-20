@@ -6,7 +6,7 @@
  *
  * @example
  * ```typescript
- * import { createS402Client } from '@sweepay/sdk/client';
+ * import { createS402Client } from '@sweefi/sdk/client';
  * import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
  *
  * const wallet = Ed25519Keypair.generate();
@@ -25,7 +25,7 @@ import {
   EscrowSuiClientScheme,
   UnlockSuiClientScheme,
   DirectSuiSettlement,
-} from '@sweepay/sui';
+} from '@sweefi/sui';
 import { adaptWallet } from './wallet-adapter.js';
 import { wrapFetchWithS402 } from './s402-fetch.js';
 import { DEFAULT_FACILITATOR_URL } from '../shared/constants.js';
@@ -51,11 +51,11 @@ export function createS402Client(config: s402ClientConfig) {
 
   // Register advanced schemes if packageId is provided (needed for PTB builders)
   if (packageId) {
-    const sweepayConfig = { packageId };
-    client.register(network, new PrepaidSuiClientScheme(signer, sweepayConfig));
-    client.register(network, new StreamSuiClientScheme(signer, sweepayConfig));
-    client.register(network, new EscrowSuiClientScheme(signer, sweepayConfig));
-    client.register(network, new UnlockSuiClientScheme(signer, sweepayConfig));
+    const sweefiConfig = { packageId };
+    client.register(network, new PrepaidSuiClientScheme(signer, sweefiConfig));
+    client.register(network, new StreamSuiClientScheme(signer, sweefiConfig));
+    client.register(network, new EscrowSuiClientScheme(signer, sweefiConfig));
+    client.register(network, new UnlockSuiClientScheme(signer, sweefiConfig));
   }
 
   // Wrap fetch with s402 payment handling

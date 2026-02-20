@@ -1,9 +1,10 @@
 {
-  "name": "@sweepay/core",
+  "name": "@sweefi/core",
   "version": "0.1.0",
+  "private": true,
   "type": "module",
-  "description": "Shared types, client factories, error hierarchy for SweePay",
-  "license": "MIT",
+  "description": "Internal — merged into @sweefi/sdk. Do not publish.",
+  "license": "Apache-2.0",
   "author": "Danny Devs",
   "main": "./dist/index.mjs",
   "module": "./dist/index.mjs",
@@ -34,7 +35,7 @@
   "files": ["dist", "README.md", "LICENSE"],
   "repository": {
     "type": "git",
-    "url": "https://github.com/Danny-Devs/sweepay.git",
+    "url": "https://github.com/sweeinc/sweefi.git",
     "directory": "packages/core"
   },
   "publishConfig": {

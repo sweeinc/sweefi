@@ -1,7 +1,7 @@
 #[test_only]
-module sweepay::admin_tests {
+module sweefi::admin_tests {
     use sui::test_scenario::{Self as ts};
-    use sweepay::admin;
+    use sweefi::admin;
 
     const ADMIN: address = @0xADC;
 

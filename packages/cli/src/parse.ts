@@ -7,7 +7,7 @@
  *   "7d" → 604_800_000 ms
  */
 
-import { COIN_TYPES, TESTNET_COIN_TYPES, COIN_DECIMALS } from "@sweepay/core";
+import { COIN_TYPES, TESTNET_COIN_TYPES, COIN_DECIMALS } from "@sweefi/sdk";
 import { CliError } from "./context.js";
 
 const SUI_ADDRESS_RE = /^0x[a-fA-F0-9]{64}$/;
@@ -150,17 +150,17 @@ const ABORT_CODES: Record<number, { code: string; message: string; action: strin
   0:   { code: "INSUFFICIENT_PAYMENT", message: "Payment amount is less than required", action: "Increase the amount and retry", retryable: false, humanRequired: false },
   1:   { code: "ZERO_AMOUNT", message: "Amount cannot be zero", action: "Provide a positive amount", retryable: false, humanRequired: false },
   // Mandate — agent is the delegate, human is the delegator
-  400: { code: "MANDATE_NOT_DELEGATE", message: "Signer is not the authorized delegate for this mandate", action: "Run 'sweepay mandate check <mandateId>' to verify the delegate address matches your wallet", retryable: false, humanRequired: false },
+  400: { code: "MANDATE_NOT_DELEGATE", message: "Signer is not the authorized delegate for this mandate", action: "Run 'sweefi mandate check <mandateId>' to verify the delegate address matches your wallet", retryable: false, humanRequired: false },
   401: { code: "MANDATE_EXPIRED", message: "Mandate has expired", action: "This requires human authorization — inform the user that the mandate has expired and wait for them to create a new one. The agent cannot create or renew mandates.", retryable: false, humanRequired: true },
-  402: { code: "MANDATE_PER_TX_EXCEEDED", message: "Amount exceeds the per-transaction spending limit", action: "Run 'sweepay mandate check <mandateId>' to see the per-tx cap, then reduce the amount below it. If the full amount is required, inform the user and wait for them to raise the cap.", retryable: false, humanRequired: false },
+  402: { code: "MANDATE_PER_TX_EXCEEDED", message: "Amount exceeds the per-transaction spending limit", action: "Run 'sweefi mandate check <mandateId>' to see the per-tx cap, then reduce the amount below it. If the full amount is required, inform the user and wait for them to raise the cap.", retryable: false, humanRequired: false },
   403: { code: "MANDATE_TOTAL_EXCEEDED", message: "Lifetime spending cap has been reached", action: "This requires human authorization — inform the user that the mandate budget is exhausted and wait for them to create a new mandate. The agent cannot renew mandates.", retryable: false, humanRequired: true },
   405: { code: "MANDATE_REVOKED", message: "Mandate has been revoked by the delegator", action: "This requires human authorization — inform the user. The mandate was intentionally revoked. Do not attempt to create a new mandate, use a different mandate, or retry. Wait for the user to respond.", retryable: false, humanRequired: true },
   // Prepaid
   600: { code: "PREPAID_NOT_AGENT", message: "Signer is not the agent (depositor) for this balance", action: "Use the correct wallet — the one that created the prepaid deposit", retryable: false, humanRequired: false },
   601: { code: "PREPAID_NOT_PROVIDER", message: "Signer is not the authorized provider", action: "Use the provider wallet that was authorized in the prepaid deposit", retryable: false, humanRequired: false },
   604: { code: "PREPAID_WITHDRAWAL_LOCKED", message: "Funds cannot be withdrawn yet (grace period active)", action: "Wait for the withdrawal delay to pass, then retry", retryable: true, humanRequired: false },
-  606: { code: "PREPAID_MAX_CALLS_EXCEEDED", message: "Maximum call count has been exceeded", action: "Create a new prepaid balance with 'sweepay prepaid deposit' and a higher --max-calls value", retryable: false, humanRequired: false },
-  607: { code: "PREPAID_RATE_EXCEEDED", message: "Claim amount exceeds available balance", action: "Check remaining balance with 'sweepay prepaid status <balanceId>'. Top up or create a new prepaid deposit.", retryable: false, humanRequired: false },
+  606: { code: "PREPAID_MAX_CALLS_EXCEEDED", message: "Maximum call count has been exceeded", action: "Create a new prepaid balance with 'sweefi prepaid deposit' and a higher --max-calls value", retryable: false, humanRequired: false },
+  607: { code: "PREPAID_RATE_EXCEEDED", message: "Claim amount exceeds available balance", action: "Check remaining balance with 'sweefi prepaid status <balanceId>'. Top up or create a new prepaid deposit.", retryable: false, humanRequired: false },
 };
 
 /** Assert a transaction succeeded on-chain. */

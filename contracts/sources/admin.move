@@ -1,4 +1,4 @@
-/// SweePay Admin — Emergency pause circuit breaker
+/// SweeFi Admin — Emergency pause circuit breaker
 ///
 /// Every production Sui DeFi protocol (DeepBook, Cetus, Turbos, Aftermath)
 /// ships AdminCap with emergency pause. Without it, a critical bug post-mainnet
@@ -21,7 +21,7 @@
 ///
 /// Error codes: 500-series (payment=0, stream=100, escrow=200, seal=300, mandate=400, admin=500)
 #[allow(lint(self_transfer, public_entry))]
-module sweepay::admin {
+module sweefi::admin {
     use sui::event;
 
     // ══════════════════════════════════════════════════════════════

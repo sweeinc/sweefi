@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerStreamTools } from "../../src/tools/stream.js";
-import type { SweepayContext } from "../../src/context.js";
+import type { SweefiContext } from "../../src/context.js";
 
-vi.mock("@sweepay/sui/ptb", () => ({
+vi.mock("@sweefi/sui/ptb", () => ({
   buildCreateStreamTx: vi.fn().mockReturnValue({ setSender: vi.fn() }),
   buildCreateStreamWithTimeoutTx: vi.fn().mockReturnValue({ setSender: vi.fn() }),
   buildCloseTx: vi.fn().mockReturnValue({ setSender: vi.fn() }),
@@ -13,7 +13,7 @@ vi.mock("@sweepay/sui/ptb", () => ({
 describe("stream tools", () => {
   it("registers start, start_with_timeout, stop, and recipient_close tools", () => {
     const server = new McpServer({ name: "test", version: "0.1.0" });
-    const ctx: SweepayContext = {
+    const ctx: SweefiContext = {
       suiClient: {} as any,
       signer: null,
       config: { packageId: "0xtest" },

@@ -1,13 +1,13 @@
 import { describe, it, expect, vi } from "vitest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerPayTool } from "../../src/tools/pay.js";
-import type { SweepayContext } from "../../src/context.js";
+import type { SweefiContext } from "../../src/context.js";
 
-vi.mock("@sweepay/sui/ptb", () => ({
+vi.mock("@sweefi/sui/ptb", () => ({
   buildPayTx: vi.fn().mockReturnValue({ setSender: vi.fn() }),
 }));
 
-function captureHandlers(server: McpServer, ctx: SweepayContext) {
+function captureHandlers(server: McpServer, ctx: SweefiContext) {
   const handlers = new Map<string, Function>();
   const orig = server.registerTool.bind(server);
   const spy = vi.spyOn(server, "registerTool").mockImplementation(
@@ -21,8 +21,8 @@ function captureHandlers(server: McpServer, ctx: SweepayContext) {
   return handlers;
 }
 
-describe("sweepay_pay", () => {
-  const makeCtx = (): SweepayContext => ({
+describe("sweefi_pay", () => {
+  const makeCtx = (): SweefiContext => ({
     suiClient: {
       signAndExecuteTransaction: vi.fn().mockResolvedValue({
         digest: "test_digest",
@@ -51,7 +51,7 @@ describe("sweepay_pay", () => {
     const ctx = makeCtx(); // signer: null
     const server = new McpServer({ name: "test", version: "0.1.0" });
     const handlers = captureHandlers(server, ctx);
-    const handler = handlers.get("sweepay_pay")!;
+    const handler = handlers.get("sweefi_pay")!;
 
     await expect(
       handler({

@@ -1,13 +1,13 @@
 /**
- * sweepay mandate create <agent-address> <max-per-tx> <max-total> <expires-in>
- * sweepay mandate check [mandate-id]
+ * sweefi mandate create <agent-address> <max-per-tx> <max-total> <expires-in>
+ * sweefi mandate check [mandate-id]
  *
  * Mandates are spending authorizations — the autonomy primitive that lets
  * agents operate economically independent within human-set caps.
  * No other payment skill has this.
  */
 
-import { buildCreateMandateTx } from "@sweepay/sui/ptb";
+import { buildCreateMandateTx } from "@sweefi/sui/ptb";
 import type { CliContext } from "../context.js";
 import { requireSigner, CliError } from "../context.js";
 import { outputSuccess, formatBalance, explorerUrl } from "../output.js";
@@ -21,9 +21,9 @@ export async function mandateCreate(
   if (args.length < 4) {
     throw new CliError(
       "MISSING_ARGS",
-      "Usage: sweepay mandate create <agent-address> <max-per-tx> <max-total> <expires-in>",
+      "Usage: sweefi mandate create <agent-address> <max-per-tx> <max-total> <expires-in>",
       false,
-      'Example: sweepay mandate create 0xAgent... 1 50 7d',
+      'Example: sweefi mandate create 0xAgent... 1 50 7d',
     );
   }
 
@@ -139,14 +139,14 @@ export async function mandateList(ctx: CliContext, args: string[], flags: { huma
     address,
     count: items.length,
     mandates: items,
-    ...(items.length === 0 && { message: "No mandates found. A human delegator must create one with: sweepay mandate create <agent-address> <max-per-tx> <max-total> <expires-in>" }),
+    ...(items.length === 0 && { message: "No mandates found. A human delegator must create one with: sweefi mandate create <agent-address> <max-per-tx> <max-total> <expires-in>" }),
     network: ctx.network,
   }, flags.human ?? false);
 }
 
 export async function mandateCheck(ctx: CliContext, args: string[], flags: { human?: boolean }): Promise<void> {
   if (args.length < 1) {
-    throw new CliError("MISSING_ARGS", "Usage: sweepay mandate check <mandate-id>", false, "Pass the Mandate object ID");
+    throw new CliError("MISSING_ARGS", "Usage: sweefi mandate check <mandate-id>", false, "Pass the Mandate object ID");
   }
 
   const mandateId = validateObjectId(args[0], "Mandate ID");

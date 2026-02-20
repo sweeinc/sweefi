@@ -1,20 +1,20 @@
-# SweePay — AGENTS.md (Codebase Manual)
+# SweeFi — AGENTS.md (Codebase Manual)
 
 > For any AI agent (Claude Code, Codex, Gemini CLI) working on this project.
 
 ## Project Overview
 
-**SweePay** is open-source agentic payment infrastructure for Sui.
-- Monorepo with 8 TS packages + Move smart contracts
-- Applying for Sui DeFi Moonshots program ($500K grant)
+**SweeFi** is open-source agentic payment infrastructure for Sui.
+- Monorepo with 7 TS packages + Move smart contracts
+- Built on top of `s402` (HTTP 402 protocol, published on npm as `s402@0.1.2`)
 - Competing with BEEP (justbeep.it) — proprietary alternative
-- 732 total tests (506 TypeScript + 226 Move)
+- 585 total tests (400 TypeScript + 185 Move)
 
 ## Repository Structure
 
 ```
-sweepay-project/
-├── contracts/                    # Move smart contracts (8 modules, 226 test annotations)
+sweefi-project/
+├── contracts/                    # Move smart contracts (10 modules, 185 test functions)
 │   └── sources/
 │       ├── payment.move          # Direct payments, invoices, receipts
 │       ├── stream.move           # Streaming micropayments + budget caps
@@ -23,11 +23,12 @@ sweepay-project/
 │       ├── mandate.move          # Basic spending delegation, revocation
 │       ├── agent_mandate.move    # L0-L3 progressive autonomy, lazy reset
 │       ├── prepaid.move          # Deposit-based agent budgets, batch-claim
+│       ├── identity.move         # Agent identity (did:sui profiles)
+│       ├── math.move             # Shared math utilities (safe division, BPS)
 │       └── admin.move            # Emergency pause, admin capabilities
 ├── packages/
-│   ├── s402-core/                # s402 protocol — HTTP 402 wire format, zero deps (207 tests)
 │   ├── core/                     # Shared types, client factories, constants (54 tests)
-│   ├── sui/                      # 18 PTB builders for all contract ops (114 tests)
+│   ├── sui/                      # 40 PTB builders for all contract ops (176 tests)
 │   ├── sdk/                      # Client + server SDK, 3-line integration (6 tests)
 │   ├── facilitator/              # Self-hostable payment verification (37 tests)
 │   ├── mcp/                      # MCP server, 30+5 AI agent tools (79 tests)
@@ -57,15 +58,15 @@ pnpm -r typecheck
 cd contracts && sui move test
 
 # Single package
-pnpm -r --filter @sweepay/mcp test
-pnpm -r --filter @sweepay/sui build
+pnpm -r --filter @sweefi/mcp test
+pnpm -r --filter @sweefi/sui build
 ```
 
 ## Smart Contracts (Testnet v7)
 
-Package ID: `0xc80485e9182c607c41e16c2606abefa7ce9b7f78d809054e99486a20d62167d5`
+Package ID: `0x242f22b9f8b3d77868f6cde06f294203d7c76afa0cd101f388a6cefa45b54c3d`
 
-8 modules, all deployed, 226 Move test annotations passing (158 positive + 68 negative-path).
+10 modules, all deployed, 185 Move test functions (62 positive + 123 expected-failure).
 
 **Key design patterns:**
 - All payment functions are `public` (composable in PTBs), not `entry`
@@ -78,14 +79,18 @@ Package ID: `0xc80485e9182c607c41e16c2606abefa7ce9b7f78d809054e99486a20d62167d5`
 
 **v6 feature:** `create_with_timeout()` — configurable recipient_close timeout per-stream (1-day minimum, 7-day default). Uses Sui dynamic fields for backward compatibility — no struct change needed.
 
+**v7 additions:** `identity.move` (agent identity profiles) and `math.move` (shared arithmetic utilities). Token type verification added to prepaid, stream, and escrow modules.
+
 ## Package Dependencies
 
 ```
-@sweepay/mcp ──► @sweepay/sui ──► @sweepay/core
-                                       ▲
-@sweepay/sdk ──► @sweepay/core ────────┘
-                       ▲
-@sweepay/facilitator ──┘
+@sweefi/mcp ──────► @sweefi/sui ──► @sweefi/core
+@sweefi/cli ──────► @sweefi/sui     ▲
+@sweefi/sdk ──────► @sweefi/core ───┘
+@sweefi/facilitator ► @sweefi/core
+@sweefi/widget ───► @sweefi/sui
+
+External: s402@0.1.2 (npm), @mysten/sui@2.4.0, @mysten/seal@1.0.1
 ```
 
 ## Architecture Decisions
@@ -100,7 +105,7 @@ Package ID: `0xc80485e9182c607c41e16c2606abefa7ce9b7f78d809054e99486a20d62167d5`
 
 ## Key Dependencies
 
-- `@mysten/sui` — Sui TypeScript SDK (peerDep: `>=1.20.0 || ^2.0.0`)
+- `@mysten/sui` — Sui TypeScript SDK (peerDep: `^2.0.0`)
 - `@modelcontextprotocol/sdk@^1.26.0` — MCP server SDK
 - `s402@^0.1.0` — s402 payment protocol core
 - `hono@^4.0.0` — Web framework (facilitator)
@@ -119,25 +124,25 @@ The MCP package registers 30 tools by default + 5 opt-in (admin + provider).
 **Opt-In Provider** (`MCP_ENABLE_PROVIDER_TOOLS=true`): `prepaid_claim`
 **Opt-In Admin** (`MCP_ENABLE_ADMIN_TOOLS=true`): `protocol_status`, `pause_protocol`, `unpause_protocol`, `burn_admin_cap`
 
-All tool names prefixed with `sweepay_`. Transaction tools require `SUI_PRIVATE_KEY` env var.
+All tool names prefixed with `sweefi_`. Transaction tools require `SUI_PRIVATE_KEY` env var.
 
 ## Packaging & Publishing Conventions
 
 **Publish order** (workspace deps must publish first):
 ```
-@sweepay/core → @sweepay/sui → @sweepay/mcp + @sweepay/sdk + @sweepay/facilitator
+@sweefi/core → @sweefi/sui → @sweefi/mcp + @sweefi/sdk + @sweefi/facilitator + @sweefi/cli + @sweefi/widget
 ```
 
 **Build tool**: `tsdown` (NOT tsup — tsup is EOL). Config in each package's `tsdown.config.ts`.
 
 **Source maps**: INCLUDE in published packages. MCP servers and facilitators run as subprocesses — stack traces need readable paths. The size overhead is trivial (~164KB for MCP). The `files` array should be `["dist", "README.md", "LICENSE"]` which includes `.map` files.
 
-**CLI/library split pattern** (applies to `@sweepay/mcp`, `@sweepay/facilitator`):
+**CLI/library split pattern** (applies to `@sweefi/mcp`, `@sweefi/facilitator`):
 - `src/index.ts` — Pure re-exports only. No side effects. Imported as a library.
 - `src/cli.ts` — Shebang + `main()` + stdio transport. Used by `bin` in package.json.
 - ESM has no `require.main === module`. Calling `main()` at module level in `index.ts` would start a server on every `import`.
 
-**peerDependencies**: `@mysten/sui` is a peer dep (`>=1.20.0 || ^2.0.0`), not a direct dep. This avoids duplicate SDK instances when consumers also use the Sui SDK.
+**peerDependencies**: `@mysten/sui` is a peer dep (`^2.0.0`), not a direct dep. This avoids duplicate SDK instances when consumers also use the Sui SDK.
 
 **prepublishOnly gate**: Every package must have `"prepublishOnly": "pnpm run build && pnpm run typecheck && pnpm run test"`. This ensures nothing publishes broken.
 
@@ -147,7 +152,7 @@ All tool names prefixed with `sweepay_`. Transaction tools require `SUI_PRIVATE_
 
 ## Common Pitfalls
 
-1. **USDC address differs by network**: Check `@sweepay/core` COIN_TYPES constant
+1. **USDC address differs by network**: Check `@sweefi/core` COIN_TYPES constant
 2. **Sign-first means no execution on client side**: SDK uses `signTransaction()` not `signAndExecuteTransaction()`
 3. **Buffer doesn't exist in browser**: Use `toBase64`/`fromBase64` from @mysten/sui/utils
 4. **Escrow export is plural**: `registerEscrowTools` (4 tools), not `registerEscrowTool`

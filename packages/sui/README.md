@@ -1,29 +1,29 @@
-# @sweepay/sui
+# @sweefi/sui
 
 Sui-native protocol implementation — PTB builders for payment, stream, escrow, prepaid, and mandate operations.
 
-`@sweepay/sui` is the Sui-specific implementation of the [SweePay](https://github.com/Danny-Devs/sweepay) payment protocol. It exposes two surfaces: signer utilities and s402 scheme implementations via the root import, and a complete set of Programmable Transaction Block (PTB) builders for every on-chain contract operation via the `/ptb` subpath.
+`@sweefi/sui` is the Sui-specific implementation of the [SweeFi](https://github.com/sweeinc/sweefi) payment protocol. It exposes two surfaces: signer utilities and s402 scheme implementations via the root import, and a complete set of Programmable Transaction Block (PTB) builders for every on-chain contract operation via the `/ptb` subpath.
 
-Part of the [SweePay](https://github.com/Danny-Devs/sweepay) ecosystem.
+**Apache 2.0 open source.** Part of the [SweeFi](https://github.com/sweeinc/sweefi) ecosystem.
 
 ## Installation
 
 ```bash
-npm install @sweepay/sui
+npm install @sweefi/sui
 ```
 
 `@mysten/sui` is a peer dependency and must be installed alongside this package:
 
 ```bash
-npm install @sweepay/sui @mysten/sui
+npm install @sweefi/sui @mysten/sui
 ```
 
 ## Subpath Exports
 
 | Import path | Contents |
 |-------------|----------|
-| `@sweepay/sui` | Signers (`toClientSuiSigner`, `toFacilitatorSuiSigner`), s402 scheme classes, constants, utilities |
-| `@sweepay/sui/ptb` | All PTB transaction builders, deployment constants, parameter types |
+| `@sweefi/sui` | Signers (`toClientSuiSigner`, `toFacilitatorSuiSigner`), s402 scheme classes, constants, utilities |
+| `@sweefi/sui/ptb` | All PTB transaction builders, deployment constants, parameter types |
 
 ## Quick Start
 
@@ -32,8 +32,8 @@ Build and sign a payment transaction in two steps:
 ```typescript
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
-import { toClientSuiSigner, SUI_COIN_TYPE } from "@sweepay/sui";
-import { buildPayTx, testnetConfig } from "@sweepay/sui/ptb";
+import { toClientSuiSigner, SUI_COIN_TYPE } from "@sweefi/sui";
+import { buildPayTx, testnetConfig } from "@sweefi/sui/ptb";
 
 // 1. Set up the signer
 const keypair = Ed25519Keypair.fromSecretKey(process.env.PRIVATE_KEY!);
@@ -55,7 +55,7 @@ const tx = buildPayTx(testnetConfig, {
 const { signature, bytes } = await signer.signTransaction(tx);
 // Pass bytes + signature to your facilitator for broadcast,
 // or execute directly:
-import { toFacilitatorSuiSigner } from "@sweepay/sui";
+import { toFacilitatorSuiSigner } from "@sweefi/sui";
 
 const facilitator = toFacilitatorSuiSigner();
 const digest = await facilitator.executeTransaction(bytes, signature, "sui:testnet");
@@ -65,10 +65,10 @@ console.log("Confirmed:", digest);
 
 ## PTB Builder Reference
 
-Import from `@sweepay/sui/ptb`. Every builder takes a `SweepayConfig` as the first argument and a params object as the second, and returns a Sui `Transaction` ready to sign.
+Import from `@sweefi/sui/ptb`. Every builder takes a `SweefiConfig` as the first argument and a params object as the second, and returns a Sui `Transaction` ready to sign.
 
 ```typescript
-import { testnetConfig } from "@sweepay/sui/ptb";
+import { testnetConfig } from "@sweefi/sui/ptb";
 // or supply your own config:
 const config = { packageId: "0x...", protocolStateId: "0x..." };
 ```
@@ -158,8 +158,8 @@ Tiered mandates (L0–L3) add per-transaction, daily, weekly, and lifetime caps 
 Wraps any Sui keypair into the `ClientSuiSigner` interface. Works with `Ed25519Keypair`, `Secp256k1Keypair`, and any compatible signer.
 
 ```typescript
-import { toClientSuiSigner } from "@sweepay/sui";
-import type { ClientSuiSigner } from "@sweepay/sui";
+import { toClientSuiSigner } from "@sweefi/sui";
+import type { ClientSuiSigner } from "@sweefi/sui";
 
 const signer: ClientSuiSigner = toClientSuiSigner(keypair, suiClient);
 // signer.address          — the sender's Sui address
@@ -173,7 +173,7 @@ const signer: ClientSuiSigner = toClientSuiSigner(keypair, suiClient);
 Creates a `FacilitatorSuiSigner` that wraps `SuiClient` operations. Pass an optional keypair only if this facilitator provides gas sponsorship.
 
 ```typescript
-import { toFacilitatorSuiSigner } from "@sweepay/sui";
+import { toFacilitatorSuiSigner } from "@sweefi/sui";
 
 // Basic facilitator (no gas sponsorship)
 const facilitator = toFacilitatorSuiSigner();
@@ -206,7 +206,7 @@ For sponsored transactions, pass `[clientSig, sponsorSig]` as the `signature` ar
 
 ## s402 Scheme Implementations
 
-`@sweepay/sui` ships client, facilitator, and server implementations of the s402 payment protocol for each payment primitive. Import them from `@sweepay/sui`:
+`@sweefi/sui` ships client, facilitator, and server implementations of the s402 payment protocol for each payment primitive. Import them from `@sweefi/sui`:
 
 | Scheme | Client | Facilitator | Server |
 |--------|--------|-------------|--------|
@@ -241,10 +241,10 @@ import {
   MAINNET_RPC_URL,
   TESTNET_RPC_URL,
   DEVNET_RPC_URL,
-} from "@sweepay/sui";
+} from "@sweefi/sui";
 ```
 
-PTB deployment constants (from `@sweepay/sui/ptb`):
+PTB deployment constants (from `@sweefi/sui/ptb`):
 
 ```typescript
 import {
@@ -254,7 +254,7 @@ import {
   TESTNET_ADMIN_CAP,      // AdminCap object ID (deployer-owned)
   TESTNET_UPGRADE_CAP,    // UpgradeCap object ID (deployer-owned)
   SUI_CLOCK,              // "0x6" — Sui's well-known Clock shared object
-} from "@sweepay/sui/ptb";
+} from "@sweefi/sui/ptb";
 ```
 
 ## Utilities
@@ -266,13 +266,13 @@ import {
   validateSuiAddress,   // Check that an address is 0x + 64 hex chars (fully zero-padded)
   convertToTokenAmount, // Convert a decimal string + decimals to base units (no float intermediates)
   coinTypesEqual,       // Compare two coin types for equality after normalization
-} from "@sweepay/sui";
+} from "@sweefi/sui";
 ```
 
 `convertToTokenAmount` uses pure string arithmetic to avoid floating-point precision loss — safe for financial calculations:
 
 ```typescript
-import { convertToTokenAmount, USDC_DECIMALS } from "@sweepay/sui";
+import { convertToTokenAmount, USDC_DECIMALS } from "@sweefi/sui";
 
 convertToTokenAmount("0.10", USDC_DECIMALS); // "100000" (0.10 USDC in base units)
 convertToTokenAmount("1.5", 9);              // "1500000000" (1.5 SUI in MIST)
@@ -286,4 +286,4 @@ convertToTokenAmount("1.5", 9);              // "1500000000" (1.5 SUI in MIST)
 
 ## License
 
-MIT — [https://github.com/Danny-Devs/sweepay](https://github.com/Danny-Devs/sweepay)
+Apache 2.0 — [https://github.com/sweeinc/sweefi](https://github.com/sweeinc/sweefi)

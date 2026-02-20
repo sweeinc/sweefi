@@ -1,15 +1,15 @@
 {
-  "name": "sweepay",
+  "name": "sweefi",
   "version": "0.1.0",
   "private": true,
   "description": "Open-source agentic payment infrastructure for Sui",
   "author": "Danny Devs",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "test:offline": "pnpm -r test",
-    "test:live": "pnpm -r --if-present test:integration && pnpm --filter @sweepay/sui test:live",
+    "test:live": "pnpm -r --if-present test:integration && pnpm --filter @sweefi/sui test:live",
     "typecheck": "pnpm -r typecheck",
     "clean": "pnpm -r exec rm -rf dist node_modules",
     "codex:load": "bash scripts/codex-load.sh",

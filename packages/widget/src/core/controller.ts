@@ -1,4 +1,4 @@
-import { buildPayTx } from "@sweepay/sui/ptb";
+import { buildPayTx } from "@sweefi/sui/ptb";
 import type { CheckoutControllerOptions, CheckoutState, PayResult } from "./types";
 
 function extractReceiptId(
@@ -22,7 +22,7 @@ function canTreatAsValidDryrun(error: string | undefined): boolean {
   ].some((needle) => normalized.includes(needle));
 }
 
-export class SweepayCheckoutController {
+export class SweefiCheckoutController {
   private readonly options: CheckoutControllerOptions;
   private state: CheckoutState = {
     status: "idle",

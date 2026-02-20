@@ -1,5 +1,5 @@
 /**
- * sweepay wallet generate
+ * sweefi wallet generate
  *
  * Generate a new Ed25519 keypair for Sui.
  * Outputs the address and private key in bech32 format (suiprivkey1...).

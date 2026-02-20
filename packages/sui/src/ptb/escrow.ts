@@ -1,12 +1,12 @@
 import { Transaction, coinWithBalance } from "@mysten/sui/transactions";
-import type { SweepayConfig } from "./types";
+import type { SweefiConfig } from "./types";
 import { SUI_CLOCK } from "./deployments";
 import { assertFeeBps, assertPositive } from "./assert";
 
-function requireProtocolState(config: SweepayConfig): string {
+function requireProtocolState(config: SweefiConfig): string {
   if (!config.protocolStateId) {
     throw new Error(
-      "buildCreateEscrowTx: SweepayConfig.protocolStateId is required for escrow creation. " +
+      "buildCreateEscrowTx: SweefiConfig.protocolStateId is required for escrow creation. " +
       "Set it to the shared ProtocolState object ID from your deployment.",
     );
   }
@@ -62,7 +62,7 @@ export interface EscrowOpParams {
  * Seller encrypts deliverables → buyer decrypts after release.
  */
 export function buildCreateEscrowTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: CreateEscrowParams,
 ): Transaction {
   assertPositive(params.depositAmount, "depositAmount", "buildCreateEscrowTx");
@@ -104,7 +104,7 @@ export function buildCreateEscrowTx(
  * The Escrow object is consumed.
  */
 export function buildReleaseEscrowTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: EscrowOpParams,
 ): Transaction {
   const tx = new Transaction();
@@ -133,7 +133,7 @@ export function buildReleaseEscrowTx(
  * @returns Object with `tx` and `receipt` (TransactionResult for the EscrowReceipt)
  */
 export function buildReleaseEscrowComposableTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: EscrowOpParams,
 ) {
   const tx = new Transaction();
@@ -158,7 +158,7 @@ export function buildReleaseEscrowComposableTx(
  * The Escrow object is consumed. No fee charged on refund.
  */
 export function buildRefundEscrowTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: EscrowOpParams,
 ): Transaction {
   const tx = new Transaction();
@@ -183,7 +183,7 @@ export function buildRefundEscrowTx(
  * The Escrow object is mutated (not consumed).
  */
 export function buildDisputeEscrowTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: EscrowOpParams,
 ): Transaction {
   const tx = new Transaction();

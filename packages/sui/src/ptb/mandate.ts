@@ -1,5 +1,5 @@
 import { Transaction, coinWithBalance } from "@mysten/sui/transactions";
-import type { SweepayConfig, PayParams } from "./types";
+import type { SweefiConfig, PayParams } from "./types";
 import { SUI_CLOCK } from "./deployments";
 
 // ══════════════════════════════════════════════════════════════
@@ -60,7 +60,7 @@ export interface CreateRegistryParams {
  * transferred to the delegate in one atomic operation.
  */
 export function buildCreateMandateTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: CreateMandateParams,
 ): Transaction {
   const tx = new Transaction();
@@ -91,7 +91,7 @@ export function buildCreateMandateTx(
  * Called by the delegate (agent). They pass the mandate they own.
  */
 export function buildMandatedPayTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: MandatedPayParams,
 ): Transaction {
   const tx = new Transaction();
@@ -138,7 +138,7 @@ export function buildMandatedPayTx(
  * Each delegator needs one registry (shared object) for revoking mandates.
  */
 export function buildCreateRegistryTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: CreateRegistryParams,
 ): Transaction {
   const tx = new Transaction();
@@ -158,7 +158,7 @@ export function buildCreateRegistryTx(
  * Adds the mandate ID to the shared RevocationRegistry.
  */
 export function buildRevokeMandateTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: RevokeMandateParams,
 ): Transaction {
   const tx = new Transaction();

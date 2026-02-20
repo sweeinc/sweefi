@@ -1,26 +1,26 @@
 /**
- * CLI runtime context — adapted from @sweepay/mcp context.ts
+ * CLI runtime context — adapted from @sweefi/mcp context.ts
  *
  * Reads configuration from environment variables only. No config files.
  * The env-var-only model is deliberate: zero stored state means zero drift,
  * zero exfiltration surface, and one-line agent provisioning.
  *
- * TODO: When @sweepay/core gains a shared createContext(), use that instead.
+ * TODO: When @sweefi/core gains a shared createContext(), use that instead.
  */
 
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 import type { Keypair } from "@mysten/sui/cryptography";
 import { decodeSuiPrivateKey } from "@mysten/sui/cryptography";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import { TESTNET_PACKAGE_ID, TESTNET_PROTOCOL_STATE } from "@sweepay/sui/ptb";
-import type { SweepayConfig } from "@sweepay/sui/ptb";
+import { TESTNET_PACKAGE_ID, TESTNET_PROTOCOL_STATE } from "@sweefi/sui/ptb";
+import type { SweefiConfig } from "@sweefi/sui/ptb";
 
 export type SuiNetwork = "testnet" | "mainnet" | "devnet";
 
 export interface CliContext {
   suiClient: SuiJsonRpcClient;
   signer: Keypair | null;
-  config: SweepayConfig;
+  config: SweefiConfig;
   network: SuiNetwork;
 }
 
@@ -44,7 +44,7 @@ export function createContext(overrides?: { network?: string }): CliContext {
 
   const packageId = process.env.SUI_PACKAGE_ID ?? TESTNET_PACKAGE_ID;
   const protocolStateId = process.env.SUI_PROTOCOL_STATE_ID ?? TESTNET_PROTOCOL_STATE;
-  const config: SweepayConfig = { packageId, protocolStateId };
+  const config: SweefiConfig = { packageId, protocolStateId };
 
   const privateKey = process.env.SUI_PRIVATE_KEY;
   let signer: Keypair | null = null;

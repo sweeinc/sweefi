@@ -1,10 +1,10 @@
 /**
- * sweepay pay <recipient> <amount> [--coin SUI|USDC] [--memo "text"] [--mandate <id> --registry <id>] [--dry-run]
+ * sweefi pay <recipient> <amount> [--coin SUI|USDC] [--memo "text"] [--mandate <id> --registry <id>] [--dry-run]
  *
  * One-shot direct payment on Sui. Returns tx digest, receipt ID, and gas cost.
  */
 
-import { buildPayTx, buildMandatedPayTx } from "@sweepay/sui/ptb";
+import { buildPayTx, buildMandatedPayTx } from "@sweefi/sui/ptb";
 import type { CliContext } from "../context.js";
 import { requireSigner, CliError } from "../context.js";
 import { outputSuccess, formatBalance, explorerUrl } from "../output.js";
@@ -14,7 +14,7 @@ const ZERO_ADDRESS = "0x00000000000000000000000000000000000000000000000000000000
 
 export async function pay(ctx: CliContext, args: string[], flags: { coin?: string; memo?: string; mandate?: string; registry?: string; dryRun?: boolean; human?: boolean }): Promise<void> {
   if (args.length < 2) {
-    throw new CliError("MISSING_ARGS", "Usage: sweepay pay <recipient> <amount>", false, "Example: sweepay pay 0xBob... 1.5 --coin SUI");
+    throw new CliError("MISSING_ARGS", "Usage: sweefi pay <recipient> <amount>", false, "Example: sweefi pay 0xBob... 1.5 --coin SUI");
   }
 
   const signer = requireSigner(ctx);
@@ -27,7 +27,7 @@ export async function pay(ctx: CliContext, args: string[], flags: { coin?: strin
   const registryId = flags.registry ? validateObjectId(flags.registry, "Registry ID") : undefined;
 
   if (mandateId && !registryId) {
-    throw new CliError("MISSING_ARGS", "--registry is required when using --mandate", false, "Example: sweepay pay 0xBob... 1.5 --mandate 0xMandate... --registry 0xRegistry...");
+    throw new CliError("MISSING_ARGS", "--registry is required when using --mandate", false, "Example: sweefi pay 0xBob... 1.5 --mandate 0xMandate... --registry 0xRegistry...");
   }
 
   const baseParams = {

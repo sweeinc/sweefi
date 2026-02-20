@@ -1,14 +1,14 @@
 {
-  "name": "@sweepay/cli",
+  "name": "@sweefi/cli",
   "version": "0.1.0",
   "type": "module",
-  "description": "CLI for AI agent payments on Sui — the bridge between OpenClaw skills and the SweePay protocol",
-  "license": "MIT",
+  "description": "CLI for AI agent payments on Sui — the bridge between OpenClaw skills and the SweeFi protocol",
+  "license": "Apache-2.0",
   "author": "Danny Devs",
   "bin": {
-    "sweepay": "./dist/index.mjs",
+    "sweefi": "./dist/index.mjs",
     "swee": "./dist/index.mjs",
-    "sp": "./dist/index.mjs"
+    "sf": "./dist/index.mjs"
   },
   "main": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
@@ -34,9 +34,9 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@sweepay/core": "workspace:*",
-    "@sweepay/sui": "workspace:*",
-    "@sweepay/sdk": "workspace:*",
+    "@sweefi/sdk": "workspace:*",
+    "@sweefi/sui": "workspace:*",
+    "@sweefi/sdk": "workspace:*",
     "@mysten/sui": "^2.0.0"
   },
   "devDependencies": {

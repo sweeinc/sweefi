@@ -1,9 +1,9 @@
 {
-  "name": "@sweepay/widget",
+  "name": "@sweefi/widget",
   "version": "0.1.0",
   "type": "module",
-  "description": "Framework-agnostic checkout core with Vue adapter for SweePay",
-  "license": "MIT",
+  "description": "Framework-agnostic checkout core with Vue adapter for SweeFi",
+  "license": "Apache-2.0",
   "author": "Danny Devs",
   "publishConfig": {
     "access": "public"
@@ -44,7 +44,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@sweepay/sui": "workspace:*",
+    "@sweefi/sui": "workspace:*",
     "@mysten/sui": "^2.0.0"
   },
   "peerDependencies": {

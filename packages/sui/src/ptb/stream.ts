@@ -1,12 +1,12 @@
 import { Transaction, coinWithBalance } from "@mysten/sui/transactions";
-import type { SweepayConfig, CreateStreamParams, CreateStreamWithTimeoutParams, StreamOpParams, StreamTopUpParams, BatchClaimParams } from "./types";
+import type { SweefiConfig, CreateStreamParams, CreateStreamWithTimeoutParams, StreamOpParams, StreamTopUpParams, BatchClaimParams } from "./types";
 import { SUI_CLOCK } from "./deployments";
 import { assertFeeBps, assertPositive } from "./assert";
 
-function requireProtocolState(config: SweepayConfig, fn: string): string {
+function requireProtocolState(config: SweefiConfig, fn: string): string {
   if (!config.protocolStateId) {
     throw new Error(
-      `${fn}: SweepayConfig.protocolStateId is required for stream creation/top-up. ` +
+      `${fn}: SweefiConfig.protocolStateId is required for stream creation/top-up. ` +
       "Set it to the shared ProtocolState object ID from your deployment.",
     );
   }
@@ -20,7 +20,7 @@ function requireProtocolState(config: SweepayConfig, fn: string): string {
  * Default recipient_close timeout: 7 days. Use buildCreateStreamWithTimeoutTx for custom.
  */
 export function buildCreateStreamTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: CreateStreamParams,
 ): Transaction {
   assertPositive(params.depositAmount, "depositAmount", "buildCreateStreamTx");
@@ -59,7 +59,7 @@ export function buildCreateStreamTx(
  * @param params.recipientCloseTimeoutMs - Minimum 86_400_000 (1 day). Contract enforces floor.
  */
 export function buildCreateStreamWithTimeoutTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: CreateStreamWithTimeoutParams,
 ): Transaction {
   assertPositive(params.depositAmount, "depositAmount", "buildCreateStreamWithTimeoutTx");
@@ -97,7 +97,7 @@ export function buildCreateStreamWithTimeoutTx(
  * Fees are split to fee_recipient automatically.
  */
 export function buildClaimTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: StreamOpParams,
 ): Transaction {
   const tx = new Transaction();
@@ -120,7 +120,7 @@ export function buildClaimTx(
  * Accrual stops at the pause timestamp. Pre-pause accrual remains claimable.
  */
 export function buildPauseTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: StreamOpParams,
 ): Transaction {
   const tx = new Transaction();
@@ -144,7 +144,7 @@ export function buildPauseTx(
  * Accrual restarts from current timestamp with backward-shifted last_claim_ms.
  */
 export function buildResumeTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: StreamOpParams,
 ): Transaction {
   const tx = new Transaction();
@@ -168,7 +168,7 @@ export function buildResumeTx(
  * The StreamingMeter object is consumed (deleted).
  */
 export function buildCloseTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: StreamOpParams,
 ): Transaction {
   const tx = new Transaction();
@@ -196,7 +196,7 @@ export function buildCloseTx(
  * when a payer loses keys or abandons the stream.
  */
 export function buildRecipientCloseTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: StreamOpParams,
 ): Transaction {
   const tx = new Transaction();
@@ -223,7 +223,7 @@ export function buildRecipientCloseTx(
  * batching 5 claims saves ~$0.015-0.020 in gas per batch.
  */
 export function buildBatchClaimTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: BatchClaimParams,
 ): Transaction {
   if (params.meterIds.length === 0) {
@@ -254,7 +254,7 @@ export function buildBatchClaimTx(
  * Build a PTB for the payer to add more funds to an existing stream.
  */
 export function buildTopUpTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: StreamTopUpParams,
 ): Transaction {
   const protocolStateId = requireProtocolState(config, "buildTopUpTx");

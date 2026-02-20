@@ -12,7 +12,7 @@
  * Uses devInspectTransactionBlock which doesn't require gas coins —
  * no funded wallet needed. Perfect for CI/ephemeral environments.
  *
- * Run with: SWEEPAY_LIVE_TESTNET=1 pnpm --filter @sweepay/sui test:live
+ * Run with: SWEEFI_LIVE_TESTNET=1 pnpm --filter @sweefi/sui test:live
  * Skip with: SKIP_DRYRUN=1 pnpm test
  */
 
@@ -31,7 +31,7 @@ import {
 } from "../../src/ptb";
 
 // Live lane is opt-in to keep default CI/local runs deterministic.
-const LIVE_TESTNET = process.env.SWEEPAY_LIVE_TESTNET === "1";
+const LIVE_TESTNET = process.env.SWEEFI_LIVE_TESTNET === "1";
 const SKIP = process.env.SKIP_DRYRUN === "1" || !LIVE_TESTNET;
 
 const SUI_COIN_TYPE = "0x2::sui::SUI";

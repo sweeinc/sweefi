@@ -1,13 +1,13 @@
 {
-  "name": "@sweepay/mcp",
+  "name": "@sweefi/mcp",
   "version": "0.1.0",
   "type": "module",
-  "description": "MCP server exposing SweePay payment tools for AI agents — the safety layer for autonomous agent commerce",
-  "license": "MIT",
+  "description": "MCP server exposing SweeFi payment tools for AI agents — the safety layer for autonomous agent commerce",
+  "license": "Apache-2.0",
   "author": "Danny Devs",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Danny-Devs/sweepay.git",
+    "url": "https://github.com/sweeinc/sweefi.git",
     "directory": "packages/mcp"
   },
   "keywords": [
@@ -25,7 +25,7 @@
   },
   "sideEffects": false,
   "bin": {
-    "sweepay-mcp": "./dist/cli.mjs"
+    "sweefi-mcp": "./dist/cli.mjs"
   },
   "main": "./dist/index.mjs",
   "module": "./dist/index.mjs",
@@ -53,8 +53,8 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
-    "@sweepay/core": "workspace:*",
-    "@sweepay/sui": "workspace:*",
+    "@sweefi/sdk": "workspace:*",
+    "@sweefi/sui": "workspace:*",
     "zod": "^3.22.0"
   },
   "peerDependencies": {

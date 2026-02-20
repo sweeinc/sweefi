@@ -30,7 +30,7 @@ import {
   TESTNET_PACKAGE_ID_V4,
   TESTNET_PACKAGE_ID_V5,
 } from "../../src/ptb";
-import type { SweepayConfig } from "../../src/ptb";
+import type { SweefiConfig } from "../../src/ptb";
 
 const PACKAGE_ID = "0x" + "ab".repeat(32);
 const SENDER = "0x" + "11".repeat(32);
@@ -45,10 +45,10 @@ const PROTOCOL_STATE_ID = "0x" + "99".repeat(32);
 const SUI_COIN_TYPE = "0x2::sui::SUI";
 
 /** Payment-only config (no protocolStateId needed) */
-const config: SweepayConfig = { packageId: PACKAGE_ID };
+const config: SweefiConfig = { packageId: PACKAGE_ID };
 
 /** Config with protocolStateId — required for stream/escrow create + admin */
-const fullConfig: SweepayConfig = { packageId: PACKAGE_ID, protocolStateId: PROTOCOL_STATE_ID };
+const fullConfig: SweefiConfig = { packageId: PACKAGE_ID, protocolStateId: PROTOCOL_STATE_ID };
 
 // ══════════════════════════════════════════════════════════════
 // Payment PTB builders
@@ -565,7 +565,7 @@ describe("stream operation sequences", () => {
 
 describe("PTB builder conventions", () => {
   it("all payment builders use the configured packageId", () => {
-    const customConfig: SweepayConfig = { packageId: "0xdeadbeef", protocolStateId: PROTOCOL_STATE_ID };
+    const customConfig: SweefiConfig = { packageId: "0xdeadbeef", protocolStateId: PROTOCOL_STATE_ID };
 
     // Should not throw — just verify they accept arbitrary package IDs
     expect(() =>

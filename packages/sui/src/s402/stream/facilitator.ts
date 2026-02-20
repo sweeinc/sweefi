@@ -40,7 +40,7 @@ export class StreamSuiFacilitatorScheme implements s402FacilitatorScheme {
 
   /**
    * @param signer - Facilitator signer for signature verification and TX execution
-   * @param packageId - Expected SweePay Move package ID. When provided, event
+   * @param packageId - Expected SweeFi Move package ID. When provided, event
    *   extraction verifies the event originates from this package (prevents event
    *   spoofing from attacker-deployed contracts). When omitted, falls back to
    *   suffix matching (less secure, suitable for development/testing).

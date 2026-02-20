@@ -1,4 +1,4 @@
-# SweePay
+# SweeFi
 
 > **s402** — Sui-native HTTP 402 payments for the agentic economy.
 
@@ -6,7 +6,7 @@
 
 ```typescript
 // 3 lines: AI agent auto-pays for premium data
-import { createS402Client } from '@sweepay/sdk/client';
+import { createS402Client } from '@sweefi/sdk/client';
 
 const client = createS402Client({ wallet: myKeypair, network: 'sui:testnet' });
 const data = await client.fetch('https://api.example.com/premium-data');
@@ -15,9 +15,9 @@ const data = await client.fetch('https://api.example.com/premium-data');
 
 ## What Is This?
 
-SweePay is payment infrastructure purpose-built for the agentic economy. AI agents need to pay for APIs, computing resources, and digital goods — without human intervention, credit cards, or centralized custody.
+SweeFi is payment infrastructure purpose-built for the agentic economy. AI agents need to pay for APIs, computing resources, and digital goods — without human intervention, credit cards, or centralized custody.
 
-SweePay is the payment layer of the **Swee ecosystem**: **SweePay** (payments) + **SweeAgent** (agent identity & reputation, `@sweeagent/*`) + **SweeWorld** (geo-location consumer app). This monorepo contains SweePay — the foundation everything else builds on.
+SweeFi is the payment layer of the **Swee ecosystem**: **SweeFi** (payments) + **SweeAgent** (agent identity & reputation, `@sweeagent/*`) + **SweeWorld** (geo-location consumer app). This monorepo contains SweeFi — the foundation everything else builds on.
 
 **s402** is a Sui-native HTTP 402 protocol that is wire-compatible with [x402](https://x402.org) but architecturally superior:
 
@@ -26,7 +26,7 @@ SweePay is the payment layer of the **Swee ecosystem**: **SweePay** (payments) +
 | Feature | x402 (EVM) | s402 (Sui) |
 |---------|-----------|-----------|
 | Settlement | Verify first, settle later (temporal gap) | Atomic PTBs (no gap) |
-| Payment modes | Exact only | Exact + Prepaid + Escrow (v0.1), + Seal + Stream (v0.2) |
+| Payment modes | Exact only | Exact, Prepaid, Escrow, Stream, Seal |
 | Micro-payments | $7.00 gas per 1K API calls (broken) | $0.014 gas per 1K calls via prepaid |
 | Agent authorization | None | AP2 Mandates (spending limits) |
 | Content gating | Server-trust (server controls access) | Trustless (SEAL threshold encryption) |
@@ -63,55 +63,62 @@ Agent                    Server                  Sui Testnet
 
 ## Payment Schemes
 
-### v0.1 — The Core Three
+### Deployed Schemes (Testnet v7)
 
 | Scheme | Use Case | How It Works | Status |
 |--------|----------|-------------|--------|
-| **Exact** | One-shot API calls | Sign transfer, execute, done | **E2E demo'd** |
-| **Prepaid** | AI agent API budgets, high-frequency access | Deposit funds → off-chain API calls → provider batch-claims | Move module in dev |
-| **Escrow** | Digital goods, freelance work | Lock funds, release on delivery, refund on deadline | Contracts deployed, HTTP integration ready |
+| **Exact** | One-shot API calls | Sign transfer, execute, done | **Deployed, facilitator complete** |
+| **Prepaid** | AI agent API budgets, high-frequency access | Deposit funds → off-chain API calls → provider batch-claims | **Deployed, facilitator complete** |
+| **Escrow** | Digital goods, freelance work | Lock funds, release on delivery, refund on deadline | **Deployed, 11 PTB builders** |
+| **Stream** | Continuous access (AI inference, video) | Create stream on first 402, use stream-id for ongoing access | **Deployed, 9 PTB builders** |
+| **Seal** | Pay-to-decrypt (trustless content gating) | Pay → receipt → SEAL key servers release decryption key | **Token-gated deployed** |
 
-**Pay per call. Fund agent budgets. Trade trustlessly.** x402 gives you the first one. SweePay gives you all three.
+**Pay per call. Fund agent budgets. Trade trustlessly. Stream micropayments. Gate content.** x402 gives you the first one. SweeFi gives you all five.
 
-### v0.2 — Split + Content + Streaming
+### Future Schemes
 
-| Scheme | Use Case | How It Works | Status |
-|--------|----------|-------------|--------|
-| **Split** | Multi-party settlement (royalties, affiliates) | One PTB splits payment to N recipients atomically | Planned |
-| **Seal** | Pay-to-decrypt (trustless content gating) | Pay → receipt → SEAL key servers release decryption key | Token-gated deployed, receipt-gated in progress |
-| **Stream** | Continuous access (AI inference, video) | Create stream on first 402, use stream-id for ongoing access | Contracts deployed, HTTP integration ready |
+| Scheme | Use Case | Status |
+|--------|----------|--------|
+| **Unlock** | Receipt-gated SEAL decryption | Client scheme exists, facilitator handler planned |
+| **Split** | Multi-party settlement (royalties, affiliates) | Planned |
 
-**Together these enable autonomous digital commerce without platforms.** An AI agent can deposit a budget (prepaid), call APIs (exact), buy goods trustlessly from a stranger (escrow) — all without a human, an API key, or a platform taking 30%. See [SPEC.md](SPEC.md) for the full vision.
+**Together these enable autonomous digital commerce without platforms.** An AI agent can deposit a budget (prepaid), call APIs (exact), buy goods trustlessly from a stranger (escrow), stream micropayments for inference (stream), and access encrypted content (seal) — all without a human, an API key, or a platform taking 30%. See [SPEC.md](SPEC.md) for the full vision.
 
 ## Architecture
 
-![SweePay Architecture](docs/architecture.png)
+![SweeFi Architecture](docs/architecture.png)
 
 ```
 AI Agent (Claude, GPT, Cursor, etc.)
     |
-    +-- s402 fetch wrapper ------> @sweepay/sdk (auto-pay client)
+    +-- s402 fetch wrapper ------> @sweefi/sdk (auto-pay client)
     |                                   |
-    +-- MCP tool discovery -------> @sweepay/mcp (16 tools)
+    +-- MCP tool discovery -------> @sweefi/mcp (35 tools)
     |                                   |
-    +-- Direct PTB --------------> @sweepay/sui (PTB builders)
+    +-- Direct PTB --------------> @sweefi/sui (40 PTB builders)
     |                                   |
-    |                         s402 (protocol spec, zero deps)
+    +-- CLI ----------------------> @sweefi/cli
     |                                   |
-    |                         @sweepay/facilitator (verify + settle)
+    |                         s402 (protocol spec, npm package)
+    |                                   |
+    |                         @sweefi/facilitator (verify + settle)
     |                                   |
     +-- Agent identity ----------> @sweeagent/identity   [FUTURE]
     +-- Agent reputation --------> @sweeagent/reputation [FUTURE]
     +-- Agent discovery ---------> @sweeagent/registry   [FUTURE]
                                         |
-                              Sui blockchain (6 Move modules, 101 on-chain tests)
+                              Sui blockchain (10 Move modules, testnet v7)
                                         |
                                  +------+------+
                                  |  payment    | Direct pay + receipts
                                  |  stream     | Micropayments + budget caps
                                  |  escrow     | Time-locked + arbiter disputes
                                  |  seal_policy| Pay-to-decrypt via SEAL
+                                 |  prepaid    | Deposit-based agent budgets
                                  |  mandate    | AP2 agent spending limits
+                                 |  agent_mndt | L0-L3 progressive autonomy
+                                 |  identity   | Agent identity (did:sui)
+                                 |  math       | Shared arithmetic utils
                                  |  admin      | Protocol governance
                                  +-------------+
 ```
@@ -120,17 +127,17 @@ AI Agent (Claude, GPT, Cursor, etc.)
 
 | Package | Description | Tests |
 |---------|-------------|-------|
-| [`s402`](packages/s402-core) | Chain-agnostic HTTP 402 protocol spec (zero deps) | 207 |
-| [`@sweepay/core`](packages/core) | Shared types, network configs, client factories | 54 |
-| [`@sweepay/sui`](packages/sui) | 18 PTB builders for all contract operations | 114 |
-| [`@sweepay/sdk`](packages/sdk) | Client + server SDK (3-line integration) | 6 |
-| [`@sweepay/facilitator`](packages/facilitator) | Self-hostable payment verification service | 37 |
-| [`@sweepay/mcp`](packages/mcp) | MCP server with 16 AI agent tools | 40 |
-| [`@sweepay/cli`](packages/cli) | CLI tool — wallet, pay, prepaid, mandates | 42 |
-| [`@sweepay/widget`](packages/widget) | Checkout UI — Vue + React adapters | 6 |
-| [`sweepay-contracts`](contracts) | 8 Move modules on Sui testnet (v7) | 226 |
+| [`@sweefi/sdk`](packages/sdk) | Client + server SDK — types, client factories, s402 gate (3-line integration) | 60 |
+| [`@sweefi/sui`](packages/sui) | 40 PTB builders for all contract operations | 176 |
+| [`@sweefi/facilitator`](packages/facilitator) | Self-hostable payment verification service (Apache 2.0) | 37 |
+| [`@sweefi/mcp`](packages/mcp) | MCP server with 35 AI agent tools | 79 |
+| [`@sweefi/cli`](packages/cli) | CLI tool — wallet, pay, prepaid, mandates | 42 |
+| [`@sweefi/widget`](packages/widget) | Checkout UI — Vue + React adapters | 6 |
+| [`sweefi-contracts`](contracts) | 10 Move modules on Sui testnet (v7) | 185 |
 
-**Total: 732 tests (506 TypeScript + 226 Move)**
+**Total: 585 tests (400 TypeScript + 185 Move)**
+
+**External**: [`s402`](https://www.npmjs.com/package/s402) (HTTP 402 protocol, v0.1.2), `@mysten/sui@2.4.0`, `@mysten/seal@1.0.1`
 
 ## Try It Now
 
@@ -138,16 +145,16 @@ AI Agent (Claude, GPT, Cursor, etc.)
 
 ```bash
 # Hit the free endpoint — works normally
-curl https://sweepay-demo.fly.dev/api/weather
+curl https://sweefi-demo.fly.dev/api/weather
 
 # Hit the premium endpoint — get a 402 with payment requirements
-curl -i https://sweepay-demo.fly.dev/api/forecast
+curl -i https://sweefi-demo.fly.dev/api/forecast
 # HTTP/1.1 402 Payment Required
 # payment-required: eyJzNDAyVmVyc2lvbiI6IjEiLC...
 # {"error":"Payment Required","price":"1000 MIST"}
 
 # Check what the server accepts
-curl https://sweepay-demo.fly.dev/.well-known/s402.json
+curl https://sweefi-demo.fly.dev/.well-known/s402.json
 # {"s402Version":"1","schemes":["exact"],"networks":["sui:testnet"],...}
 ```
 
@@ -172,7 +179,7 @@ Cost: ~6,000 MIST (0.000006 SUI) + gas on testnet.
 ### AI agent paying for APIs (client)
 
 ```typescript
-import { createS402Client } from '@sweepay/sdk/client';
+import { createS402Client } from '@sweefi/sdk/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
 const wallet = Ed25519Keypair.fromSecretKey(myKey);
@@ -189,7 +196,7 @@ const response = await client.fetch('https://api.example.com/premium');
 
 ```typescript
 import { Hono } from 'hono';
-import { s402Gate } from '@sweepay/sdk/server';
+import { s402Gate } from '@sweefi/sdk/server';
 
 const app = new Hono();
 
@@ -206,7 +213,7 @@ app.get('/premium', (c) => c.json({ data: 'premium content' }));
 ### Streaming payment with budget cap
 
 ```typescript
-import { buildCreateStreamTx } from '@sweepay/sui/ptb';
+import { buildCreateStreamTx } from '@sweefi/sui/ptb';
 
 const tx = buildCreateStreamTx(config, {
   coinType: '0x2::sui::SUI',
@@ -223,7 +230,7 @@ const tx = buildCreateStreamTx(config, {
 ### AP2 Mandate (agent spending authorization)
 
 ```typescript
-import { buildCreateMandateTx, buildMandatedPayTx } from '@sweepay/sui/ptb';
+import { buildCreateMandateTx, buildMandatedPayTx } from '@sweefi/sui/ptb';
 
 // Human creates mandate for AI agent
 const createTx = buildCreateMandateTx(config, {
@@ -249,33 +256,27 @@ const payTx = buildMandatedPayTx(config, {
 
 ## MCP Tools (AI-Native)
 
-Any MCP-compatible AI agent can discover and use these 16 tools:
+Any MCP-compatible AI agent can discover and use 35 tools (30 default + 5 opt-in):
 
-| Tool | Description |
-|------|-------------|
-| `sweepay_pay` | Direct payment with optional fee + memo |
-| `sweepay_pay_and_prove` | Atomic pay + receipt (SEAL flow) |
-| `sweepay_create_invoice` | Create payment invoice NFT |
-| `sweepay_pay_invoice` | Pay an existing invoice |
-| `sweepay_start_stream` | Start streaming micropayment with budget cap |
-| `sweepay_stop_stream` | Close stream, refund remaining deposit |
-| `sweepay_create_escrow` | Create time-locked escrow with arbiter |
-| `sweepay_release_escrow` | Release funds to seller |
-| `sweepay_refund_escrow` | Refund to buyer (permissionless after deadline) |
-| `sweepay_dispute_escrow` | Raise dispute, lock to arbiter resolution |
-| `sweepay_check_balance` | Check SUI/USDC/USDT balance |
-| `sweepay_check_payment` | Query payment history |
-| `sweepay_get_receipt` | Fetch receipt details |
-| `sweepay_supported_tokens` | List supported tokens |
+**Payments** (4): `pay`, `pay_and_prove`, `create_invoice`, `pay_invoice`
+**Streaming** (4): `start_stream`, `start_stream_with_timeout`, `stop_stream`, `recipient_close_stream`
+**Escrow** (4): `create_escrow`, `release_escrow`, `refund_escrow`, `dispute_escrow`
+**Prepaid** (7): `prepaid_deposit`, `prepaid_top_up`, `prepaid_request_withdrawal`, `prepaid_finalize_withdrawal`, `prepaid_cancel_withdrawal`, `prepaid_agent_close`, `prepaid_status`
+**Mandates** (7): `create_mandate`, `create_agent_mandate`, `basic_mandated_pay`, `agent_mandated_pay`, `revoke_mandate`, `create_registry`, `inspect_mandate`
+**Read-Only** (4): `check_balance`, `check_payment`, `get_receipt`, `supported_tokens`
+**Opt-In Provider** (1): `prepaid_claim`
+**Opt-In Admin** (4): `protocol_status`, `pause_protocol`, `unpause_protocol`, `burn_admin_cap`
+
+All tool names prefixed with `sweefi_`. Transaction tools require `SUI_PRIVATE_KEY` env var.
 
 ### Claude Desktop Setup
 
 ```json
 {
   "mcpServers": {
-    "sweepay": {
+    "sweefi": {
       "command": "node",
-      "args": ["packages/mcp/dist/index.mjs"],
+      "args": ["packages/mcp/dist/cli.mjs"],
       "env": {
         "SUI_NETWORK": "testnet",
         "SUI_PRIVATE_KEY": "<base64 Ed25519 key>"
@@ -298,7 +299,7 @@ No admin keys control user funds.
 
 ## Smart Contracts
 
-Deployed on Sui testnet v7. 8 modules, 226 Move test annotations (158 positive + 68 negative-path), AdminCap + ProtocolState for governance.
+Deployed on Sui testnet v7. 10 modules, 185 Move test functions (62 positive + 123 expected-failure), AdminCap + ProtocolState for governance.
 
 | Module | Purpose |
 |--------|---------|
@@ -306,12 +307,14 @@ Deployed on Sui testnet v7. 8 modules, 226 Move test annotations (158 positive +
 | `stream` | Streaming micropayments with budget caps |
 | `escrow` | Time-locked escrow with arbiter disputes |
 | `seal_policy` | SEAL integration for pay-to-decrypt |
+| `prepaid` | Deposit-based agent budgets with rate-capped batch claims |
 | `mandate` | Basic AP2 spending delegation + revocation |
 | `agent_mandate` | L0-L3 progressive autonomy with lazy daily/weekly reset |
-| `prepaid` | Deposit-based agent budgets with rate-capped batch claims |
+| `identity` | Agent identity profiles (did:sui) |
+| `math` | Shared arithmetic utilities (safe division, BPS) |
 | `admin` | AdminCap, ProtocolState, pause/unpause/burn |
 
-Package ID (testnet v7): `0xc80485e9182c607c41e16c2606abefa7ce9b7f78d809054e99486a20d62167d5`
+Package ID (testnet v7): `0x242f22b9f8b3d77868f6cde06f294203d7c76afa0cd101f388a6cefa45b54c3d`
 
 Token-gated SEAL (standalone): `0xbf9f9d63cbe53f21ac81af068e25e2c736fa2b0537c7e34d7d2862e330fe4fbc`
 
@@ -354,16 +357,34 @@ cd demos/agent-pays-api && SUI_PRIVATE_KEY=<key> pnpm demo
 
 ## The Swee Ecosystem
 
-SweePay is the payment layer. The broader ecosystem includes:
+SweeFi is the payment layer. The broader ecosystem includes:
 
 | Brand | Role | Status |
 |-------|------|--------|
-| **SweePay** | Payment protocol + SDK (`s402`, `@sweepay/*`) | Shipping |
-| **SweeAgent** | Agent identity, reputation, commerce network (`@sweeagent/*`) | Vision — seams architected |
-| **SweeWorld** | Geo-location mobile app (Tauri) — pins, tipping, SEAL content | Brainstorm |
+| **s402** | Open protocol standard (`s402` npm package) | Shipped, Apache 2.0 |
+| **SweeFi** | Open source payment SDK (`@sweefi/*`) | Shipping, Apache 2.0 |
+| **SweeWorld** | Agent marketplace — for-profit product built on SweeFi | Vision |
+| **SweeCard** | TradFi/crypto bridge card | Phase 3+, backburner |
 
 See [SPEC.md](SPEC.md) for the full vision and roadmap.
 
+## Open Source
+
+SweeFi is fully open source. Every developer-facing package is published under **Apache 2.0** — which includes an explicit patent grant, making it safe for commercial use in financial software.
+
+| Package | License | Published |
+|---------|---------|-----------|
+| `s402` | Apache 2.0 | npm (public) |
+| `@sweefi/sdk` | Apache 2.0 | npm (public) |
+| `@sweefi/sui` | Apache 2.0 | npm (public) |
+| `@sweefi/mcp` | Apache 2.0 | npm (public) |
+| `@sweefi/cli` | Apache 2.0 | npm (public) |
+| `@sweefi/widget` | Apache 2.0 | npm (public) |
+| `@sweefi/facilitator` | Apache 2.0 | Self-hostable (not on npm) |
+| `sweefi-contracts` | Apache 2.0 | Deployed on Sui |
+
+The facilitator source is open — you can read it, audit it, and self-host it. SweeFi also runs a **managed facilitator** as a hosted service (the default endpoint in `@sweefi/sdk`). Self-hosting is always an option. See [`packages/facilitator`](packages/facilitator) for Docker and Fly.io deployment instructions.
+
 ## License
 
-MIT — see [LICENSE](LICENSE)
+Apache 2.0 — see [LICENSE](LICENSE)

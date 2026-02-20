@@ -1,11 +1,11 @@
 #[test_only]
-module sweepay::prepaid_tests {
+module sweefi::prepaid_tests {
     use sui::coin;
     use sui::sui::SUI;
     use sui::clock;
     use sui::test_scenario::{Self as ts};
-    use sweepay::prepaid;
-    use sweepay::admin;
+    use sweefi::prepaid;
+    use sweefi::admin;
 
     const AGENT: address = @0xA1;
     const PROVIDER: address = @0xBEEF;

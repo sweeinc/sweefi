@@ -1,4 +1,4 @@
-/// SweePay Payment Contract — verify + transfer + fee split + receipt
+/// SweeFi Payment Contract — verify + transfer + fee split + receipt
 ///
 /// Addresses all 6 security findings from adversarial council review:
 ///   #1: Takes ownership of Coin<T> (not &Coin<T>) — actual settlement
@@ -12,13 +12,13 @@
 ///   - pay<T>(): Direct payment with fee split + receipt (facilitator handles dedup)
 ///   - pay_invoice<T>(): Invoice-gated payment (on-chain dedup via consumed Invoice NFT)
 #[allow(lint(self_transfer))]
-module sweepay::payment {
+module sweefi::payment {
     use sui::coin::Coin;
     use sui::event;
     use sui::clock::Clock;
     use std::type_name;
     use std::ascii;
-    use sweepay::math;
+    use sweefi::math;
 
     // ══════════════════════════════════════════════════════════════
     // Error codes

@@ -1,4 +1,4 @@
-# SweePay Integrator Quickstart
+# SweeFi Integrator Quickstart
 
 Goal: first successful paid request in under 15 minutes.
 
@@ -12,7 +12,7 @@ Goal: first successful paid request in under 15 minutes.
 ## 1) Install and Build
 
 ```bash
-cd /Users/dannydevs/repos/danny/projects/sweepay-project
+cd /Users/dannydevs/repos/danny/projects/sweefi-project
 pnpm install
 pnpm -r build
 ```
@@ -24,7 +24,7 @@ Create `tmp/paid-server.ts`:
 ```ts
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
-import { paymentGate } from "@sweepay/sdk/server";
+import { paymentGate } from "@sweefi/sdk/server";
 
 const app = new Hono();
 
@@ -38,7 +38,7 @@ app.use(
 );
 
 app.get("/premium", (c) =>
-  c.json({ ok: true, data: "paid response from sweepay demo" }),
+  c.json({ ok: true, data: "paid response from sweefi demo" }),
 );
 
 serve({ fetch: app.fetch, port: 4020 });
@@ -57,7 +57,7 @@ Create `tmp/paid-client.ts`:
 
 ```ts
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import { createPayingClient } from "@sweepay/sdk/client";
+import { createPayingClient } from "@sweefi/sdk/client";
 
 const keypair = Ed25519Keypair.fromSecretKey(process.env.SUI_SECRET_KEY_BASE64!);
 
@@ -79,7 +79,7 @@ SUI_SECRET_KEY_BASE64="<your-base64-secret>" pnpm dlx tsx tmp/paid-client.ts
 
 Expected result:
 - HTTP `200`
-- JSON body with `"paid response from sweepay demo"`
+- JSON body with `"paid response from sweefi demo"`
 
 ## 4) Verify and Share Evidence
 

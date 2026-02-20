@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { SuiObjectChange } from "@mysten/sui/jsonRpc";
 import {
   buildPrepaidDepositTx,
   buildPrepaidClaimTx,
@@ -9,15 +10,15 @@ import {
   buildPrepaidTopUpTx,
   buildPrepaidAgentCloseTx,
   UNLIMITED_CALLS,
-} from "@sweepay/sui/ptb";
-import type { SweepayContext } from "../context.js";
+} from "@sweefi/sui/ptb";
+import type { SweefiContext } from "../context.js";
 import { requireSigner, checkSpendingLimit, recordSpend } from "../context.js";
 import { resolveCoinType, formatBalance, parseAmount, parseAmountOrZero, assertTxSuccess, ZERO_ADDRESS, suiAddress, suiObjectId, optionalSuiAddress } from "../utils/format.js";
 
-export function registerPrepaidTools(server: McpServer, ctx: SweepayContext) {
+export function registerPrepaidTools(server: McpServer, ctx: SweefiContext) {
   // ── Prepaid Deposit ──────────────────────────────────────────
   server.registerTool(
-    "sweepay_prepaid_deposit",
+    "sweefi_prepaid_deposit",
     {
       title: "Deposit Prepaid Balance",
       description:
@@ -81,7 +82,7 @@ export function registerPrepaidTools(server: McpServer, ctx: SweepayContext) {
       recordSpend(ctx, depositAmount);
 
       const balanceObj = result.objectChanges?.find(
-        (c) => c.type === "created" && c.objectType?.includes("PrepaidBalance"),
+        (c: SuiObjectChange) => c.type === "created" && c.objectType?.includes("PrepaidBalance"),
       );
       const balanceId = balanceObj && "objectId" in balanceObj ? balanceObj.objectId : "unknown";
       const formatted = formatBalance(amount, resolvedType);
@@ -101,7 +102,7 @@ export function registerPrepaidTools(server: McpServer, ctx: SweepayContext) {
               `TX Digest: ${result.digest}\n` +
               `Network: ${ctx.network}\n\n` +
               `The provider can now claim funds by submitting cumulative call counts. ` +
-              `Use sweepay_prepaid_top_up to add more funds or sweepay_prepaid_request_withdrawal to reclaim.`,
+              `Use sweefi_prepaid_top_up to add more funds or sweefi_prepaid_request_withdrawal to reclaim.`,
           },
         ],
       };
@@ -110,15 +111,15 @@ export function registerPrepaidTools(server: McpServer, ctx: SweepayContext) {
 
   // ── Prepaid Request Withdrawal ─────────────────────────────
   server.registerTool(
-    "sweepay_prepaid_request_withdrawal",
+    "sweefi_prepaid_request_withdrawal",
     {
       title: "Request Prepaid Withdrawal",
       description:
         "Start the two-phase withdrawal process for a prepaid balance. This begins the " +
         "grace period (withdrawal_delay_ms) during which the provider can still submit final claims. " +
         "The timer is anchored to the request timestamp — late provider claims do NOT restart it. " +
-        "After the grace period, call sweepay_prepaid_finalize_withdrawal to complete. " +
-        "Use sweepay_prepaid_cancel_withdrawal to abort. " +
+        "After the grace period, call sweefi_prepaid_finalize_withdrawal to complete. " +
+        "Use sweefi_prepaid_cancel_withdrawal to abort. " +
         "Requires a configured wallet (must be the agent/depositor).",
       inputSchema: {
         balanceId: suiObjectId("PrepaidBalance"),
@@ -153,8 +154,8 @@ export function registerPrepaidTools(server: McpServer, ctx: SweepayContext) {
               `Network: ${ctx.network}\n\n` +
               `Grace period started (timer anchored to this request — late provider claims do NOT restart it). ` +
               `The provider can still claim during this window. ` +
-              `After the delay, call sweepay_prepaid_finalize_withdrawal to complete. ` +
-              `Call sweepay_prepaid_cancel_withdrawal to abort.`,
+              `After the delay, call sweefi_prepaid_finalize_withdrawal to complete. ` +
+              `Call sweefi_prepaid_cancel_withdrawal to abort.`,
           },
         ],
       };
@@ -163,7 +164,7 @@ export function registerPrepaidTools(server: McpServer, ctx: SweepayContext) {
 
   // ── Prepaid Finalize Withdrawal ──────────────────────────────
   server.registerTool(
-    "sweepay_prepaid_finalize_withdrawal",
+    "sweefi_prepaid_finalize_withdrawal",
     {
       title: "Finalize Prepaid Withdrawal",
       description:
@@ -211,7 +212,7 @@ export function registerPrepaidTools(server: McpServer, ctx: SweepayContext) {
 
   // ── Prepaid Cancel Withdrawal ────────────────────────────────
   server.registerTool(
-    "sweepay_prepaid_cancel_withdrawal",
+    "sweefi_prepaid_cancel_withdrawal",
     {
       title: "Cancel Prepaid Withdrawal",
       description:
@@ -258,7 +259,7 @@ export function registerPrepaidTools(server: McpServer, ctx: SweepayContext) {
 
   // ── Prepaid Top Up ───────────────────────────────────────────
   server.registerTool(
-    "sweepay_prepaid_top_up",
+    "sweefi_prepaid_top_up",
     {
       title: "Top Up Prepaid Balance",
       description:
@@ -305,7 +306,7 @@ export function registerPrepaidTools(server: McpServer, ctx: SweepayContext) {
               `Added: ${formatted}\n` +
               `TX Digest: ${result.digest}\n` +
               `Network: ${ctx.network}\n\n` +
-              `Use sweepay_prepaid_status to check the new balance.`,
+              `Use sweefi_prepaid_status to check the new balance.`,
           },
         ],
       };
@@ -314,14 +315,14 @@ export function registerPrepaidTools(server: McpServer, ctx: SweepayContext) {
 
   // ── Prepaid Agent Close ────────────────────────────────────────
   server.registerTool(
-    "sweepay_prepaid_agent_close",
+    "sweefi_prepaid_agent_close",
     {
       title: "Close Exhausted Prepaid Balance",
       description:
         "Close a PrepaidBalance that has been fully consumed (0 remaining funds). " +
         "Destroys the shared object and returns the storage rebate to the agent. " +
         "Fails with PREPAID_BALANCE_NOT_EXHAUSTED if funds remain — use " +
-        "sweepay_prepaid_request_withdrawal instead for non-zero balances. " +
+        "sweefi_prepaid_request_withdrawal instead for non-zero balances. " +
         "Requires a configured wallet (must be the agent/depositor).",
       inputSchema: {
         balanceId: suiObjectId("PrepaidBalance"),
@@ -363,7 +364,7 @@ export function registerPrepaidTools(server: McpServer, ctx: SweepayContext) {
 
   // ── Prepaid Status (read-only) ───────────────────────────────
   server.registerTool(
-    "sweepay_prepaid_status",
+    "sweefi_prepaid_status",
     {
       title: "Check Prepaid Balance Status",
       description:
@@ -452,10 +453,10 @@ export function registerPrepaidTools(server: McpServer, ctx: SweepayContext) {
  * have claim tools in its tool list — it would confuse the LLM.
  * Enable via `enableProviderTools: true` in config or MCP_ENABLE_PROVIDER_TOOLS=true.
  */
-export function registerPrepaidProviderTools(server: McpServer, ctx: SweepayContext) {
+export function registerPrepaidProviderTools(server: McpServer, ctx: SweefiContext) {
   // ── Prepaid Claim ────────────────────────────────────────────
   server.registerTool(
-    "sweepay_prepaid_claim",
+    "sweefi_prepaid_claim",
     {
       title: "Claim Prepaid Earnings",
       description:
@@ -503,7 +504,7 @@ export function registerPrepaidProviderTools(server: McpServer, ctx: SweepayCont
               `TX Digest: ${result.digest}\n` +
               `Network: ${ctx.network}\n\n` +
               `Earnings transferred to provider (minus fees). ` +
-              `Use sweepay_prepaid_status to check remaining balance.`,
+              `Use sweefi_prepaid_status to check remaining balance.`,
           },
         ],
       };

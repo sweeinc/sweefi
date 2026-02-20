@@ -1,16 +1,18 @@
-# @sweepay/facilitator
+# @sweefi/facilitator
 
 Self-hostable payment verification and settlement service for the s402 sign-first payment protocol on Sui.
 
-Part of the [SweePay](https://github.com/Danny-Devs/sweepay) ecosystem.
+Part of the [SweeFi](https://github.com/sweeinc/sweefi) ecosystem.
 
 ---
 
 ## What it is
 
-The facilitator is the off-chain settlement server in SweePay's s402 payment flow. When a client wants to pay for a resource, it builds and signs a Sui transaction locally, then sends that signed payload here. The facilitator verifies the signature and payment requirements, broadcasts the transaction to Sui, and returns a settlement receipt.
+The facilitator is the off-chain settlement server in SweeFi's s402 payment flow. When a client wants to pay for a resource, it builds and signs a Sui transaction locally, then sends that signed payload here. The facilitator verifies the signature and payment requirements, broadcasts the transaction to Sui, and returns a settlement receipt.
 
-This package is **private and deployable** — it is not published to npm. You clone it, configure it with your API keys and Sui credentials, and run it as a service (locally, in Docker, or on Fly.io). Resource servers point their `s402` payment requirements at the URL you deploy.
+**Open source, Apache 2.0.** The source is fully auditable. You can self-host it, fork it, or contribute to it. SweeFi also runs a **managed facilitator** as a hosted service — `@sweefi/sdk` points at it by default, so most integrators get working settlement without any deployment. Override `facilitatorUrl` in `createS402Client` or `s402Gate` to use your own instance.
+
+This package is **not published to npm** — it's a service you deploy, not a library you import. Clone the repo, configure environment variables, and run it locally, in Docker, or on Fly.io. Resource servers point their `s402` payment requirements at the URL you deploy.
 
 Supported payment schemes: `exact`, `prepaid`, `stream`, `escrow`.
 
@@ -59,7 +61,7 @@ Why sign-first? The client's private key never travels over the network. The fac
 ### Prerequisites
 
 - Node.js 22+
-- pnpm (workspace setup — this package lives inside the `sweepay` monorepo)
+- pnpm (workspace setup — this package lives inside the `sweefi` monorepo)
 
 ### Local development
 
@@ -73,7 +75,7 @@ cp packages/facilitator/.env.example packages/facilitator/.env
 # Edit .env with your API keys (see Environment Variables below)
 
 # Start with hot reload
-pnpm --filter @sweepay/facilitator dev
+pnpm --filter @sweefi/facilitator dev
 ```
 
 The server starts on `http://localhost:4022` by default.
@@ -84,13 +86,13 @@ The server starts on `http://localhost:4022` by default.
 cd packages/facilitator
 
 # Build the image
-docker build -t sweepay-facilitator .
+docker build -t sweefi-facilitator .
 
 # Run it
 docker run -p 4022:4022 \
   -e API_KEYS="your-secret-key" \
   -e FEE_BPS="50" \
-  sweepay-facilitator
+  sweefi-facilitator
 ```
 
 The Dockerfile uses a multi-stage build: deps → build → slim runtime image. The final image runs `node dist/index.mjs` on port 4022.
@@ -130,7 +132,7 @@ Validated at startup with Zod. The server will refuse to start if required varia
 | `FACILITATOR_KEYPAIR` | No | — | Base64-encoded Ed25519 keypair for gas sponsorship (reserved for future use). |
 | `SUI_MAINNET_RPC` | No | Mysten default | Custom RPC URL for `sui:mainnet`. Use this to point at a dedicated node or RPC provider. |
 | `SUI_TESTNET_RPC` | No | Mysten default | Custom RPC URL for `sui:testnet`. |
-| `SWEEPAY_PACKAGE_ID` | No | — | SweePay Move package ID. When set, scheme handlers verify that on-chain events originate from this package, preventing spoofed events from attacker-deployed contracts. |
+| `SWEEFI_PACKAGE_ID` | No | — | SweeFi Move package ID. When set, scheme handlers verify that on-chain events originate from this package, preventing spoofed events from attacker-deployed contracts. |
 | `LOG_LEVEL` | No | `info` | Log verbosity: `debug`, `info`, `warn`, or `error`. |
 
 ---
@@ -266,7 +268,7 @@ Token bucket limiter keyed by API key (100 requests max, refills at 10/sec). For
 
 ### Package ID anti-spoofing
 
-Set `SWEEPAY_PACKAGE_ID` in production. Without it, scheme handlers that verify on-chain events cannot confirm those events came from the legitimate SweePay Move package. An attacker could deploy a contract that emits structurally identical events and fool a facilitator that does not check the originating package. With the package ID set, the scheme handlers reject events from any other contract address.
+Set `SWEEFI_PACKAGE_ID` in production. Without it, scheme handlers that verify on-chain events cannot confirm those events came from the legitimate SweeFi Move package. An attacker could deploy a contract that emits structurally identical events and fool a facilitator that does not check the originating package. With the package ID set, the scheme handlers reject events from any other contract address.
 
 ### Body size limit
 
@@ -328,19 +330,19 @@ packages/facilitator/
 
 ```bash
 # Unit tests
-pnpm --filter @sweepay/facilitator test
+pnpm --filter @sweefi/facilitator test
 
 # Integration tests (requires Sui testnet RPC access)
-pnpm --filter @sweepay/facilitator test:integration
+pnpm --filter @sweefi/facilitator test:integration
 
 # Type check only
-pnpm --filter @sweepay/facilitator typecheck
+pnpm --filter @sweefi/facilitator typecheck
 ```
 
 ---
 
 ## License
 
-MIT. See [LICENSE](./LICENSE).
+Apache 2.0 — see [LICENSE](./LICENSE).
 
-Source: [github.com/Danny-Devs/sweepay](https://github.com/Danny-Devs/sweepay)
+Source: [github.com/sweeinc/sweefi](https://github.com/sweeinc/sweefi)

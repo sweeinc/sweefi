@@ -1,10 +1,10 @@
-import type { SweepayConfig } from "./types";
+import type { SweefiConfig } from "./types";
 
 /** Well-known Sui Clock shared object (0x6 on all networks) */
 export const SUI_CLOCK = "0x6";
 
 /**
- * Deployed SweePay package IDs by network.
+ * Deployed SweeFi package IDs by network.
  * Updated when new versions are published on-chain.
  *
  * NOTE on Sui upgrades: Each upgrade creates a new immutable package ID.
@@ -53,11 +53,11 @@ export const TESTNET_UPGRADE_CAP =
   "0x77c484495113c9fbfe9bce9b482f6974e83402ac65853a99c6273de23f9672ad";
 
 /** Sui Testnet config — ready to use with PTB builders */
-export const testnetConfig: SweepayConfig = {
+export const testnetConfig: SweefiConfig = {
   packageId: TESTNET_PACKAGE_ID,
   protocolStateId: TESTNET_PROTOCOL_STATE,
 };
 
 // Mainnet TBD — will be set after mainnet deployment
 // export const MAINNET_PACKAGE_ID = "0x...";
-// export const mainnetConfig: SweepayConfig = { packageId: MAINNET_PACKAGE_ID };
+// export const mainnetConfig: SweefiConfig = { packageId: MAINNET_PACKAGE_ID };

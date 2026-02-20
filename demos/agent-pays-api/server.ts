@@ -221,7 +221,7 @@ app.get("/api/forecast", createGate("1000", "7-Day Premium Forecast") as any, (c
       { day: "Sat", high: 68, low: 54, condition: "Sunny" },
       { day: "Sun", high: 67, low: 52, condition: "Partly Cloudy" },
     ],
-    model: "SweePay Weather AI v2",
+    model: "SweeFi Weather AI v2",
     confidence: 0.94,
     paid: true,
     source: "s402 Demo API (premium tier — you paid for this!)",
@@ -236,7 +236,7 @@ app.get("/api/alpha-signals", createGate("5000", "AI Trading Signals") as any, (
       { asset: "BTC/USDC", direction: "long", confidence: 0.91, entry: 97500, target: 105000 },
     ],
     generated: new Date().toISOString(),
-    model: "SweePay Alpha AI v3",
+    model: "SweeFi Alpha AI v3",
     disclaimer: "Demo signals only. Not financial advice.",
     paid: true,
     source: "s402 Demo API (premium tier — paid with SUI on testnet!)",
@@ -254,7 +254,7 @@ app.get("/.well-known/s402.json", (c) => {
     directSettlement: true,
     mandateSupport: false,
     protocolFeeBps: 0,
-    description: "SweePay s402 Demo API — Sui-native HTTP 402 payments",
+    description: "SweeFi s402 Demo API — Sui-native HTTP 402 payments",
   });
 });
 

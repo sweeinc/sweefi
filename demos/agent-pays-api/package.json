@@ -1,5 +1,5 @@
 {
-  "name": "@sweepay/agent-demo",
+  "name": "@sweefi/agent-demo",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,9 +12,9 @@
   "dependencies": {
     "@mysten/sui": "^2.0.0",
     "s402": "^0.1.0",
-    "@sweepay/core": "workspace:*",
-    "@sweepay/sdk": "workspace:*",
-    "@sweepay/sui": "workspace:*",
+    "@sweefi/core": "workspace:*",
+    "@sweefi/sdk": "workspace:*",
+    "@sweefi/sui": "workspace:*",
     "hono": "^4.7.0",
     "@hono/node-server": "^1.14.0"
   },

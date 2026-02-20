@@ -1,5 +1,5 @@
 /**
- * sweepay balance [address] [--coin SUI|USDC]
+ * sweefi balance [address] [--coin SUI|USDC]
  *
  * Check wallet balance. Omit address to check own wallet (from SUI_PRIVATE_KEY).
  * Works without a wallet if an explicit address is provided.

@@ -1,10 +1,10 @@
 #[test_only]
-module sweepay::payment_tests {
+module sweefi::payment_tests {
     use sui::coin;
     use sui::sui::SUI;
     use sui::clock;
     use sui::test_scenario::{Self as ts};
-    use sweepay::payment;
+    use sweefi::payment;
 
     const MERCHANT: address = @0xBEEF;
     const PAYER: address = @0xCAFE;
@@ -452,12 +452,12 @@ module sweepay::payment_tests {
             100,
             0,
             FEE_RECIPIENT,
-            b"hello-sweepay",
+            b"hello-sweefi",
             &clock,
             scenario.ctx(),
         );
 
-        assert!(payment::receipt_memo(&receipt) == &b"hello-sweepay");
+        assert!(payment::receipt_memo(&receipt) == &b"hello-sweefi");
 
         transfer::public_transfer(receipt, PAYER);
         clock.destroy_for_testing();

@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerPrepaidTools, registerPrepaidProviderTools } from "../../src/tools/prepaid.js";
-import type { SweepayContext } from "../../src/context.js";
+import type { SweefiContext } from "../../src/context.js";
 
-vi.mock("@sweepay/sui/ptb", () => ({
+vi.mock("@sweefi/sui/ptb", () => ({
   buildPrepaidDepositTx: vi.fn().mockReturnValue({ setSender: vi.fn() }),
   buildPrepaidClaimTx: vi.fn().mockReturnValue({ setSender: vi.fn() }),
   buildRequestWithdrawalTx: vi.fn().mockReturnValue({ setSender: vi.fn() }),
@@ -14,7 +14,7 @@ vi.mock("@sweepay/sui/ptb", () => ({
   UNLIMITED_CALLS: "18446744073709551615",
 }));
 
-function captureHandlers(server: McpServer, ctx: SweepayContext) {
+function captureHandlers(server: McpServer, ctx: SweefiContext) {
   const handlers = new Map<string, Function>();
   const orig = server.registerTool.bind(server);
   const spy = vi.spyOn(server, "registerTool").mockImplementation(
@@ -30,7 +30,7 @@ function captureHandlers(server: McpServer, ctx: SweepayContext) {
 }
 
 describe("prepaid tools", () => {
-  const makeCtx = (overrides?: Partial<SweepayContext>): SweepayContext => ({
+  const makeCtx = (overrides?: Partial<SweefiContext>): SweefiContext => ({
     suiClient: {
       getObject: vi.fn().mockResolvedValue({
         data: {
@@ -73,12 +73,12 @@ describe("prepaid tools", () => {
     registerPrepaidProviderTools(server, makeCtx());
   });
 
-  describe("sweepay_prepaid_status handler", () => {
+  describe("sweefi_prepaid_status handler", () => {
     it("returns formatted status for a valid PrepaidBalance", async () => {
       const ctx = makeCtx();
       const server = new McpServer({ name: "test", version: "0.1.0" });
       const handlers = captureHandlers(server, ctx);
-      const handler = handlers.get("sweepay_prepaid_status")!;
+      const handler = handlers.get("sweefi_prepaid_status")!;
 
       const result = await handler({ balanceId: "0x" + "d".repeat(64) });
 
@@ -96,7 +96,7 @@ describe("prepaid tools", () => {
       const ctx = makeCtx();
       const server = new McpServer({ name: "test", version: "0.1.0" });
       const handlers = captureHandlers(server, ctx);
-      const handler = handlers.get("sweepay_prepaid_status")!;
+      const handler = handlers.get("sweefi_prepaid_status")!;
 
       const result = await handler({ balanceId: "0x" + "d".repeat(64) });
       expect(result.content[0].text).toContain("Max calls: unlimited");
@@ -110,7 +110,7 @@ describe("prepaid tools", () => {
       });
       const server = new McpServer({ name: "test", version: "0.1.0" });
       const handlers = captureHandlers(server, ctx);
-      const handler = handlers.get("sweepay_prepaid_status")!;
+      const handler = handlers.get("sweefi_prepaid_status")!;
 
       const result = await handler({ balanceId: "0x" + "d".repeat(64) });
       expect(result.content[0].text).toContain("PrepaidBalance not found");
@@ -146,7 +146,7 @@ describe("prepaid tools", () => {
 
       const server = new McpServer({ name: "test", version: "0.1.0" });
       const handlers = captureHandlers(server, ctx);
-      const handler = handlers.get("sweepay_prepaid_status")!;
+      const handler = handlers.get("sweefi_prepaid_status")!;
 
       const result = await handler({ balanceId: "0x" + "d".repeat(64) });
       const text = result.content[0].text;
@@ -156,12 +156,12 @@ describe("prepaid tools", () => {
     });
   });
 
-  describe("sweepay_prepaid_deposit handler", () => {
+  describe("sweefi_prepaid_deposit handler", () => {
     it("throws when no signer configured", async () => {
       const ctx = makeCtx(); // signer: null
       const server = new McpServer({ name: "test", version: "0.1.0" });
       const handlers = captureHandlers(server, ctx);
-      const handler = handlers.get("sweepay_prepaid_deposit")!;
+      const handler = handlers.get("sweefi_prepaid_deposit")!;
 
       await expect(
         handler({
@@ -174,12 +174,12 @@ describe("prepaid tools", () => {
     });
   });
 
-  describe("sweepay_prepaid_claim handler", () => {
+  describe("sweefi_prepaid_claim handler", () => {
     it("throws when no signer configured", async () => {
       const ctx = makeCtx(); // signer: null
       const server = new McpServer({ name: "test", version: "0.1.0" });
       const handlers = captureHandlers(server, ctx);
-      const handler = handlers.get("sweepay_prepaid_claim")!;
+      const handler = handlers.get("sweefi_prepaid_claim")!;
 
       await expect(
         handler({

@@ -1,5 +1,5 @@
 import { Transaction, coinWithBalance } from "@mysten/sui/transactions";
-import type { SweepayConfig, PayParams, CreateInvoiceParams, PayInvoiceParams } from "./types";
+import type { SweefiConfig, PayParams, CreateInvoiceParams, PayInvoiceParams } from "./types";
 import { SUI_CLOCK } from "./deployments";
 import { assertFeeBps, assertPositive } from "./assert";
 
@@ -10,7 +10,7 @@ import { assertFeeBps, assertPositive } from "./assert";
  * This is the simple path for one-shot payments outside the s402 flow.
  * For composable PTBs (e.g., pay + use receipt as SEAL condition), use buildPayComposableTx.
  */
-export function buildPayTx(config: SweepayConfig, params: PayParams): Transaction {
+export function buildPayTx(config: SweefiConfig, params: PayParams): Transaction {
   assertPositive(params.amount, "amount", "buildPayTx");
   assertFeeBps(params.feeBps, "buildPayTx");
 
@@ -50,7 +50,7 @@ export function buildPayTx(config: SweepayConfig, params: PayParams): Transactio
  * @returns Object with `tx` (the Transaction) and `receipt` (TransactionResult for the PaymentReceipt)
  */
 export function buildPayComposableTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: PayParams,
 ) {
   assertPositive(params.amount, "amount", "buildPayComposableTx");
@@ -88,7 +88,7 @@ export function buildPayComposableTx(
  * Otherwise, creates the invoice and transfers it to the sender.
  */
 export function buildCreateInvoiceTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: CreateInvoiceParams,
 ): Transaction {
   assertPositive(params.expectedAmount, "expectedAmount", "buildCreateInvoiceTx");
@@ -132,7 +132,7 @@ export function buildCreateInvoiceTx(
  * The Invoice object is consumed on-chain (replay protection).
  */
 export function buildPayInvoiceTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: PayInvoiceParams,
 ): Transaction {
   const tx = new Transaction();

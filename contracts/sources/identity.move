@@ -1,4 +1,4 @@
-/// SweePay AgentIdentity — soulbound on-chain identity for AI agents
+/// SweeFi AgentIdentity — soulbound on-chain identity for AI agents
 ///
 /// Design principles (from 2-round adversarial review + 4 council deliberations):
 ///   - Identity emerges from payment data, not from an over-engineered registry
@@ -26,11 +26,11 @@
 ///
 /// Error codes: 700-series (payment=0, stream=100, escrow=200, seal=300,
 ///              mandate=400, admin/agent_mandate=500, prepaid=600, identity=700)
-module sweepay::identity {
+module sweefi::identity {
     use sui::clock::Clock;
     use sui::table::{Self, Table};
-    use sweepay::admin::{Self, AdminCap, ProtocolState};
-    use sweepay::payment::{Self, PaymentReceipt};
+    use sweefi::admin::{Self, AdminCap, ProtocolState};
+    use sweefi::payment::{Self, PaymentReceipt};
 
     // ══════════════════════════════════════════════════════════════
     // Error codes (700-series)

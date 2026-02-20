@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerInvoiceTools } from "../../src/tools/invoice.js";
-import type { SweepayContext } from "../../src/context.js";
+import type { SweefiContext } from "../../src/context.js";
 
-vi.mock("@sweepay/sui/ptb", () => ({
+vi.mock("@sweefi/sui/ptb", () => ({
   buildCreateInvoiceTx: vi.fn().mockReturnValue({ setSender: vi.fn() }),
   buildPayInvoiceTx: vi.fn().mockReturnValue({ setSender: vi.fn() }),
 }));
@@ -11,7 +11,7 @@ vi.mock("@sweepay/sui/ptb", () => ({
 describe("invoice tools", () => {
   it("registers both create and pay invoice tools", () => {
     const server = new McpServer({ name: "test", version: "0.1.0" });
-    const ctx: SweepayContext = {
+    const ctx: SweefiContext = {
       suiClient: {} as any,
       signer: null,
       config: { packageId: "0xtest" },

@@ -1,4 +1,4 @@
-# SweePay Proof of Work
+# SweeFi Proof of Work
 
 Last verified: 2026-02-14
 
@@ -15,12 +15,12 @@ cd contracts && sui move test
 ## Verified Test Counts (Current)
 
 - TypeScript tests: 417 passing
-  - `@sweepay/core`: 54
-  - `@sweepay/sui`: 123
-  - `@sweepay/sdk`: 39
-  - `@sweepay/facilitator`: 41
-  - `@sweepay/mcp`: 36
-  - `@sweepay/widget`: 6
+  - `@sweefi/core`: 54
+  - `@sweefi/sui`: 123
+  - `@sweefi/sdk`: 39
+  - `@sweefi/facilitator`: 41
+  - `@sweefi/mcp`: 36
+  - `@sweefi/widget`: 6
   - `s402`: 118
 - Move tests: 226 annotations (158 positive + 68 negative-path)
 

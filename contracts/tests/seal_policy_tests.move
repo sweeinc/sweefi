@@ -1,12 +1,12 @@
 #[test_only]
-module sweepay::seal_policy_tests {
+module sweefi::seal_policy_tests {
     use sui::coin;
     use sui::sui::SUI;
     use sui::clock;
     use sui::test_scenario::{Self as ts};
-    use sweepay::escrow;
-    use sweepay::seal_policy;
-    use sweepay::admin;
+    use sweefi::escrow;
+    use sweefi::seal_policy;
+    use sweefi::admin;
 
     const BUYER: address = @0xCAFE;
     const SELLER: address = @0xBEEF;

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { testnetConfig } from "@sweepay/sui/ptb";
+import { testnetConfig } from "@sweefi/sui/ptb";
 import { createCheckoutController, ZERO_ADDRESS } from "../src/core";
 
 function createFixture() {
@@ -41,7 +41,7 @@ function createFixture() {
   return { wallet, suiClient, controller };
 }
 
-describe("SweepayCheckoutController", () => {
+describe("SweefiCheckoutController", () => {
   it("connects wallet and sets state", async () => {
     const { controller } = createFixture();
     await controller.connectWallet();

@@ -6,16 +6,16 @@
 
 ## Context
 
-SweePay's Move contracts need to support two usage modes:
+SweeFi's Move contracts need to support two usage modes:
 
 1. **Simple** -- caller wants a one-shot action (pay, release escrow, close stream). The receipt or effect is automatically transferred to the caller. Done.
 2. **Composable** -- caller wants to chain multiple on-chain actions in a single atomic transaction. Example: pay a seller AND receive a PaymentReceipt AND use that receipt as a SEAL decryption condition -- all in one PTB.
 
-Sui Move distinguishes `entry` functions (can only be the terminal call, handle their own transfers) from `public` functions (return values that the PTB can pass to subsequent calls). This distinction is the foundation of SweePay's composability model.
+Sui Move distinguishes `entry` functions (can only be the terminal call, handle their own transfers) from `public` functions (return values that the PTB can pass to subsequent calls). This distinction is the foundation of SweeFi's composability model.
 
 ## Decision
 
-Every SweePay module that produces a receipt or transferable object exposes **two variants**:
+Every SweeFi module that produces a receipt or transferable object exposes **two variants**:
 
 | Pattern | Move function | TS builder | Returns |
 |---------|--------------|------------|---------|
@@ -29,7 +29,7 @@ The composable variant returns `{ tx, receipt }` where `receipt` is a `Transacti
 Combines both steps into a single builder for the most common composable flow:
 
 ```typescript
-import { buildPayAndProveTx, testnetConfig } from "@sweepay/sui/ptb";
+import { buildPayAndProveTx, testnetConfig } from "@sweefi/sui/ptb";
 
 const tx = buildPayAndProveTx(testnetConfig, {
   coinType: "0x2::sui::SUI",
@@ -91,12 +91,12 @@ Stream module uses `entry` only (stream operations don't produce transferable re
 The fourth module (`seal_policy`, added in v4) completes the pay-to-decrypt loop. It exposes a single function:
 
 ```move
-sweepay::seal_policy::seal_approve(id: vector<u8>, receipt: &EscrowReceipt, ctx: &TxContext)
+sweefi::seal_policy::seal_approve(id: vector<u8>, receipt: &EscrowReceipt, ctx: &TxContext)
 ```
 
 This is **not a user-facing PTB**. It's called by SEAL key servers during dry-run evaluation. The flow:
 
-1. Seller encrypts content using SEAL, with the policy set to `sweepay::seal_policy::seal_approve`
+1. Seller encrypts content using SEAL, with the policy set to `sweefi::seal_policy::seal_approve`
 2. Buyer pays via `buildPayAndProveTx` -- gets `PaymentReceipt` (or `EscrowReceipt` from escrow release)
 3. Buyer requests decryption from SEAL key servers
 4. SEAL key servers dry-run `seal_approve` with the buyer's receipt -- if the receipt is valid and owned by the requester, the key server releases the decryption key

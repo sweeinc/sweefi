@@ -1,11 +1,11 @@
 #[test_only]
-module sweepay::escrow_tests {
+module sweefi::escrow_tests {
     use sui::coin;
     use sui::sui::SUI;
     use sui::clock;
     use sui::test_scenario::{Self as ts};
-    use sweepay::escrow;
-    use sweepay::admin;
+    use sweefi::escrow;
+    use sweefi::admin;
 
     const BUYER: address = @0xCAFE;
     const SELLER: address = @0xBEEF;

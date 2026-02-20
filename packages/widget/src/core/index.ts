@@ -1,5 +1,5 @@
-import { testnetConfig } from "@sweepay/sui/ptb";
-import { SweepayCheckoutController } from "./controller";
+import { testnetConfig } from "@sweefi/sui/ptb";
+import { SweefiCheckoutController } from "./controller";
 import { SUI_COIN_TYPE, ZERO_ADDRESS } from "./constants";
 import type { CheckoutControllerOptions, PaymentRequest } from "./types";
 
@@ -12,10 +12,10 @@ export type {
   PaymentRequest,
 } from "./types";
 
-export { SweepayCheckoutController, SUI_COIN_TYPE, ZERO_ADDRESS };
+export { SweefiCheckoutController, SUI_COIN_TYPE, ZERO_ADDRESS };
 
-export function createCheckoutController(options: CheckoutControllerOptions): SweepayCheckoutController {
-  return new SweepayCheckoutController(options);
+export function createCheckoutController(options: CheckoutControllerOptions): SweefiCheckoutController {
+  return new SweefiCheckoutController(options);
 }
 
 export function createDefaultPaymentRequest(input: {

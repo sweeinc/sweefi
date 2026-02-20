@@ -1,14 +1,14 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { COIN_TYPES, COIN_DECIMALS } from "@sweepay/core";
-import type { SweepayContext } from "../context.js";
+import { COIN_TYPES, COIN_DECIMALS } from "@sweefi/sdk";
+import type { SweefiContext } from "../context.js";
 
-export function registerSupportedTool(server: McpServer, ctx: SweepayContext) {
+export function registerSupportedTool(server: McpServer, ctx: SweefiContext) {
   server.registerTool(
-    "sweepay_supported_tokens",
+    "sweefi_supported_tokens",
     {
       title: "Supported Tokens",
       description:
-        "List tokens supported by SweePay on Sui. Returns coin type addresses, " +
+        "List tokens supported by SweeFi on Sui. Returns coin type addresses, " +
         "decimal precision, and symbols for SUI, USDC, and USDT.",
     },
     async () => {
@@ -26,7 +26,7 @@ export function registerSupportedTool(server: McpServer, ctx: SweepayContext) {
         content: [
           {
             type: "text" as const,
-            text: `SweePay supported tokens on ${ctx.network}:\n\n${lines.join("\n")}\n\nPackage ID: ${ctx.config.packageId}`,
+            text: `SweeFi supported tokens on ${ctx.network}:\n\n${lines.join("\n")}\n\nPackage ID: ${ctx.config.packageId}`,
           },
         ],
       };

@@ -1,2 +1,2 @@
-export { SweepayCheckout } from "./SweepayCheckout";
-export { useSweepayCheckout } from "./useSweepayCheckout";
+export { SweefiCheckout } from "./SweefiCheckout";
+export { useSweefiCheckout } from "./useSweefiCheckout";

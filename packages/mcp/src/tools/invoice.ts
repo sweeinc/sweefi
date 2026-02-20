@@ -1,13 +1,14 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { buildCreateInvoiceTx, buildPayInvoiceTx } from "@sweepay/sui/ptb";
-import type { SweepayContext } from "../context.js";
+import type { SuiObjectChange } from "@mysten/sui/jsonRpc";
+import { buildCreateInvoiceTx, buildPayInvoiceTx } from "@sweefi/sui/ptb";
+import type { SweefiContext } from "../context.js";
 import { requireSigner, checkSpendingLimit, recordSpend } from "../context.js";
 import { resolveCoinType, formatBalance, parseAmount, assertTxSuccess, ZERO_ADDRESS, suiAddress, suiObjectId, optionalSuiAddress } from "../utils/format.js";
 
-export function registerInvoiceTools(server: McpServer, ctx: SweepayContext) {
+export function registerInvoiceTools(server: McpServer, ctx: SweefiContext) {
   server.registerTool(
-    "sweepay_create_invoice",
+    "sweefi_create_invoice",
     {
       title: "Create Invoice",
       description:
@@ -48,7 +49,7 @@ export function registerInvoiceTools(server: McpServer, ctx: SweepayContext) {
       assertTxSuccess(result);
 
       const invoiceObj = result.objectChanges?.find(
-        (c) => c.type === "created" && c.objectType?.includes("Invoice"),
+        (c: SuiObjectChange) => c.type === "created" && c.objectType?.includes("Invoice"),
       );
       const invoiceId = invoiceObj && "objectId" in invoiceObj ? invoiceObj.objectId : "unknown";
 
@@ -64,7 +65,7 @@ export function registerInvoiceTools(server: McpServer, ctx: SweepayContext) {
   );
 
   server.registerTool(
-    "sweepay_pay_invoice",
+    "sweefi_pay_invoice",
     {
       title: "Pay Invoice",
       description:
@@ -102,7 +103,7 @@ export function registerInvoiceTools(server: McpServer, ctx: SweepayContext) {
       recordSpend(ctx, amountBigint);
 
       const receiptObj = result.objectChanges?.find(
-        (c) => c.type === "created" && c.objectType?.includes("PaymentReceipt"),
+        (c: SuiObjectChange) => c.type === "created" && c.objectType?.includes("PaymentReceipt"),
       );
       const receiptId = receiptObj && "objectId" in receiptObj ? receiptObj.objectId : "unknown";
       const formatted = formatBalance(amount, resolvedType);

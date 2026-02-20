@@ -1,9 +1,9 @@
 {
-  "name": "@sweepay/sui",
+  "name": "@sweefi/sui",
   "version": "0.1.0",
   "type": "module",
-  "description": "Sui-native s402 protocol implementation for SweePay",
-  "license": "MIT",
+  "description": "Sui-native s402 protocol implementation for SweeFi",
+  "license": "Apache-2.0",
   "author": "Danny Devs",
   "main": "./dist/index.mjs",
   "module": "./dist/index.mjs",
@@ -37,7 +37,7 @@
     "demo": "tsx examples/demo.ts",
     "test": "SKIP_DRYRUN=1 vitest run",
     "test:offline": "SKIP_DRYRUN=1 vitest run",
-    "test:live": "SWEEPAY_LIVE_TESTNET=1 vitest run test/integration/dryrun.test.ts",
+    "test:live": "SWEEFI_LIVE_TESTNET=1 vitest run test/integration/dryrun.test.ts",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build && npm run typecheck && npm run test"
@@ -45,7 +45,7 @@
   "files": ["dist/**/*.mjs", "dist/**/*.cjs", "dist/**/*.d.mts", "dist/**/*.d.cts", "README.md", "LICENSE"],
   "repository": {
     "type": "git",
-    "url": "https://github.com/Danny-Devs/sweepay.git",
+    "url": "https://github.com/sweeinc/sweefi.git",
     "directory": "packages/sui"
   },
   "publishConfig": {
@@ -53,7 +53,7 @@
   },
   "dependencies": {
     "s402": "^0.1.0",
-    "@sweepay/core": "workspace:*"
+    "@sweefi/core": "workspace:*"
   },
   "peerDependencies": {
     "@mysten/sui": "^2.0.0"

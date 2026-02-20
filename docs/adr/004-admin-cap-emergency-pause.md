@@ -7,7 +7,7 @@
 
 ## Context
 
-SweePay currently ships with **no admin capability**. Once the Move package is published, no one can pause, upgrade, or modify the contracts. This was an intentional choice for trustlessness — users don't need to trust a contract owner.
+SweeFi currently ships with **no admin capability**. Once the Move package is published, no one can pause, upgrade, or modify the contracts. This was an intentional choice for trustlessness — users don't need to trust a contract owner.
 
 However, every production DeFi protocol on Sui ships with an AdminCap pattern:
 
@@ -21,7 +21,7 @@ However, every production DeFi protocol on Sui ships with an AdminCap pattern:
 
 The reason is not philosophical — it's **operational risk management**. An immutable contract with a critical bug means permanently frozen or draining funds with zero recourse. The industry learned this from Ethereum (The DAO, Parity multisig freeze, Ronin bridge). Even Uniswap v2, the gold standard of minimal governance, retained a fee switch that governance could activate.
 
-SweePay manages real funds (payments, streams with ongoing deposits, escrows with time-locked balances). A bug discovered post-mainnet without an emergency pause would be catastrophic.
+SweeFi manages real funds (payments, streams with ongoing deposits, escrows with time-locked balances). A bug discovered post-mainnet without an emergency pause would be catastrophic.
 
 ## Decision
 

@@ -1,34 +1,34 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createContext } from "./context.js";
 import { registerAllTools } from "./tools/index.js";
-import type { SweepayMcpConfig, SweepayContext } from "./context.js";
+import type { SweefiMcpConfig, SweefiContext } from "./context.js";
 
 // Single source of truth for the version reported to MCP clients.
 // Must match package.json — prepublishOnly script catches drift.
 const VERSION = "0.1.0";
 
 /**
- * Create a configured SweePay MCP server with all payment tools registered.
+ * Create a configured SweeFi MCP server with all payment tools registered.
  *
  * @example
  * ```typescript
- * import { createSweepayMcpServer } from '@sweepay/mcp';
+ * import { createSweefiMcpServer } from '@sweefi/mcp';
  *
- * const { server, context } = createSweepayMcpServer({
+ * const { server, context } = createSweefiMcpServer({
  *   network: 'testnet',
  *   privateKey: process.env.SUI_PRIVATE_KEY,
  * });
  * ```
  */
-export function createSweepayMcpServer(config?: SweepayMcpConfig): {
+export function createSweefiMcpServer(config?: SweefiMcpConfig): {
   server: McpServer;
-  context: SweepayContext;
+  context: SweefiContext;
 } {
   const context = createContext(config);
 
   const server = new McpServer(
     {
-      name: "@sweepay/mcp",
+      name: "@sweefi/mcp",
       version: VERSION,
     },
     {
@@ -47,7 +47,7 @@ export function createSweepayMcpServer(config?: SweepayMcpConfig): {
   // or irreversibly burn the AdminCap. Operators should ensure this is intentional.
   if (enableAdminTools) {
     console.warn(
-      "[sweepay-mcp] ⚠️  Admin tools ENABLED (pause, unpause, burn AdminCap). " +
+      "[sweefi-mcp] ⚠️  Admin tools ENABLED (pause, unpause, burn AdminCap). " +
       "These are destructive operations. Set MCP_ENABLE_ADMIN_TOOLS=false or " +
       "omit it to disable."
     );
@@ -55,7 +55,7 @@ export function createSweepayMcpServer(config?: SweepayMcpConfig): {
 
   if (enableProviderTools) {
     console.warn(
-      "[sweepay-mcp] Provider tools ENABLED (prepaid claim). " +
+      "[sweefi-mcp] Provider tools ENABLED (prepaid claim). " +
       "Only enable this when running as a provider, not a consumer agent."
     );
   }
@@ -71,7 +71,7 @@ export function createSweepayMcpServer(config?: SweepayMcpConfig): {
     context.spendingLimits.maxPerSession === 0n
   ) {
     console.warn(
-      "[sweepay-mcp] ⚠️  Running on MAINNET with NO spending limits. " +
+      "[sweefi-mcp] ⚠️  Running on MAINNET with NO spending limits. " +
       "Set MCP_MAX_PER_TX and MCP_MAX_PER_SESSION (or maxAmountPerTx/maxAmountPerSession " +
       "in config) to guard against LLM misbehavior. On-chain Mandates provide the " +
       "real security boundary, but MCP-level limits catch mistakes early."

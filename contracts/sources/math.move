@@ -1,8 +1,8 @@
-/// SweePay Math — shared arithmetic utilities
+/// SweeFi Math — shared arithmetic utilities
 ///
 /// Extracted from payment.move / stream.move / escrow.move / prepaid.move
 /// to prevent copy-paste drift where one copy gets a fix and others don't.
-module sweepay::math {
+module sweefi::math {
     const EOverflow: u64 = 900;
 
     /// Calculate fee with overflow protection.

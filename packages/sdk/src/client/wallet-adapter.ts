@@ -1,7 +1,7 @@
 import type { Signer } from "@mysten/sui/cryptography";
 import type { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
-import { toClientSuiSigner } from "@sweepay/sui";
-import type { ClientSuiSigner } from "@sweepay/sui";
+import { toClientSuiSigner } from "@sweefi/sui";
+import type { ClientSuiSigner } from "@sweefi/sui";
 
 /**
  * Adapt any Sui keypair into a ClientSuiSigner for s402 payments.

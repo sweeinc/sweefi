@@ -6,7 +6,7 @@
 
 ## Context
 
-SweePay charges fees in basis points (bps) on payments, stream claims, and escrow releases. The fee calculation `(amount * fee_bps) / 10_000` produces fractional token amounts when the result doesn't divide evenly. A decision must be made about rounding direction and arithmetic safety — both on-chain (Move) and off-chain (TypeScript).
+SweeFi charges fees in basis points (bps) on payments, stream claims, and escrow releases. The fee calculation `(amount * fee_bps) / 10_000` produces fractional token amounts when the result doesn't divide evenly. A decision must be made about rounding direction and arithmetic safety — both on-chain (Move) and off-chain (TypeScript).
 
 Financial protocols have three options:
 1. **Round up** (ceiling) — protocol collects more, user pays more

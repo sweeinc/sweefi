@@ -1,5 +1,5 @@
 /**
- * @sweepay/cli — AI agent payments on Sui.
+ * @sweefi/cli — AI agent payments on Sui.
  *
  * Design principles:
  *   1. Agents are the primary user — JSON-first output
@@ -9,16 +9,16 @@
  *   5. Show the economics — gas costs in every response
  *
  * Commands:
- *   sweepay pay <recipient> <amount>          — one-shot payment
- *   sweepay pay-402 --url <URL>               — handle HTTP 402 automatically
- *   sweepay balance [address]                 — check wallet balance
- *   sweepay receipt <object-id>               — get payment receipt
- *   sweepay prepaid deposit <provider> <amt>  — open prepaid balance
- *   sweepay prepaid status <balance-id>       — check prepaid budget
- *   sweepay mandate create <agent> ...        — set spending caps
- *   sweepay mandate check <mandate-id>        — verify mandate
- *   sweepay mandate list [address]            — list active mandates
- *   sweepay prepaid list [address]            — list prepaid balances
+ *   sweefi pay <recipient> <amount>          — one-shot payment
+ *   sweefi pay-402 --url <URL>               — handle HTTP 402 automatically
+ *   sweefi balance [address]                 — check wallet balance
+ *   sweefi receipt <object-id>               — get payment receipt
+ *   sweefi prepaid deposit <provider> <amt>  — open prepaid balance
+ *   sweefi prepaid status <balance-id>       — check prepaid budget
+ *   sweefi mandate create <agent> ...        — set spending caps
+ *   sweefi mandate check <mandate-id>        — verify mandate
+ *   sweefi mandate list [address]            — list active mandates
+ *   sweefi prepaid list [address]            — list prepaid balances
  */
 
 import { parseArgs } from "node:util";
@@ -45,7 +45,7 @@ async function main(): Promise<void> {
     return;
   }
   if (command === "--version" || command === "-v") {
-    process.stdout.write(`sweepay ${VERSION}\n`);
+    process.stdout.write(`sweefi ${VERSION}\n`);
     return;
   }
 
@@ -135,15 +135,15 @@ async function main(): Promise<void> {
     case "wallet generate":
       return walletGenerate({ human: bool(flags.human) });
     default:
-      outputError(fullCommand, "UNKNOWN_COMMAND", `Unknown command: "${fullCommand}"`, false, "Run sweepay --help for available commands");
+      outputError(fullCommand, "UNKNOWN_COMMAND", `Unknown command: "${fullCommand}"`, false, "Run sweefi --help for available commands");
       process.exit(1);
   }
 }
 
 function printHelp(): void {
-  process.stdout.write(`sweepay ${VERSION} — AI agent payments on Sui
+  process.stdout.write(`sweefi ${VERSION} — AI agent payments on Sui
 
-Usage: sweepay <command> [options]
+Usage: sweefi <command> [options]
 
 Commands:
   pay <recipient> <amount> [--mandate <id> --registry <id>]  Make a payment
@@ -173,11 +173,11 @@ Environment:
   SUI_PACKAGE_ID       Override contract package (optional)
 
 Examples:
-  sweepay pay 0xBob... 1.5 --coin SUI
-  sweepay pay-402 --url https://api.example.com/premium
-  sweepay balance
-  sweepay prepaid deposit 0xProvider... 10 --rate 10000000
-  sweepay mandate create 0xAgent... 1 50 7d
+  sweefi pay 0xBob... 1.5 --coin SUI
+  sweefi pay-402 --url https://api.example.com/premium
+  sweefi balance
+  sweefi prepaid deposit 0xProvider... 10 --rate 10000000
+  sweefi mandate create 0xAgent... 1 50 7d
 `);
 }
 

@@ -1,17 +1,19 @@
-# @sweepay/widget
+# @sweefi/widget
 
 Framework-agnostic checkout core with Vue 3 and React adapters.
 
+**Apache 2.0 open source.** Part of the [SweeFi](https://github.com/sweeinc/sweefi) ecosystem.
+
 ## Entry Points
 
-- `@sweepay/widget` or `@sweepay/widget/core` — framework-agnostic controller
-- `@sweepay/widget/vue` — Vue composable + `SweepayCheckout` component
-- `@sweepay/widget/react` — React hook + `SweepayCheckout` component
+- `@sweefi/widget` or `@sweefi/widget/core` — framework-agnostic controller
+- `@sweefi/widget/vue` — Vue composable + `SweefiCheckout` component
+- `@sweefi/widget/react` — React hook + `SweefiCheckout` component
 
 ## Core (Framework-Agnostic)
 
 ```ts
-import { createCheckoutController, createDefaultConfig } from "@sweepay/widget/core";
+import { createCheckoutController, createDefaultConfig } from "@sweefi/widget/core";
 
 const controller = createCheckoutController({
   wallet,
@@ -34,7 +36,7 @@ const result = await controller.pay();
 ## Vue Adapter
 
 ```ts
-import { SweepayCheckout } from "@sweepay/widget/vue";
+import { SweefiCheckout } from "@sweefi/widget/vue";
 ```
 
 Use the component with `wallet`, `recipient`, and `amount` props, then handle `connected`, `simulated`, and `paid` events.
@@ -42,7 +44,11 @@ Use the component with `wallet`, `recipient`, and `amount` props, then handle `c
 ## React Adapter
 
 ```tsx
-import { SweepayCheckout } from "@sweepay/widget/react";
+import { SweefiCheckout } from "@sweefi/widget/react";
 ```
 
 Use the component with `wallet`, `recipient`, and `amount` props, then handle `onConnected`, `onSimulated`, and `onPaid` callbacks.
+
+## License
+
+Apache 2.0 — [https://github.com/sweeinc/sweefi](https://github.com/sweeinc/sweefi)

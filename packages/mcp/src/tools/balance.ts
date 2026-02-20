@@ -1,11 +1,11 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { SweepayContext } from "../context.js";
+import type { SweefiContext } from "../context.js";
 import { formatBalance, resolveCoinType, suiAddress } from "../utils/format.js";
 
-export function registerBalanceTool(server: McpServer, ctx: SweepayContext) {
+export function registerBalanceTool(server: McpServer, ctx: SweefiContext) {
   server.registerTool(
-    "sweepay_check_balance",
+    "sweefi_check_balance",
     {
       title: "Check Wallet Balance",
       description:

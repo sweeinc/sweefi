@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * SweePay Testnet Demo — Run all 3 contracts against live Sui testnet
+ * SweeFi Testnet Demo — Run all 3 contracts against live Sui testnet
  *
  * Exercises the full contract suite:
  *   1. Direct payment (pay SUI → recipient, with fee split + receipt)
@@ -158,7 +158,7 @@ async function demoPayment(
     amount: PAYMENT_AMOUNT,
     feeBps: FEE_BPS,
     feeRecipient: feeRecipient.toSuiAddress(),
-    memo: "SweePay demo payment",
+    memo: "SweeFi demo payment",
   });
 
   const digest = await signAndExecute(payer, tx);
@@ -335,7 +335,7 @@ async function demoEscrow(
     deadlineMs,
     feeBps: FEE_BPS,
     feeRecipient: feeRecipient.toSuiAddress(),
-    memo: "SweePay demo escrow — API access license",
+    memo: "SweeFi demo escrow — API access license",
   });
 
   const createDigest = await signAndExecute(payer, createTx);
@@ -569,7 +569,7 @@ async function demoRecipientClose(
 async function main() {
   console.log(`
 ╔═══════════════════════════════════════════════════════════╗
-║     SweePay — Testnet Demo (4 Modules, 5 Scenarios)      ║
+║     SweeFi — Testnet Demo (4 Modules, 5 Scenarios)      ║
 ║                                                           ║
 ║  Safety guardrails for autonomous agent commerce on Sui   ║
 ╚═══════════════════════════════════════════════════════════╝`);

@@ -1,4 +1,4 @@
-# SweePay Testnet Demo — Live on Sui
+# SweeFi Testnet Demo — Live on Sui
 
 > All transactions below are **real**, **on-chain**, and **verifiable** on [Sui Testnet Explorer](https://suiscan.xyz/testnet).
 
@@ -144,37 +144,37 @@ All three primitives are live on Sui Testnet. Verifiable. Open source. 226 Move 
 
 ## 4. MCP Tools — How AI Agents Actually Use This
 
-SweePay isn't just contracts — it's an **MCP server** that any AI agent can discover and call. The agent doesn't need to know Move, PTBs, or Sui internals. It calls tools.
+SweeFi isn't just contracts — it's an **MCP server** that any AI agent can discover and call. The agent doesn't need to know Move, PTBs, or Sui internals. It calls tools.
 
 **16 MCP tools across all 3 modules:**
 
 | Tool | What It Does |
 |------|-------------|
-| `sweepay_pay` | One-shot payment with fee split |
-| `sweepay_pay_and_prove` | Pay and return receipt proof |
-| `sweepay_create_invoice` | Create invoice for on-chain dedup |
-| `sweepay_pay_invoice` | Pay and consume invoice |
-| `sweepay_create_stream` | Open per-second billing channel (7-day default timeout) |
-| `sweepay_create_stream_with_timeout` | Open billing channel with custom recipient_close timeout |
-| `sweepay_claim_stream` | Recipient withdraws accrued tokens |
-| `sweepay_pause_stream` | Emergency brake — payer stops accrual |
-| `sweepay_resume_stream` | Restart after pause |
-| `sweepay_close_stream` | Payer closes, final claim + refund |
-| `sweepay_recipient_close_stream` | **Safety valve** — recover abandoned stream |
-| `sweepay_create_escrow` | Deposit into time-locked vault |
-| `sweepay_release_escrow` | Release funds to seller (+ SEAL receipt) |
-| `sweepay_refund_escrow` | Refund to buyer (after deadline or arbiter) |
-| `sweepay_dispute_escrow` | Raise dispute for arbiter resolution |
-| `sweepay_check_payment` | Query payment/receipt status (read-only) |
+| `sweefi_pay` | One-shot payment with fee split |
+| `sweefi_pay_and_prove` | Pay and return receipt proof |
+| `sweefi_create_invoice` | Create invoice for on-chain dedup |
+| `sweefi_pay_invoice` | Pay and consume invoice |
+| `sweefi_create_stream` | Open per-second billing channel (7-day default timeout) |
+| `sweefi_create_stream_with_timeout` | Open billing channel with custom recipient_close timeout |
+| `sweefi_claim_stream` | Recipient withdraws accrued tokens |
+| `sweefi_pause_stream` | Emergency brake — payer stops accrual |
+| `sweefi_resume_stream` | Restart after pause |
+| `sweefi_close_stream` | Payer closes, final claim + refund |
+| `sweefi_recipient_close_stream` | **Safety valve** — recover abandoned stream |
+| `sweefi_create_escrow` | Deposit into time-locked vault |
+| `sweefi_release_escrow` | Release funds to seller (+ SEAL receipt) |
+| `sweefi_refund_escrow` | Refund to buyer (after deadline or arbiter) |
+| `sweefi_dispute_escrow` | Raise dispute for arbiter resolution |
+| `sweefi_check_payment` | Query payment/receipt status (read-only) |
 
 ### The "Safety Layer" in Action
 
-Here's the scenario that no competitor handles: an AI agent is streaming payments for GPU inference. The payer agent crashes. Its keys are in a TEE that got recycled. The stream has 50,000 MIST locked in a shared object. Without SweePay, those funds are **gone forever**.
+Here's the scenario that no competitor handles: an AI agent is streaming payments for GPU inference. The payer agent crashes. Its keys are in a TEE that got recycled. The stream has 50,000 MIST locked in a shared object. Without SweeFi, those funds are **gone forever**.
 
-With SweePay, the recipient agent calls one MCP tool:
+With SweeFi, the recipient agent calls one MCP tool:
 
 ```
-Tool: sweepay_recipient_close_stream
+Tool: sweefi_recipient_close_stream
 Input: { meter_id: "0x9edb...6ce2" }
 ```
 
@@ -199,18 +199,18 @@ This is what "safety layer for autonomous agent commerce" means — every failur
     └────────────────────────┬────────────────────────────────┘
                              │ discovers tools via MCP
     ┌────────────────────────▼────────────────────────────────┐
-    │              SweePay MCP Server (16 tools)               │
-    │  sweepay_pay · sweepay_create_stream · sweepay_claim    │
-    │  sweepay_pause · sweepay_recipient_close · ...           │
+    │              SweeFi MCP Server (16 tools)               │
+    │  sweefi_pay · sweefi_create_stream · sweefi_claim    │
+    │  sweefi_pause · sweefi_recipient_close · ...           │
     └────────────────────────┬────────────────────────────────┘
-                             │ builds PTBs via @sweepay/sui
+                             │ builds PTBs via @sweefi/sui
     ┌────────────────────────▼────────────────────────────────┐
-    │  s402 (HTTP 402)          @sweepay/sdk                   │
+    │  s402 (HTTP 402)          @sweefi/sdk                   │
     │  (402 headers)            (TypeScript client)            │
     └────────────────────────┬────────────────────────────────┘
                              │ submits transactions
     ┌────────────────────────▼────────────────────────────────┐
-    │            SweePay Move Contracts (v7)                    │
+    │            SweeFi Move Contracts (v7)                    │
     │                                                          │
     │  ┌──────────┐   ┌──────────┐   ┌──────────────────┐    │
     │  │ payment  │   │  stream  │   │     escrow       │    │

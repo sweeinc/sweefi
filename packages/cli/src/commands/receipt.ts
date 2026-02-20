@@ -1,5 +1,5 @@
 /**
- * sweepay receipt <object-id>
+ * sweefi receipt <object-id>
  *
  * Fetch an on-chain payment receipt by object ID.
  * Receipts are NFTs minted by pay_and_keep / release_escrow operations.
@@ -12,7 +12,7 @@ import { validateObjectId } from "../parse.js";
 
 export async function receipt(ctx: CliContext, args: string[], flags: { human?: boolean }): Promise<void> {
   if (args.length < 1) {
-    throw new CliError("MISSING_ARGS", "Usage: sweepay receipt <object-id>", false, "Pass the receipt object ID (0x...)");
+    throw new CliError("MISSING_ARGS", "Usage: sweefi receipt <object-id>", false, "Pass the receipt object ID (0x...)");
   }
 
   const objectId = validateObjectId(args[0], "Receipt ID");

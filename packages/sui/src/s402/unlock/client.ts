@@ -14,7 +14,7 @@
 import type { s402ClientScheme, s402PaymentRequirements, s402UnlockPayload } from 's402';
 import { S402_VERSION } from 's402';
 import type { ClientSuiSigner } from '../../signer.js';
-import type { SweepayConfig } from '../../ptb/types.js';
+import type { SweefiConfig } from '../../ptb/types.js';
 import { buildCreateEscrowTx } from '../../ptb/escrow.js';
 
 export class UnlockSuiClientScheme implements s402ClientScheme {
@@ -22,7 +22,7 @@ export class UnlockSuiClientScheme implements s402ClientScheme {
 
   constructor(
     private readonly signer: ClientSuiSigner,
-    private readonly config: SweepayConfig,
+    private readonly config: SweefiConfig,
   ) {}
 
   async createPayment(

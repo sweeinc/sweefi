@@ -18,7 +18,7 @@ export interface s402ClientConfig {
   facilitatorUrl?: string;
 
   /**
-   * SweePay package ID on Sui.
+   * SweeFi package ID on Sui.
    * Required for stream, escrow, and seal schemes.
    * If omitted, only exact payments are supported.
    */

@@ -1,11 +1,11 @@
 #[test_only]
-module sweepay::stream_tests {
+module sweefi::stream_tests {
     use sui::coin;
     use sui::sui::SUI;
     use sui::clock;
     use sui::test_scenario::{Self as ts};
-    use sweepay::stream;
-    use sweepay::admin;
+    use sweefi::stream;
+    use sweefi::admin;
 
     const PAYER: address = @0xCAFE;
     const PROVIDER: address = @0xBEEF;

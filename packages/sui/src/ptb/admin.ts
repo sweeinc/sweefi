@@ -1,10 +1,10 @@
 import { Transaction } from "@mysten/sui/transactions";
-import type { SweepayConfig, AdminParams } from "./types";
+import type { SweefiConfig, AdminParams } from "./types";
 
-function requireProtocolState(config: SweepayConfig): string {
+function requireProtocolState(config: SweefiConfig): string {
   if (!config.protocolStateId) {
     throw new Error(
-      "SweepayConfig.protocolStateId is required for admin operations. " +
+      "SweefiConfig.protocolStateId is required for admin operations. " +
       "Set it to the shared ProtocolState object ID from your deployment.",
     );
   }
@@ -17,7 +17,7 @@ function requireProtocolState(config: SweepayConfig): string {
  * Requires the AdminCap.
  */
 export function buildAdminPauseTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: AdminParams,
 ): Transaction {
   const protocolStateId = requireProtocolState(config);
@@ -41,7 +41,7 @@ export function buildAdminPauseTx(
  * Requires the AdminCap.
  */
 export function buildAdminUnpauseTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: AdminParams,
 ): Transaction {
   const protocolStateId = requireProtocolState(config);
@@ -65,7 +65,7 @@ export function buildAdminUnpauseTx(
  * This is a one-way door. Does NOT require protocolStateId.
  */
 export function buildBurnAdminCapTx(
-  config: SweepayConfig,
+  config: SweefiConfig,
   params: AdminParams,
 ): Transaction {
   const tx = new Transaction();

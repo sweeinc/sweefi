@@ -1,7 +1,7 @@
 #[test_only]
-module sweepay::agent_mandate_tests {
-    use sweepay::agent_mandate;
-    use sweepay::mandate;
+module sweefi::agent_mandate_tests {
+    use sweefi::agent_mandate;
+    use sweefi::mandate;
     use sui::test_scenario as ts;
     use sui::clock;
     use sui::sui::SUI;

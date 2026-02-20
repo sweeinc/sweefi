@@ -1,9 +1,9 @@
 {
-  "name": "@sweepay/sdk",
+  "name": "@sweefi/sdk",
   "version": "0.1.0",
   "type": "module",
   "description": "High-level SDK for adding agentic payments to any app — 3 lines of code",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "author": "Danny Devs",
   "main": "./dist/index.mjs",
   "module": "./dist/index.mjs",
@@ -45,7 +45,7 @@
   "files": ["dist/**/*.mjs", "dist/**/*.cjs", "dist/**/*.d.mts", "dist/**/*.d.cts", "README.md", "LICENSE"],
   "repository": {
     "type": "git",
-    "url": "https://github.com/Danny-Devs/sweepay.git",
+    "url": "https://github.com/sweeinc/sweefi.git",
     "directory": "packages/sdk"
   },
   "publishConfig": {
@@ -53,8 +53,9 @@
   },
   "dependencies": {
     "s402": "^0.1.0",
-    "@sweepay/core": "workspace:*",
-    "@sweepay/sui": "workspace:*"
+    "@mysten/seal": "^1.0.0",
+    "@mysten/walrus": "^1.0.0",
+    "@sweefi/sui": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.13.4",

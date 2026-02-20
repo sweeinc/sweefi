@@ -1,5 +1,5 @@
 /**
- * @module @sweepay/sui — Sui-native payment protocol implementation
+ * @module @sweefi/sui — Sui-native payment protocol implementation
  *
  * Provides the Sui-specific implementation of the s402 payment protocol.
  * Implements the sign-first model using Sui's PTBs and sub-second finality.

@@ -1,14 +1,15 @@
-# SweePay Specification
+# SweeFi Specification
 
-> **Version 2.0** — February 2026. The authoritative vision, architecture, and roadmap for SweePay.
+> **Version 3.0** — February 16, 2026. The single canonical specification for SweeFi.
+> Supersedes all prior spec documents. See `../ARCHIVE-SPEC-v1.md` for historical context.
 
 ## Vision
 
-SweePay enables **autonomous digital commerce without platforms**.
+SweeFi enables **autonomous digital commerce without platforms**.
 
 Today, every online transaction flows through intermediaries: Stripe for payments, Amazon for delivery guarantees, Gumroad for content distribution, API key providers for access control. Each takes a cut, adds friction, and requires account creation.
 
-SweePay replaces all of them with a single HTTP header and Sui's programmable transactions.
+SweeFi replaces all of them with a single HTTP header and Sui's programmable transactions.
 
 An AI agent discovers an API. The API responds with HTTP 402 and its price. The agent pays on-chain. The API delivers. No account. No API key. No subscription. No platform. The HTTP endpoint *is* the business.
 
@@ -16,46 +17,44 @@ An AI agent discovers an API. The API responds with HTTP 402 and its price. The 
 
 ## The Swee Ecosystem
 
-SweePay is part of a three-product ecosystem, each with a distinct role:
+SweeFi is part of a three-product ecosystem, each with a distinct role:
 
 | Brand | What | Audience | Priority |
 |-------|------|----------|----------|
-| **SweePay** | Payment protocol + SDK (s402) | Developers | **Now** — shipping |
+| **SweeFi** | Payment protocol + SDK (s402) | Developers | **Now** — shipping |
 | **SweeAgent** | Agent identity, reputation, commerce network | AI agents + developers | **Next** — architect seams now, build when agent commerce ignites |
 | **SweeWorld** | Geo-location mobile app (pins, tipping, SEAL content, creator economy) | Consumers | **Soon** — brainstorm + prototype |
 
-**SweePay** is the foundation — the payment rails everything else builds on. **SweeAgent** (`@sweeagent/*` packages) implements agent identity (`did:sui`), on-chain reputation, and agent discovery — the intelligence layer that makes agent-to-agent commerce trustworthy. **SweeWorld** is a consumer-facing Tauri mobile app where humans and agents interact in the physical world via geo-located pins, tipping, and SEAL-gated content.
+**SweeFi** is the foundation — the payment rails everything else builds on. **SweeAgent** (`@sweeagent/*` packages) implements agent identity (`did:sui`), on-chain reputation, and agent discovery — the intelligence layer that makes agent-to-agent commerce trustworthy. **SweeWorld** is a consumer-facing Tauri mobile app where humans and agents interact in the physical world via geo-located pins, tipping, and SEAL-gated content.
 
 The three compose cleanly:
-- SweeAgent depends on SweePay for payments (never the reverse)
-- SweeWorld imports from both SweePay and SweeAgent
+- SweeAgent depends on SweeFi for payments (never the reverse)
+- SweeWorld imports from both SweeFi and SweeAgent
 - `s402` remains chain-agnostic and ecosystem-agnostic — it knows nothing about identity or mobile apps
 
 ## Payment Schemes
 
-SweePay ships three payment schemes at launch (v0.1), with two more in v0.2:
+SweeFi ships five deployed payment schemes, with a sixth (unlock/seal receipt-gated) in progress:
 
-### v0.1 — The Core Three
+### Deployed Schemes
 
-| Scheme | What It Eliminates | Sui Advantage |
-|--------|--------------------|---------------|
-| **Exact** | API keys, subscriptions, payment processors | ~400ms atomic settlement via PTBs |
-| **Prepaid** | Per-request negotiation friction | Shared object balance — trustless collateral |
-| **Escrow** | Trust in the counterparty (no Amazon/Gumroad/Fiverr) | Atomic release + receipt mint in one PTB |
+| Scheme | What It Eliminates | Sui Advantage | Status |
+|--------|--------------------|---------------|--------|
+| **Exact** | API keys, subscriptions, payment processors | ~400ms atomic settlement via PTBs | Deployed, facilitator scheme complete |
+| **Prepaid** | Per-request negotiation friction | Shared object balance — trustless collateral | Deployed, facilitator scheme complete |
+| **Escrow** | Trust in the counterparty (no Amazon/Gumroad/Fiverr) | Atomic release + receipt mint in one PTB | Deployed, facilitator scheme complete |
+| **Stream** | Metering infrastructure, billing systems | On-chain `StreamingMeter` with budget caps | Deployed, facilitator scheme complete |
+| **Seal** | Trust in the delivery mechanism | SEAL threshold encryption — cryptographic, not access-control | `seal_policy.move` deployed, client scheme complete |
 
-**The v0.1 pitch:** Pay per call. Fund agent budgets. Trade trustlessly. x402 gives you the first one. SweePay gives you all three.
+### Not Yet Deployed
 
-### v0.2 — Split + Content + Streaming
+| Scheme | What It Eliminates | Status |
+|--------|--------------------|--------|
+| **Unlock** | Trust in content delivery (pay-to-decrypt) | Client scheme done, facilitator handler not yet built |
+| **Split** | Splitter contracts, multi-step approvals | Fee splitting built into payment.move; cross-scheme splits planned |
+| **Direct** | Facilitator dependency | Client scheme done (self-sovereign settlement) |
 
-| Scheme | What It Eliminates | Sui Advantage |
-|--------|--------------------|---------------|
-| **Split** | Splitter contracts, multi-step approvals | Native PTB composition — N recipients in one atomic TX |
-| **Seal** | Trust in the delivery mechanism | SEAL threshold encryption — cryptographic, not access-control |
-| **Stream** | Metering infrastructure, billing systems | On-chain `StreamingMeter` with budget caps |
-
-### v0.3 — Exploratory (demand-driven)
-
-Candidates for v0.3 if demand materializes. Not committed — built only when real users ask for them.
+### Exploratory (demand-driven)
 
 | Scheme | What It Eliminates | Likelihood |
 |--------|--------------------|------------|
@@ -109,7 +108,7 @@ Client                    Server                  Facilitator
 
 ### Prepaid (Balance)
 
-**Status:** v0.1. Spec-complete, Move module in development.
+**Status:** Deployed on testnet v7. Facilitator scheme complete. 8 PTB builders.
 
 Deposit-based access. Agent deposits funds into an on-chain Balance shared object. Each API call decrements atomically. When balance hits zero, 402 again (or auto-topup via mandate).
 
@@ -144,7 +143,7 @@ With prepaid + batch claim:
 **Move module design:**
 
 ```move
-module sweepay::prepaid {
+module sweefi::prepaid {
     /// Shared object — agent's prepaid balance for a specific provider
     struct Balance has key {
         id: UID,
@@ -197,7 +196,7 @@ Time-locked vault with arbiter dispute resolution. Full state machine: `ACTIVE -
 
 ### Seal
 
-**Status:** v0.2. Token-gated deployed, receipt-gated in progress.
+**Status:** `seal_policy.move` deployed. Token-gated access works. Receipt-gated (unlock scheme) in progress.
 
 Pay-to-decrypt via [Sui SEAL](https://docs.sui.io/concepts/cryptography/seal). Escrow + encrypted content delivery. The buyer pays into escrow; on release, the `EscrowReceipt` unlocks SEAL-encrypted content stored on [Walrus](https://docs.walrus.site).
 
@@ -207,7 +206,7 @@ Pay-to-decrypt via [Sui SEAL](https://docs.sui.io/concepts/cryptography/seal). E
 
 ### Stream
 
-**Status:** v0.2. Contracts deployed, HTTP integration ready.
+**Status:** Deployed on testnet v7. Facilitator scheme complete. 9 PTB builders.
 
 Per-second micropayments via on-chain `StreamingMeter`. Client deposits funds into a shared object; recipient claims accrued tokens over time.
 
@@ -270,7 +269,7 @@ Agent spending authorization. A human creates a mandate for an AI agent with per
 
 ### Gas Sponsorship
 
-SweePay facilitator sponsors gas for settlement transactions via `sui-gas-station`. The end user (agent or human) never pays gas directly — it's absorbed into the protocol fee.
+SweeFi facilitator sponsors gas for settlement transactions via `sui-gas-station`. The end user (agent or human) never pays gas directly — it's absorbed into the protocol fee.
 
 **Status:** Battle-tested on devnet, 61 tests passing.
 
@@ -281,17 +280,17 @@ SweePay facilitator sponsors gas for settlement transactions via `sui-gas-statio
 ```
 AI Agent (Claude, GPT, Cursor, etc.)
     |
-    +-- s402 fetch wrapper ------> @sweepay/sdk (auto-pay client)
+    +-- s402 fetch wrapper ------> @sweefi/sdk (auto-pay client)
     |                                   |
-    +-- MCP tool discovery -------> @sweepay/mcp (16 tools)
+    +-- MCP tool discovery -------> @sweefi/mcp (35 tools)
     |                                   |
-    +-- Direct PTB --------------> @sweepay/sui (PTB builders)
+    +-- Direct PTB --------------> @sweefi/sui (40 PTB builders)
     |                                   |
     |                         s402 (protocol spec, zero deps)
     |                                   |
     +-- Gas sponsorship ---------> sui-gas-station
     |                                   |
-    |                         @sweepay/facilitator (verify + settle)
+    |                         @sweefi/facilitator (verify + settle)
     |                                   |
     +-- Agent identity ----------> @sweeagent/identity (did:sui, profiles)     [FUTURE]
     |                                   |
@@ -299,80 +298,94 @@ AI Agent (Claude, GPT, Cursor, etc.)
     |                                   |
     +-- Agent discovery ---------> @sweeagent/registry (search, match)        [FUTURE]
                                         |
-                              Sui blockchain (Move modules)
+                              Sui blockchain (10 Move modules, testnet v7)
                                         |
                                  +------+------+
                                  |  payment    | Direct pay + receipts
-                                 |  prepaid    | Deposit + rate-capped claims (NEW)
+                                 |  prepaid    | Deposit + rate-capped claims
                                  |  stream     | Micropayments + budget caps
                                  |  escrow     | Time-locked + arbiter disputes
                                  |  seal_policy| Pay-to-decrypt via SEAL
-                                 |  mandate    | AP2 agent spending limits
+                                 |  mandate    | Basic spending delegation
+                                 |  agent_mand.| L0-L3 tiered autonomy
                                  |  admin      | Protocol governance
+                                 |  identity   | On-chain identity binding
+                                 |  math       | Safe arithmetic helpers
                                  +-------------+
 ```
 
 ## Packages
 
+### In This Monorepo
+
 | Package | Description | Tests |
 |---------|-------------|-------|
-| [`s402`](packages/s402-core) | Chain-agnostic HTTP 402 protocol spec (zero deps) | 112 |
-| [`@sweepay/sui`](packages/sui) | Sui PTB builders for all contract operations | 116 |
-| [`@sweepay/core`](packages/core) | Shared types, network configs, client factories | 85 |
-| [`@sweepay/facilitator`](packages/facilitator) | Self-hostable payment verification service | 37 |
-| [`@sweepay/mcp`](packages/mcp) | MCP server with 16 AI agent tools | 36 |
-| [`@sweepay/sdk`](packages/sdk) | Client + server SDK (3-line integration) | 30 |
-| [`@sweepay/widget`](packages/widget) | Checkout UI — Vue + React adapters | 6 |
-| [`sweepay-contracts`](contracts) | Move modules on Sui testnet | 101 |
-| [`sui-gas-station`](../sui-gas-station) | Gas sponsorship service | 61 |
+| [`@sweefi/core`](packages/core) | Shared types, client factories (Sui, SEAL, Walrus), constants | 54 |
+| [`@sweefi/sui`](packages/sui) | 40 PTB builders, signer utils, s402 scheme implementations | 176 |
+| [`@sweefi/sdk`](packages/sdk) | Client + server SDK (s402 auto-pay client, s402Gate middleware) | 6 |
+| [`@sweefi/facilitator`](packages/facilitator) | Self-hostable payment verification + settlement service | 37 |
+| [`@sweefi/mcp`](packages/mcp) | MCP server — 30 default + 5 opt-in AI agent tools | 79 |
+| [`@sweefi/cli`](packages/cli) | CLI for wallet, pay, prepaid, mandate operations | 42 |
+| [`@sweefi/widget`](packages/widget) | Framework-agnostic checkout core + React + Vue adapters | 6 |
+| [`sweefi-contracts`](contracts) | 10 Move modules on Sui testnet (v7) | 185 |
+
+**Total: 585 tests (400 TypeScript + 185 Move)**
+
+### External Dependencies
+
+| Package | Description | Notes |
+|---------|-------------|-------|
+| [`s402`](https://www.npmjs.com/package/s402) | Chain-agnostic HTTP 402 protocol spec (zero deps) | Published on npm, imported as `s402@^0.1.0` |
+| `@mysten/sui` | Sui TypeScript SDK | Peer dependency, `^2.0.0` (resolved to 2.4.0) |
+| `@mysten/seal` | SEAL threshold encryption | `^1.0.0` (resolved to 1.0.1) |
+| `@mysten/walrus` | Walrus decentralized storage | `^1.0.0` (resolved to 1.0.3) |
 
 ---
 
 ## Roadmap
 
-### v0.1 — Exact + Prepaid + Escrow (CURRENT)
+### v0.1 — Current State (Feb 16, 2026)
 
-The core three: pay per call, fund agent budgets, trade trustlessly.
+Everything below is DONE. Contracts deployed to testnet v7. All packages build, typecheck, and pass tests.
 
-- [x] s402 protocol spec (`s402`)
+- [x] s402 protocol spec published on npm as `s402@0.1.2`
 - [x] x402 V1 + V2 compatibility layer
-- [x] Exact scheme: contracts, PTB builders, facilitator, SDK
-- [x] E2E demo: agent auto-pays for API
-- [x] Gas station: battle-tested on devnet
-- [x] 523+ tests across all packages
-- [x] Escrow contracts deployed + HTTP integration ready
-- [ ] `sweepay::prepaid` Move module (deposit, claim, withdraw)
-- [ ] Prepaid PTB builders in `@sweepay/sui`
-- [ ] Prepaid scheme types in `s402`
-- [ ] Facilitator integration: manage tabs, batch claims
-- [ ] Gas station sponsors deposit + claim TXs
-- [ ] Escrow HTTP integration (402 flow for digital goods)
-- [ ] Agent demo: deposit budget, make N API calls, provider claims
+- [x] Exact scheme: contracts + PTB builders + facilitator scheme + SDK
+- [x] Prepaid scheme: contracts + 8 PTB builders + facilitator scheme + MCP tools
+- [x] Escrow scheme: contracts + 5 PTB builders + facilitator scheme + MCP tools
+- [x] Stream scheme: contracts + 9 PTB builders + facilitator scheme + MCP tools
+- [x] Seal policy: `seal_policy.move` deployed, token-gated access works
+- [x] Mandates: basic + agent (L0-L3) contracts + 9 PTB builders + MCP tools
+- [x] Admin: pause/unpause/burn contracts + 3 PTB builders
+- [x] Identity + math helper modules
+- [x] @sweefi/mcp: 35 MCP tools (30 default + 5 opt-in)
+- [x] @sweefi/cli: CLI for wallet, pay, prepaid, mandate operations
+- [x] @sweefi/widget: React + Vue checkout adapters
+- [x] @sweefi/facilitator: settles 4 schemes (exact, prepaid, stream, escrow)
+- [x] Migrated to @mysten/sui 2.x + @mysten/seal 1.x
+- [x] 585 total tests (400 TypeScript + 185 Move)
 
-### v0.2 — Split + Seal + Stream
+### Next — Ship It
 
-Multi-party settlement, content gating, and continuous billing.
-
-- [ ] Split payment support (cross-cutting feature on all schemes)
-- [ ] Seal receipt-gated decryption (two-stage flow)
-- [ ] Stream HTTP integration
-- [ ] Multi-party settlement demo
-- [ ] Combined escrow + seal demo: trustless digital goods purchase
-
-### v0.3 — Exploratory (demand-driven, not committed)
-
-Built only when real users request them. Subscription is most likely; Auction and Conditional are speculative.
-
-- [ ] Subscription scheme if recurring billing demand materializes
-- [ ] Other schemes based on user feedback and ecosystem needs
+- [ ] Wire up `demos/agent-pays-api` end-to-end (live demo)
+- [ ] npm publish all packages (mechanically ready)
+- [ ] Unlock facilitator scheme (pay-to-decrypt settlement)
+- [ ] Identity PTB builders
+- [ ] Documentation site
 
 ### v1.0 — Production
 
-- [ ] Mainnet deployment
-- [ ] Audit (Move contracts + TypeScript packages)
-- [ ] npm publish all packages
+- [ ] Mainnet deployment (requires security audit + AdminCap governance decision)
+- [ ] Professional or rigorous self-audit
+- [ ] npm publish v1.0
 - [ ] Documentation site
-- [ ] Grant application (Sui DeFi Moonshots)
+- [ ] Monitoring + incident response
+
+### Exploratory (demand-driven, not committed)
+
+- [ ] Subscription scheme (natural extension of mandates)
+- [ ] Cross-chain routing (x402 wire compat already built)
+- [ ] Split payments as cross-cutting feature on all schemes
 
 ---
 
@@ -380,7 +393,7 @@ Built only when real users request them. Subscription is most likely; Auction an
 
 ### Protocol Fee
 
-SweePay charges a **percentage-based fee with a floor**:
+SweeFi charges a **percentage-based fee with a floor**:
 
 ```
 Protocol fee = max($0.01, settlement amount × 50 bps)
@@ -395,7 +408,7 @@ This is per settlement. With Prepaid, a session with 1,000 API calls has only 2 
 
 ### How it compares
 
-| Transaction | SweePay (0.5% + $0.01 floor) | Stripe (2.9% + $0.30) | How much cheaper |
+| Transaction | SweeFi (0.5% + $0.01 floor) | Stripe (2.9% + $0.30) | How much cheaper |
 |---|---|---|---|
 | $1 prepaid claim (1K API calls) | $0.01 | $0.33 | **33x** |
 | $5 one-shot API call | $0.025 | $0.45 | **18x** |
@@ -404,7 +417,7 @@ This is per settlement. With Prepaid, a session with 1,000 API calls has only 2 
 | $100 digital goods | $0.50 | $3.20 | **6x** |
 | $1,000 enterprise deal | $5.00 | $29.30 | **6x** |
 
-**At every price point, SweePay is 6-33x cheaper than Stripe.** And unlike Stripe, there's no account, no approval process, and no chargebacks.
+**At every price point, SweeFi is 6-33x cheaper than Stripe.** And unlike Stripe, there's no account, no approval process, and no chargebacks.
 
 ### Gas
 
@@ -441,7 +454,7 @@ The protocol fees are the foundation. The data products are the profit center. T
 
 x402 proved the concept. s402 takes it further with Sui-native capabilities:
 
-| | x402 (EVM) | SweePay (Sui) |
+| | x402 (EVM) | SweeFi (Sui) |
 |---|---|---|
 | Payment modes | Exact only | 6 core schemes (v0.1-v0.2), extensible architecture |
 | Settlement | Two-step verify/settle | Atomic PTBs |
@@ -458,18 +471,18 @@ x402 proved the concept. s402 takes it further with Sui-native capabilities:
 
 ### vs BEEP (justbeep.it)
 
-BEEP is a proprietary Sui payment service. SweePay is open-source and protocol-level.
+BEEP is a proprietary Sui payment service. SweeFi is open-source and protocol-level.
 
-- SweePay: open protocol (anyone can run a facilitator)
+- SweeFi: open protocol (anyone can run a facilitator)
 - BEEP: proprietary service (vendor lock-in)
-- SweePay: 3 payment schemes at launch (v0.1), 6 total (v0.2)
+- SweeFi: 3 payment schemes at launch (v0.1), 6 total (v0.2)
 - BEEP: exact only (a402)
 
 ---
 
 ## Design Principles
 
-1. **Protocol-agnostic core, Sui-native reference.** `s402` defines chain-agnostic protocol types and HTTP encoding. The reference implementation (`@sweepay/sui`) exploits Sui's unique properties — PTBs, object model, sub-second finality. Other chains can implement s402 schemes using their own primitives.
+1. **Protocol-agnostic core, Sui-native reference.** `s402` defines chain-agnostic protocol types and HTTP encoding. The reference implementation (`@sweefi/sui`) exploits Sui's unique properties — PTBs, object model, sub-second finality. Other chains can implement s402 schemes using their own primitives.
 
 2. **Wire-compatible with x402.** The `exact` scheme uses the same headers and encoding as x402 V1. The compat layer handles V1 (`maxAmountRequired`) and V2 (`amount`, envelope format). s402 clients work with x402 servers and vice versa via the `exact` scheme.
 
@@ -479,7 +492,7 @@ BEEP is a proprietary Sui payment service. SweePay is open-source and protocol-l
 
 5. **Errors tell you what to do.** Every error code includes `retryable` (can the client try again?) and `suggestedAction` (what should it do?). Agents can self-recover.
 
-6. **Composability via PTBs.** Payment schemes compose atomically. Escrow + Seal is one PTB. Pay + Split is one PTB. This is Sui's killer feature and SweePay exploits it fully.
+6. **Composability via PTBs.** Payment schemes compose atomically. Escrow + Seal is one PTB. Pay + Split is one PTB. This is Sui's killer feature and SweeFi exploits it fully.
 
 7. **No funds locked forever.** Every scheme includes permissionless recovery: streams have budget caps + recipient close, escrows have deadline refunds, prepaid has withdrawal locks that expire, mandates have expiry + revocation.
 
@@ -487,7 +500,7 @@ BEEP is a proprietary Sui payment service. SweePay is open-source and protocol-l
 
 ## Supported Assets
 
-SweePay is multi-asset by design. The `asset` field in s402 requirements is a Sui coin type address. Providers can accept any combination:
+SweeFi is multi-asset by design. The `asset` field in s402 requirements is a Sui coin type address. Providers can accept any combination:
 
 | Asset | Type on Sui | Status |
 |-------|------------|--------|
@@ -497,7 +510,7 @@ SweePay is multi-asset by design. The `asset` field in s402 requirements is a Su
 | **USDe** | Ethena synthetic dollar | Available via bridge. |
 | **BUCK** | Bucket Protocol CDP stablecoin | Sui-native. |
 
-**Strategic implication:** An agent on *any chain* that holds USDC can bridge to Sui and interact with the entire s402 ecosystem. And a Sui-native agent holding USDC can pay for services on any chain that accepts USDC. SweePay + stablecoins = chain-agnostic agent commerce settled on the fastest chain.
+**Strategic implication:** An agent on *any chain* that holds USDC can bridge to Sui and interact with the entire s402 ecosystem. And a Sui-native agent holding USDC can pay for services on any chain that accepts USDC. SweeFi + stablecoins = chain-agnostic agent commerce settled on the fastest chain.
 
 No v0.1 protocol changes needed — multi-asset support is already in the wire format.
 
@@ -511,10 +524,10 @@ Payment schemes are the foundation. Platform capabilities are the moat. The prot
 
 | Capability | What It Does | Status |
 |------------|-------------|--------|
-| **Gas Station** | Sponsors settlement gas, invisible to end users | Built, 61 tests |
-| **Facilitator Network** | Verify + settle. Self-hostable or use SweePay's hosted service | Built, 37 tests |
-| **Agent SDK** | `client.fetch(url)` — 3 lines to auto-pay for anything | Built, 30 tests |
-| **MCP Server** | AI agents discover payment tools natively via MCP protocol | Built, 16 tools |
+| **Facilitator Network** | Verify + settle. Self-hostable or use SweeFi's hosted service | Built, 37 tests, settles 4 schemes |
+| **Agent SDK** | `client.fetch(url)` — 3 lines to auto-pay for anything | Built, 6 tests |
+| **MCP Server** | AI agents discover payment tools natively via MCP protocol | Built, 35 tools, 79 tests |
+| **CLI** | Terminal tool for wallet, pay, prepaid, mandate operations | Built, 42 tests |
 
 Table stakes. Not a moat, but nothing works without them.
 
@@ -522,7 +535,7 @@ Table stakes. Not a moat, but nothing works without them.
 
 > **Status: VISION — NOT YET BUILT.** The raw data (on-chain receipts) exists today. The indexing, aggregation, and scoring layers do not. When built, these capabilities will ship as `@sweeagent/*` packages.
 
-Every s402 settlement creates on-chain data: `PaymentReceipt` objects, escrow state transitions, prepaid balance activity, stream meters. This data accumulates only when people use SweePay schemes. A competing protocol starts at zero.
+Every s402 settlement creates on-chain data: `PaymentReceipt` objects, escrow state transitions, prepaid balance activity, stream meters. This data accumulates only when people use SweeFi schemes. A competing protocol starts at zero.
 
 **On-Chain Reputation** (`@sweeagent/reputation`)
 
@@ -545,11 +558,11 @@ Provider-facing dashboard:
 - Gas cost absorption tracking
 - Prepaid balance utilization rates
 
-Free tier for basic metrics. Paid tier for deep analytics. Providers who see their revenue data in SweePay's dashboard don't switch.
+Free tier for basic metrics. Paid tier for deep analytics. Providers who see their revenue data in SweeFi's dashboard don't switch.
 
 **Price Discovery**
 
-SweePay's facilitator sees all settlements it processes. This enables agent-facing price comparison:
+SweeFi's facilitator sees all settlements it processes. This enables agent-facing price comparison:
 - "Weather API A: 1000 MIST/call, 99.9% uptime, 340ms median"
 - "Weather API B: 800 MIST/call, 97% uptime, 890ms median"
 
@@ -577,13 +590,13 @@ Likely starts as an off-chain API that crawls `.well-known/s402.json` endpoints 
 
 > **Status: FUTURE — depends on bridge maturity.** Circle CCTP on Sui is early. Wormhole works but isn't plug-and-play for arbitrary payment routing. This is directionally correct but not imminent.
 
-The concept: agent pays in USDC on Base via x402, SweePay facilitator bridges to Sui and settles there. Provider never knows the agent was on EVM. SweePay becomes a universal HTTP 402 router.
+The concept: agent pays in USDC on Base via x402, SweeFi facilitator bridges to Sui and settles there. Provider never knows the agent was on EVM. SweeFi becomes a universal HTTP 402 router.
 
-This is where the x402 compat layer pays off strategically — SweePay can accept x402 wire format from any chain and settle on Sui's superior infrastructure. But the bridge plumbing needs to mature first.
+This is where the x402 compat layer pays off strategically — SweeFi can accept x402 wire format from any chain and settle on Sui's superior infrastructure. But the bridge plumbing needs to mature first.
 
 **Agent Marketplace** (SweeAgent endgame)
 
-The endgame vision: a marketplace where agents advertise capabilities, other agents discover and pay them, reputation scores gate access, and escrow protects both sides. SweePay takes a protocol fee on marketplace transactions. SweeAgent provides the identity (`did:sui`), reputation (on-chain scoring), and discovery (registry) that make this marketplace trustworthy.
+The endgame vision: a marketplace where agents advertise capabilities, other agents discover and pay them, reputation scores gate access, and escrow protects both sides. SweeFi takes a protocol fee on marketplace transactions. SweeAgent provides the identity (`did:sui`), reputation (on-chain scoring), and discovery (registry) that make this marketplace trustworthy.
 
 This is the long-term network effect play. It requires Tiers 1-2 to be mature and significant adoption before it's viable.
 
@@ -613,24 +626,28 @@ Lower friction → more providers register (cycle repeats)
 Data moat deepens → competitors can't replicate the reputation graph
 ```
 
-The protocol is open. The schemes are open. **The reputation graph is the moat.** It only exists because real money settled through SweePay on Sui. It can't be forked, spoofed, or replicated without actual economic activity.
+The protocol is open. The schemes are open. **The reputation graph is the moat.** It only exists because real money settled through SweeFi on Sui. It can't be forked, spoofed, or replicated without actual economic activity.
 
 ---
 
 ## Swee Ecosystem Packages
 
-### SweePay (shipping now)
+### SweeFi (shipping now)
 
 | Package | Description | Tests |
 |---------|-------------|-------|
-| `s402` | Chain-agnostic HTTP 402 protocol spec (zero deps) | 112 |
-| `@sweepay/sui` | Sui PTB builders for all contract operations | 116 |
-| `@sweepay/core` | Shared types, network configs, client factories | 85 |
-| `@sweepay/facilitator` | Self-hostable payment verification service | 37 |
-| `@sweepay/mcp` | MCP server with 16 AI agent tools | 36 |
-| `@sweepay/sdk` | Client + server SDK (3-line integration) | 30 |
-| `@sweepay/widget` | Checkout UI — Vue + React adapters | 6 |
-| `sweepay-contracts` | 6 Move modules on Sui testnet | 101 |
+| `@sweefi/sui` | 40 PTB builders for all contract operations | 176 |
+| `@sweefi/core` | Shared types, network configs, client factories | 54 |
+| `@sweefi/facilitator` | Self-hostable payment verification service | 37 |
+| `@sweefi/mcp` | MCP server with 35 AI agent tools | 79 |
+| `@sweefi/sdk` | Client + server SDK (3-line integration) | 6 |
+| `@sweefi/cli` | CLI for wallet, payments, and provider management | 42 |
+| `@sweefi/widget` | Checkout UI — Vue + React adapters | 6 |
+| `sweefi-contracts` | 10 Move modules on Sui testnet (v7) | 185 |
+
+**External dependencies**: `s402@0.1.2` (HTTP 402 protocol), `@mysten/sui@2.4.0`, `@mysten/seal@1.0.1`
+
+**Totals**: 400 TypeScript tests + 185 Move tests = 585
 
 ### SweeAgent (future — architect seams now)
 
@@ -648,4 +665,4 @@ The protocol is open. The schemes are open. **The reputation graph is the moat.*
 
 ---
 
-*SweePay: the payment layer for the agentic internet. SweeAgent: the trust layer. SweeWorld: the world layer.*
+*SweeFi: the payment layer for the agentic internet. SweeAgent: the trust layer. SweeWorld: the world layer.*

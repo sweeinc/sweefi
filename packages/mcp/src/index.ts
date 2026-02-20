@@ -1,5 +1,5 @@
 /**
- * @sweepay/mcp — MCP server exposing SweePay payment tools for AI agents.
+ * @sweefi/mcp — MCP server exposing SweeFi payment tools for AI agents.
  *
  * The safety layer for autonomous agent commerce on Sui.
  *
@@ -14,15 +14,15 @@
  *   - Admin (opt-in): protocol_status, pause_protocol, unpause_protocol, burn_admin_cap
  *
  * Usage (stdio — for Claude Desktop / Cursor / etc.):
- *   SUI_PRIVATE_KEY=suiprivkey1... npx @sweepay/mcp
+ *   SUI_PRIVATE_KEY=suiprivkey1... npx @sweefi/mcp
  *
  * Usage (programmatic — no side effects):
- *   import { createSweepayMcpServer } from '@sweepay/mcp';
- *   const { server } = createSweepayMcpServer({ network: 'testnet' });
+ *   import { createSweefiMcpServer } from '@sweefi/mcp';
+ *   const { server } = createSweefiMcpServer({ network: 'testnet' });
  *
  * @module
  */
 
-export { createSweepayMcpServer } from "./server.js";
+export { createSweefiMcpServer } from "./server.js";
 export { createContext, requireSigner } from "./context.js";
-export type { SweepayContext, SweepayMcpConfig } from "./context.js";
+export type { SweefiContext, SweefiMcpConfig } from "./context.js";

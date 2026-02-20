@@ -1,21 +1,23 @@
-# @sweepay/core
+# @sweefi/core
 
-Shared types, client factories, and error hierarchy for the SweePay ecosystem.
+> **Merged into `@sweefi/sdk`.** This package is an internal workspace dependency — it is not published to npm. All exports are available from `@sweefi/sdk`.
 
-`@sweepay/core` is the foundation layer consumed by every SweePay package. It provides canonical coin type constants, network configuration, branded address types, SEAL/Walrus client factories, structured error handling, and the s402 wire-format protocol. If you are building on top of SweePay — whether an agent, a UI, or a custom integration — this is where you start.
+Shared types, client factories, and error hierarchy for the SweeFi ecosystem.
 
-Part of the [SweePay](https://github.com/Danny-Devs/sweepay) ecosystem.
+`@sweefi/core` was the foundation layer consumed by every SweeFi package. It has been merged into `@sweefi/sdk` to simplify the package surface. If you are building on top of SweeFi — whether an agent, a UI, or a custom integration — import from `@sweefi/sdk` instead.
+
+**Apache 2.0 open source.** Part of the [SweeFi](https://github.com/sweeinc/sweefi) ecosystem.
 
 ## Installation
 
 ```bash
-npm install @sweepay/core
+npm install @sweefi/core
 ```
 
 `@mysten/sui` is a peer dependency. Install it alongside:
 
 ```bash
-npm install @sweepay/core @mysten/sui
+npm install @sweefi/core @mysten/sui
 ```
 
 ## Quick Start
@@ -23,7 +25,7 @@ npm install @sweepay/core @mysten/sui
 ### Coin type constants
 
 ```typescript
-import { COIN_TYPES, TESTNET_COIN_TYPES, COIN_DECIMALS } from '@sweepay/core';
+import { COIN_TYPES, TESTNET_COIN_TYPES, COIN_DECIMALS } from '@sweefi/core';
 
 // Mainnet
 console.log(COIN_TYPES.SUI);   // '0x2::sui::SUI'
@@ -40,7 +42,7 @@ const decimals = COIN_DECIMALS[COIN_TYPES.SUI]; // 9
 ### Create a Sui client
 
 ```typescript
-import { createSuiClient } from '@sweepay/core';
+import { createSuiClient } from '@sweefi/core';
 
 const suiClient = createSuiClient('testnet');
 // Returns a configured @mysten/sui SuiClient (JSON-RPC)
@@ -49,7 +51,7 @@ const suiClient = createSuiClient('testnet');
 ### Create a SEAL client
 
 ```typescript
-import { createSuiClient, createSealClient } from '@sweepay/core';
+import { createSuiClient, createSealClient } from '@sweefi/core';
 
 const suiClient = createSuiClient('testnet');
 const sealClient = await createSealClient(suiClient, 'testnet');
@@ -64,7 +66,7 @@ SEAL key servers are only available on `testnet` and `mainnet`. On `devnet` or `
 ### Create a Walrus client
 
 ```typescript
-import { createSuiClient, createWalrusClient } from '@sweepay/core';
+import { createSuiClient, createWalrusClient } from '@sweefi/core';
 
 const suiClient = createSuiClient('testnet');
 const walrusClient = await createWalrusClient('testnet', suiClient);
@@ -75,8 +77,8 @@ const walrusClient = await createWalrusClient('testnet', suiClient);
 ### Branded address types
 
 ```typescript
-import { toSuiAddress, toObjectId, isValidSuiAddress } from '@sweepay/core';
-import type { SuiAddress, ObjectId } from '@sweepay/core';
+import { toSuiAddress, toObjectId, isValidSuiAddress } from '@sweefi/core';
+import type { SuiAddress, ObjectId } from '@sweefi/core';
 
 // Validate and brand — throws if the string is not a valid 0x-prefixed hex address
 const sender: SuiAddress = toSuiAddress('0xb0b...');
@@ -91,7 +93,7 @@ Branded types prevent passing raw strings where validated addresses are expected
 ### Error handling
 
 ```typescript
-import { SweeError, SweeErrorCode } from '@sweepay/core';
+import { SweeError, SweeErrorCode } from '@sweefi/core';
 
 try {
   // ...
@@ -121,8 +123,8 @@ throw new SweeError(
 ### Message envelopes
 
 ```typescript
-import { createMessageEnvelope } from '@sweepay/core';
-import type { MessageEnvelope, MessageType } from '@sweepay/core';
+import { createMessageEnvelope } from '@sweefi/core';
+import type { MessageEnvelope, MessageType } from '@sweefi/core';
 
 const envelope: MessageEnvelope = createMessageEnvelope({
   type: 'task',
@@ -139,8 +141,8 @@ const envelope: MessageEnvelope = createMessageEnvelope({
 ### Custom logger
 
 ```typescript
-import { defaultLogger } from '@sweepay/core';
-import type { SweeLogger } from '@sweepay/core';
+import { defaultLogger } from '@sweefi/core';
+import type { SweeLogger } from '@sweefi/core';
 
 // Drop-in replacement — wire in Pino, Winston, or your own
 const myLogger: SweeLogger = {
@@ -154,7 +156,7 @@ const myLogger: SweeLogger = {
 ### Feature flags
 
 ```typescript
-import { FeatureFlags } from '@sweepay/core';
+import { FeatureFlags } from '@sweefi/core';
 
 if (FeatureFlags.SEAL_ENCRYPTION) {
   // SEAL encryption codepath enabled
@@ -173,10 +175,10 @@ Flags are read from environment variables at access time:
 
 ## Subpath Exports
 
-### `@sweepay/core/s402`
+### `@sweefi/core/s402`
 
 ```typescript
-import { ... } from '@sweepay/core/s402';
+import { ... } from '@sweefi/core/s402';
 ```
 
 Re-exports the `s402` package (Sui-native HTTP 402 wire format) for backward compatibility.
@@ -287,4 +289,4 @@ Re-exports the `s402` package (Sui-native HTTP 402 wire format) for backward com
 
 ## License
 
-MIT
+Apache 2.0 — [https://github.com/sweeinc/sweefi](https://github.com/sweeinc/sweefi)

@@ -20,7 +20,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 import { requestSuiFromFaucetV2, getFaucetHost } from "@mysten/sui/faucet";
-import { toClientSuiSigner, toFacilitatorSuiSigner, ExactSuiClientScheme, ExactSuiFacilitatorScheme } from "@sweepay/sui";
+import { toClientSuiSigner, toFacilitatorSuiSigner, ExactSuiClientScheme, ExactSuiFacilitatorScheme } from "@sweefi/sui";
 import { s402Client, s402Facilitator } from "s402";
 import type { s402PaymentRequirements } from "s402";
 

@@ -1,9 +1,9 @@
-// PTB construction layer for SweePay contracts
+// PTB construction layer for SweeFi contracts
 // Builds Sui Programmable Transaction Blocks against deployed Move contracts.
 
 // Config + parameter types
 export type {
-  SweepayConfig,
+  SweefiConfig,
   AdminParams,
   PayParams,
   CreateInvoiceParams,

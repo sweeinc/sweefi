@@ -6,7 +6,7 @@
 
 ## Context
 
-During security review, several "permissive" patterns were identified in SweePay's contracts:
+During security review, several "permissive" patterns were identified in SweeFi's contracts:
 
 1. **Payer == recipient is allowed**: A user can pay themselves, stream to themselves, or create an escrow where buyer == seller.
 2. **Receipts are transferable**: `PaymentReceipt` and `EscrowReceipt` have `key + store` abilities, meaning they can be transferred to any address after creation.
@@ -80,7 +80,7 @@ const tx = buildPayAndProveTx(config, {
 
 - **Agent delegation**: The human pays, but their AI agent needs the receipt for SEAL decryption. The human doesn't want to give their wallet keys to the agent. `receiptDestination` solves this cleanly — human authorizes the payment, agent receives the proof.
 - **Custodial patterns**: A service that pays on behalf of users can route receipts directly to end-user addresses.
-- **On-chain composition**: A smart contract can be the `receiptDestination`, enabling protocol-level access control built on top of SweePay receipts.
+- **On-chain composition**: A smart contract can be the `receiptDestination`, enabling protocol-level access control built on top of SweeFi receipts.
 
 ```
 Human wallet  ──pays──>  Seller (gets funds)
@@ -95,7 +95,7 @@ The agent never touches funds. It only holds a receipt — a proof that someone 
 ### Positive
 
 - **SEAL-native design**: Receipts as bearer credentials map perfectly to SEAL's ownership-based access model. No translation layer needed.
-- **Agent-first**: Delegated receipt destination enables the core SweePay use case — AI agents that can prove payment without holding funds.
+- **Agent-first**: Delegated receipt destination enables the core SweeFi use case — AI agents that can prove payment without holding funds.
 - **Composable**: `store` ability enables wrapping, marketplace listing, and cross-protocol integration.
 - **Simple**: No access control lists, no revocation mechanisms, no admin-managed allowlists. Ownership IS access.
 
