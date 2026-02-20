@@ -401,8 +401,27 @@ Protocol fee = max($0.01, settlement amount × 50 bps)
 
 - **50 basis points (0.5%)** of the settlement amount
 - **$0.01 minimum** — ensures every settlement covers infrastructure costs
-- Configurable on-chain via `protocolFeeBps` in `ProtocolState`
+- Authoritative rate lives on-chain in `ProtocolState.protocolFeeBps` (Move contract)
 - Charged per on-chain settlement, **not** per API call
+
+### Fee Trust Model (Important Architecture Decision)
+
+The protocol fee is **owned by the Facilitator, not the Resource Server**.
+
+The s402 wire format includes an optional `protocolFeeBps` field in the HTTP 402 requirements. This field is **advisory only** — it is a transparency hint so the client knows the total cost before committing. It is never the source of truth for settlement math.
+
+**The source of truth is the on-chain `ProtocolState` object**, which holds the canonical fee rate and recipient address. The Move contracts enforce this unconditionally. A malicious Resource Server that inflates `protocolFeeBps` in the HTTP header cannot change what the PTB actually does on-chain.
+
+This is the same model used by every mature payments network:
+- Visa sets interchange rates — merchants cannot override them
+- Stripe charges its own fee — sellers cannot configure what Stripe takes
+- SweeFi's facilitator owns the fee schedule — resource servers cannot manipulate it
+
+**Practical implications:**
+1. The SweeFi hosted facilitator exposes its fee schedule at `/.well-known/s402-facilitator` (signed)
+2. Clients SHOULD verify the `protocolFeeBps` in HTTP requirements matches the facilitator's signed schedule
+3. Facilitators MUST reject settlements where the PTB-encoded fee does not match `ProtocolState`
+4. Resource Servers SHOULD omit `protocolFeeBps` from requirements and let the facilitator provide it — including it is a courtesy to the client's UI, nothing more
 
 This is per settlement. With Prepaid, a session with 1,000 API calls has only 2 settlements (deposit + claim).
 
@@ -440,11 +459,34 @@ Protocol fees reach sustainability at ~10M sessions/month. Before that, revenue 
 |---|---|---|---|
 | **Protocol fees** | 50 bps per settlement | Low | v0.1 |
 | **Hosted facilitator** | Free tier + Pro ($49/mo) + Enterprise | Medium | v0.1 |
+| **SweeFi Vaults** | Yield on idle prepaid/escrow TVL (via Aftermath, Cetus, Scallop) | **High** | Tier 2 |
 | **Analytics dashboard** | SaaS — revenue per endpoint, agent cohorts, settlement latency | **High** | Tier 2 |
+| **Agent credit** | Underwriting credit lines backed by on-chain payment history | **Very high** | Tier 3 |
 | **Reputation API** | Freemium — agent credit scores, provider quality ratings | **Very high** | Tier 2-3 |
 | **Enterprise** | Custom SLAs, priority settlement, compliance tools | High | Later |
 
-The protocol fees are the foundation. The data products are the profit center. The reputation moat is the defensibility.
+The protocol fees are the foundation. The data products are the profit center. The vaults are the DeFi wedge. The reputation moat is the defensibility.
+
+### SweeFi Vaults
+
+Every `PrepaidBalance`, `StreamMeter`, and `Escrow` object is locked capital — TVL sitting in SweeFi's smart contracts. Today it earns no yield. The natural evolution:
+
+**SweeFi Vaults** route idle payment capital into Sui DeFi protocols (Aftermath, Cetus, Scallop) while keeping it instantly spendable. SweeFi earns the spread between yield generated and yield passed to depositors.
+
+- Prepaid balances are ideal candidates — they sit idle between API calls
+- Escrow deposits earn yield during the settlement window
+- Stream meter deposits earn yield between per-second billing events
+- Neither payer nor provider needs to know this is happening — it's entirely in the facilitator layer
+
+This is how traditional payment processors earn their second revenue line. Stripe earns yield on funds in transit. SweeFi does it on-chain, transparently, at DeFi rates.
+
+### Agent Credit
+
+SweeFi holds something no traditional payment processor has: a complete, verifiable, on-chain payment history for every agent. Six months of clean `PrepaidBalance` top-ups and on-time stream payments is a credit score.
+
+The product: **"pay after you earn"** credit lines for agents with strong payment history. An agent with a proven track record can access working capital against future earnings rather than pre-depositing collateral. Combined with `identity.move` (on-chain agent identity), this becomes the foundation of an agent lending market.
+
+Revenue model: spread between borrowing cost and lending rate, underwriting fees, credit score API access.
 
 ---
 
@@ -480,9 +522,51 @@ BEEP is a proprietary Sui payment service. SweeFi is open-source and protocol-le
 
 ---
 
+## Multi-Chain Strategy
+
+s402 is the protocol. SweeFi is the multi-chain runtime — the thing that makes s402 work on real blockchains. The package structure is designed for this from day one:
+
+```
+s402 (npm, chain-agnostic — the protocol)
+    ↑                          ↑
+@sweefi/sui              @sweefi/solana          (future: @sweefi/aptos, etc.)
+@sweefi/sdk              (chain selected at runtime via network field)
+@sweefi/cli              (--chain sui | solana flag)
+@sweefi/mcp              (same MCP tools, different provider)
+```
+
+Developers who only want Sui install `@sweefi/sui`. Developers who only want Solana install `@sweefi/solana`. Nobody installs both unless they need both.
+
+### @sweefi/solana — Planned
+
+All five s402 schemes translate to Solana's programming model:
+
+| Scheme | Sui primitive | Solana equivalent |
+|--------|--------------|-------------------|
+| **Exact** | PTB + coin transfer | SPL token transfer instruction |
+| **Prepaid** | Shared `PrepaidBalance` object | Program-Derived Address (PDA) balance account |
+| **Stream** | Shared `StreamMeter` + `sui::clock` | PDA meter + `Clock` sysvar (`unix_timestamp`) |
+| **Escrow** | Owned escrow object | PDA-held escrow account (standard Solana pattern) |
+| **Unlock** | Mysten Seal threshold encryption | Lit Protocol or custom key server |
+
+The TypeScript layer (`@sweefi/solana`) ports cleanly — same s402 scheme interfaces, different on-chain calls. The Anchor programs (Rust) for Stream and Escrow are the primary engineering effort. Exact and Prepaid can be stubbed with existing SPL Token primitives for an early testnet demo.
+
+### Why multi-chain strengthens the position
+
+- x402 (Coinbase) is EVM-only and Coinbase-controlled
+- SweeFi supporting Sui + Solana means s402 is the interoperable standard, not a chain-specific format
+- A Solana API server and a Sui client cannot interoperate (different chains), but they use identical HTTP headers — the protocol is the common ground
+- This is the TCP/IP play: the protocol is neutral, implementations compete on execution
+
+### Chain selection criteria for future implementations
+
+A chain is a good s402 candidate if it has: sub-second finality (or fast enough for HTTP request latency), gas cheap enough for micropayments, and smart contract capability for Escrow and Stream. **Aptos** (Move language sibling to Sui) and **Stellar** (built for payments natively) are the strongest candidates after Solana.
+
+---
+
 ## Design Principles
 
-1. **Protocol-agnostic core, Sui-native reference.** `s402` defines chain-agnostic protocol types and HTTP encoding. The reference implementation (`@sweefi/sui`) exploits Sui's unique properties — PTBs, object model, sub-second finality. Other chains can implement s402 schemes using their own primitives.
+1. **Protocol-agnostic core, multi-chain implementations.** `s402` defines chain-agnostic protocol types and HTTP encoding. `@sweefi/sui` is the reference implementation. `@sweefi/solana` is the second implementation (planned). Other chains can implement s402 schemes using their own primitives — the HTTP wire format never changes.
 
 2. **Wire-compatible with x402.** The `exact` scheme uses the same headers and encoding as x402 V1. The compat layer handles V1 (`maxAmountRequired`) and V2 (`amount`, envelope format). s402 clients work with x402 servers and vice versa via the `exact` scheme.
 
