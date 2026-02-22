@@ -7,7 +7,7 @@
  *   "7d" → 604_800_000 ms
  */
 
-import { COIN_TYPES, TESTNET_COIN_TYPES, COIN_DECIMALS } from "@sweefi/sdk";
+import { COIN_TYPES, TESTNET_COIN_TYPES, COIN_DECIMALS } from "@sweefi/sui";
 import { CliError } from "./context.js";
 
 const SUI_ADDRESS_RE = /^0x[a-fA-F0-9]{64}$/;

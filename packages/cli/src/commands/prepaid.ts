@@ -3,7 +3,7 @@
  * sweefi prepaid status [balance-id]
  *
  * Prepaid balances are SweeFi's killer feature: deposit once, consume many API calls.
- * 500x cheaper than per-call payments for high-frequency agent operations.
+ * Reduces 1,000 API calls from 1,000 on-chain TXs to just 2.
  */
 
 import { buildPrepaidDepositTx } from "@sweefi/sui/ptb";

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { outputSuccess, outputError, formatBalance, explorerUrl, getSymbol } from "../src/output";
-import { COIN_TYPES } from "@sweefi/sdk";
+import { COIN_TYPES } from "@sweefi/sui";
 
 describe("formatBalance", () => {
   it("formats SUI (9 decimals)", () => {

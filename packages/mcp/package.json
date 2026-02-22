@@ -53,7 +53,6 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
-    "@sweefi/sdk": "workspace:*",
     "@sweefi/sui": "workspace:*",
     "zod": "^3.22.0"
   },

@@ -12,8 +12,8 @@
  *   3. Return both the API response AND what was paid
  */
 
-import { createS402Client } from "@sweefi/sdk/client";
-import { S402_HEADERS, decodePaymentRequired } from "@sweefi/sdk";
+import { createS402Client } from "@sweefi/sui";
+import { S402_HEADERS, decodePaymentRequired } from "s402";
 import type { CliContext } from "../context.js";
 import { requireSigner, CliError } from "../context.js";
 import { outputSuccess } from "../output.js";

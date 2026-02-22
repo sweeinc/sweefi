@@ -98,6 +98,8 @@ The agent discovers `sweefi_pay`, builds the transaction, signs it, and returns 
 | `sweefi_prepaid_agent_close` | Close fully-consumed balance |
 | `sweefi_prepaid_status` | Check balance state (read-only) |
 
+> **v0.2 Signed Receipts (planned):** Deposit-with-receipts, finalize-claim, dispute-claim, and withdraw-disputed tools are available at the PTB layer (`@sweefi/sui/ptb`) and will be exposed as MCP tools in a future release. These enable cryptographic fraud proofs for prepaid billing.
+
 ### Mandated Spending
 | Tool | Description |
 |------|-------------|

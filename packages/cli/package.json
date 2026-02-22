@@ -2,7 +2,9 @@
   "name": "@sweefi/cli",
   "version": "0.1.0",
   "type": "module",
-  "description": "CLI for AI agent payments on Sui — the bridge between OpenClaw skills and the SweeFi protocol",
+  "description": "CLI for AI agent payments on Sui — pay, stream, escrow, and manage mandates from the terminal",
+  "keywords": ["sui", "s402", "http-402", "payment", "cli", "ai-agent", "micropayments"],
+  "homepage": "https://github.com/sweeinc/sweefi#readme",
   "license": "Apache-2.0",
   "author": "Danny Devs",
   "bin": {
@@ -31,11 +33,12 @@
     "build": "tsdown",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "pnpm run build && pnpm run typecheck && pnpm run test"
   },
   "dependencies": {
-    "@sweefi/sdk": "workspace:*",
     "@sweefi/sui": "workspace:*",
+    "s402": "^0.1.0",
     "@mysten/sui": "^2.0.0"
   },
   "devDependencies": {

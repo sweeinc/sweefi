@@ -1,6 +1,6 @@
 # @sweefi/cli
 
-CLI for AI agent payments on Sui — the bridge between OpenClaw skills and the SweeFi protocol.
+CLI for AI agent payments on Sui — pay, stream, escrow, and manage mandates from the terminal.
 
 **Apache 2.0 open source.** Part of the [SweeFi](https://github.com/sweeinc/sweefi) ecosystem — open-source agentic payment infrastructure for Sui.
 
@@ -26,7 +26,7 @@ sweefi pay-402 --url https://api.example.com/premium
 # Check balance
 sweefi balance
 
-# Open a prepaid budget (500x cheaper for repeated API calls)
+# Open a prepaid budget (1,000 API calls = 2 on-chain TXs)
 sweefi prepaid deposit 0xProvider... 10 --rate 10000000
 
 # Authorize agent spending

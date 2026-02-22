@@ -1,5 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { COIN_TYPES, COIN_DECIMALS } from "@sweefi/sdk";
+import { COIN_TYPES, COIN_DECIMALS } from "@sweefi/sui";
 import type { SweefiContext } from "../context.js";
 
 export function registerSupportedTool(server: McpServer, ctx: SweefiContext) {

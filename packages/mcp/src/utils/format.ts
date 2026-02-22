@@ -1,4 +1,4 @@
-import { COIN_TYPES, COIN_DECIMALS } from "@sweefi/sdk";
+import { COIN_TYPES, COIN_DECIMALS } from "@sweefi/sui";
 import { z } from "zod";
 
 /** 64-char zero address — used as default feeRecipient when no fee is charged */

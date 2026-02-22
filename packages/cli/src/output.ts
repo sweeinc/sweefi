@@ -8,7 +8,7 @@
  * response.version for compatibility when the format evolves.
  */
 
-import { COIN_DECIMALS, COIN_TYPES, TESTNET_COIN_TYPES } from "@sweefi/sdk";
+import { COIN_DECIMALS, COIN_TYPES, TESTNET_COIN_TYPES } from "@sweefi/sui";
 
 const VERSION = "0.1.0";
 

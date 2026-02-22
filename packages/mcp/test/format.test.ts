@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { formatBalance, getSymbol, resolveCoinType, parseAmount, parseAmountOrZero, assertTxSuccess } from "../src/utils/format.js";
-import { COIN_TYPES } from "@sweefi/sdk";
+import { COIN_TYPES } from "@sweefi/sui";
 
 describe("formatBalance", () => {
   it("formats SUI from MIST correctly", () => {
