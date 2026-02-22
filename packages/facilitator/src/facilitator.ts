@@ -28,6 +28,15 @@ export function createFacilitator(config: Config): s402Facilitator {
   // preventing attackers from deploying contracts that emit fake events.
   const packageId = config.SWEEFI_PACKAGE_ID;
 
+  if (!packageId) {
+    console.warn(
+      "[sweefi-facilitator] ⚠️  SWEEFI_PACKAGE_ID is not set. " +
+      "Move event anti-spoofing is DISABLED — an attacker can deploy a contract " +
+      "that emits fake payment events and pass facilitator verification. " +
+      "Set SWEEFI_PACKAGE_ID to the deployed SweeFi package ID before going to mainnet."
+    );
+  }
+
   const networks = ["sui:testnet", "sui:mainnet"];
 
   for (const network of networks) {

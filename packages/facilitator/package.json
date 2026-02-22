@@ -1,9 +1,10 @@
 {
   "name": "@sweefi/facilitator",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "description": "Self-hostable payment verification and settlement service for SweeFi",
+  "keywords": ["sui", "s402", "http-402", "payment", "web3", "facilitator", "settlement"],
+  "homepage": "https://github.com/sweeinc/sweefi#readme",
   "license": "Apache-2.0",
   "author": "Danny Devs",
   "repository": {
@@ -11,10 +12,14 @@
     "url": "https://github.com/sweeinc/sweefi.git",
     "directory": "packages/facilitator"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "./dist/index.mjs",
   "files": ["dist", "Dockerfile", "fly.toml", "README.md", "LICENSE"],
   "scripts": {
     "build": "tsdown",
+    "prepublishOnly": "pnpm run build && pnpm run typecheck && pnpm run test",
     "start": "node dist/index.mjs",
     "dev": "tsx --env-file=.env src/index.ts",
     "test": "vitest run",

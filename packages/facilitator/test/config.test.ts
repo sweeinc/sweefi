@@ -13,12 +13,12 @@ describe("loadConfig", () => {
   });
 
   it("parses valid config with defaults", async () => {
-    process.env.API_KEYS = "test-key-1,test-key-2";
+    process.env.API_KEYS = "test-api-key-alpha,test-api-key-beta";
     const { loadConfig } = await import("../src/config");
     const config = loadConfig();
 
     expect(config.PORT).toBe(4022);
-    expect(config.API_KEYS).toBe("test-key-1,test-key-2");
+    expect(config.API_KEYS).toBe("test-api-key-alpha,test-api-key-beta");
     expect(config.FEE_BPS).toBe(50);
     expect(config.LOG_LEVEL).toBe("info");
   });
@@ -30,14 +30,14 @@ describe("loadConfig", () => {
   });
 
   it("accepts custom PORT", async () => {
-    process.env.API_KEYS = "key";
+    process.env.API_KEYS = "valid-test-api-key-1";
     process.env.PORT = "8080";
     const { loadConfig } = await import("../src/config");
     expect(loadConfig().PORT).toBe(8080);
   });
 
   it("accepts custom FEE_BPS", async () => {
-    process.env.API_KEYS = "key";
+    process.env.API_KEYS = "valid-test-api-key-1";
     process.env.FEE_BPS = "100";
     const { loadConfig } = await import("../src/config");
     expect(loadConfig().FEE_BPS).toBe(100);

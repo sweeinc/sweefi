@@ -74,6 +74,7 @@ export function createRoutes(
   facilitator: s402Facilitator,
   usageTracker: UsageTracker,
   feeBps: number,
+  feeRecipient?: string,
 ) {
   const app = new Hono();
 
@@ -195,6 +196,46 @@ export function createRoutes(
       const message = err instanceof Error ? err.message : "Processing failed";
       return c.json({ error: message }, 500);
     }
+  });
+
+  /**
+   * Facilitator identity endpoint — signed fee schedule.
+   *
+   * Clients SHOULD verify this before trusting the facilitator's fee claims.
+   * The `signature` field will be added once the FACILITATOR_KEYPAIR is wired
+   * for signing. Until then, this is an informational transparency endpoint.
+   *
+   * Per ADR: this endpoint is separate from /.well-known/s402.json because
+   * it describes the FACILITATOR (who settles) not the RESOURCE SERVER (who charges).
+   * Those are two different actors in the s402 protocol.
+   */
+  app.get("/.well-known/s402-facilitator", (c) => {
+    const networks: string[] = [];
+    const schemes = new Set<string>();
+
+    for (const network of ["sui:testnet", "sui:mainnet"]) {
+      const supported = facilitator.supportedSchemes(network);
+      if (supported.length > 0) {
+        networks.push(network);
+        for (const s of supported) schemes.add(s);
+      }
+    }
+
+    // validUntil is rolling 30-day window — update at each deploy.
+    // When FACILITATOR_KEYPAIR is present, this payload will be signed
+    // so clients can verify authenticity via the facilitator's public key.
+    const validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    return c.json({
+      version: "1",
+      feeBps,
+      feeRecipient: feeRecipient ?? null,
+      minFeeUsd: "0.001",
+      supportedSchemes: [...schemes],
+      supportedNetworks: networks,
+      validUntil,
+      // signature: "<ed25519 signature over canonical JSON — added when keypair is wired>"
+    });
   });
 
   app.get("/.well-known/s402.json", (c) => {

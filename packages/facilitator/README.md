@@ -10,7 +10,7 @@ Part of the [SweeFi](https://github.com/sweeinc/sweefi) ecosystem.
 
 The facilitator is the off-chain settlement server in SweeFi's s402 payment flow. When a client wants to pay for a resource, it builds and signs a Sui transaction locally, then sends that signed payload here. The facilitator verifies the signature and payment requirements, broadcasts the transaction to Sui, and returns a settlement receipt.
 
-**Open source, Apache 2.0.** The source is fully auditable. You can self-host it, fork it, or contribute to it. SweeFi also runs a **managed facilitator** as a hosted service — `@sweefi/sdk` points at it by default, so most integrators get working settlement without any deployment. Override `facilitatorUrl` in `createS402Client` or `s402Gate` to use your own instance.
+**Open source, Apache 2.0.** The source is fully auditable. You can self-host it, fork it, or contribute to it. SweeFi also runs a **managed facilitator** as a hosted service — `@sweefi/sui` and `@sweefi/server` point at it by default, so most integrators get working settlement without any deployment. Override `facilitatorUrl` in `createS402Client` (`@sweefi/sui`) or `s402Gate` (`@sweefi/server`) to use your own instance.
 
 This package is **not published to npm** — it's a service you deploy, not a library you import. Clone the repo, configure environment variables, and run it locally, in Docker, or on Fly.io. Resource servers point their `s402` payment requirements at the URL you deploy.
 
@@ -126,7 +126,7 @@ Validated at startup with Zod. The server will refuse to start if required varia
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `API_KEYS` | Yes | — | Comma-separated list of bearer token API keys. Clients must present one of these in the `Authorization` header. |
+| `API_KEYS` | Yes | — | Comma-separated list of bearer token API keys. Clients must present one of these in the `Authorization` header. **Each key must be ≥ 16 characters** — shorter keys are rejected at startup. Generate with `openssl rand -hex 32`. |
 | `PORT` | No | `4022` | Port to listen on. |
 | `FEE_BPS` | No | `50` | Protocol fee in basis points (50 = 0.5%). Included in the `/.well-known/s402.json` discovery document and passed to scheme handlers for PTB construction. |
 | `FACILITATOR_KEYPAIR` | No | — | Base64-encoded Ed25519 keypair for gas sponsorship (reserved for future use). |
@@ -154,6 +154,32 @@ Liveness check. No authentication required.
 ```json
 { "status": "ok", "timestamp": "2026-02-16T00:00:00.000Z" }
 ```
+
+---
+
+### `GET /.well-known/s402-facilitator`
+
+Facilitator identity document. Returns a signed fee schedule describing who this facilitator is, what it charges, and the networks and schemes it supports. No authentication required.
+
+**Response**
+
+```json
+{
+  "version": "1",
+  "feeBps": 50,
+  "feeRecipient": "0xabc...",
+  "minFeeUsd": "0.001",
+  "supportedSchemes": ["exact", "prepaid", "stream", "escrow"],
+  "supportedNetworks": ["sui:testnet", "sui:mainnet"],
+  "validUntil": "2026-03-23T00:00:00.000Z"
+}
+```
+
+`validUntil` is a rolling 30-day window updated at each deploy. The `feeRecipient` field is `null` if `FACILITATOR_FEE_RECIPIENT` is not configured.
+
+> **Note on signatures:** The `signature` field is reserved for a future release. Once `FACILITATOR_KEYPAIR` is configured, this payload will be signed over canonical JSON so clients can cryptographically verify the fee schedule before trusting it.
+
+**Difference from `/.well-known/s402.json`:** `/.well-known/s402.json` describes the resource server (who charges). `/.well-known/s402-facilitator` describes the facilitator (who settles). These are two distinct actors in the s402 protocol — a single deployment may run both, but conceptually they serve different roles.
 
 ---
 
@@ -254,7 +280,7 @@ Same request body and response shape as `/settle`.
 
 All settlement endpoints are protected by bearer token authentication. The middleware uses constant-time comparison (SHA-256 hash both sides, then `crypto.timingSafeEqual`) to prevent timing side-channel attacks. It also iterates all valid keys without short-circuiting, so key position and set size are not leaked via response time.
 
-Generate strong keys:
+**Minimum key entropy:** Each key in `API_KEYS` must be at least 16 characters. The server refuses to start with shorter keys — they are trivially brute-forceable. The recommendation is 32+ hex characters from a CSPRNG:
 
 ```bash
 openssl rand -hex 32
@@ -269,6 +295,8 @@ Token bucket limiter keyed by API key (100 requests max, refills at 10/sec). For
 ### Package ID anti-spoofing
 
 Set `SWEEFI_PACKAGE_ID` in production. Without it, scheme handlers that verify on-chain events cannot confirm those events came from the legitimate SweeFi Move package. An attacker could deploy a contract that emits structurally identical events and fool a facilitator that does not check the originating package. With the package ID set, the scheme handlers reject events from any other contract address.
+
+**Warning at startup:** If `SWEEFI_PACKAGE_ID` is not set, the facilitator logs a prominent warning on startup explaining that event anti-spoofing is disabled. This is intentional — the variable is optional for local development but should always be set before handling real payments on mainnet.
 
 ### Body size limit
 

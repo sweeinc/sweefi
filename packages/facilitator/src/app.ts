@@ -28,7 +28,10 @@ export function createApp(config: Config) {
 
   // Protected routes require auth + rate limiting
   const validKeys = new Set(config.API_KEYS.split(",").map((k) => k.trim()).filter((k) => k.length > 0));
-  const rateLimiter = new RateLimiter();
+  const rateLimiter = new RateLimiter(
+    config.RATE_LIMIT_MAX_TOKENS,
+    config.RATE_LIMIT_REFILL_RATE,
+  );
 
   app.use("/verify", apiKeyAuth(validKeys));
   app.use("/settle", apiKeyAuth(validKeys));
@@ -43,7 +46,7 @@ export function createApp(config: Config) {
   app.use("*", rateLimiter.middleware());
 
   // Mount facilitator routes (verify, settle, supported, s402/process)
-  const routes = createRoutes(facilitator, usageTracker, config.FEE_BPS);
+  const routes = createRoutes(facilitator, usageTracker, config.FEE_BPS, config.FEE_RECIPIENT);
   app.route("/", routes);
 
   return { app, usageTracker };
