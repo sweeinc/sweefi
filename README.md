@@ -6,7 +6,7 @@
 
 ```typescript
 // 3 lines: AI agent auto-pays for premium data
-import { createS402Client } from '@sweefi/sdk/client';
+import { createS402Client } from '@sweefi/sui';
 
 const client = createS402Client({ wallet: myKeypair, network: 'sui:testnet' });
 const data = await client.fetch('https://api.example.com/premium-data');
@@ -21,7 +21,7 @@ SweeFi is the payment layer of the **Swee ecosystem**: **SweeFi** (payments) + *
 
 **s402** is a Sui-native HTTP 402 protocol that is wire-compatible with [x402](https://x402.org) but architecturally superior:
 
-![s402 vs x402](docs/x402-vs-s402.png)
+<!-- Architecture diagram source: docs/x402-vs-s402.mmd (Mermaid) — regenerate with: mmdc -i docs/x402-vs-s402.mmd -o docs/x402-vs-s402.png -->
 
 | Feature | x402 (EVM) | s402 (Sui) |
 |---------|-----------|-----------|
@@ -34,6 +34,19 @@ SweeFi is the payment layer of the **Swee ecosystem**: **SweeFi** (payments) + *
 | Facilitator | Required (trust bottleneck) | Optional (direct settlement) |
 | Receipts | Off-chain | On-chain NFTs |
 | Security model | Sign-first (facilitator holds signed txs) | Settle-first (atomic on-chain) |
+
+## Which Package Do I Need?
+
+| I want to... | Install | Start here |
+|---|---|---|
+| **Charge per API call** (server-side paywall) | `@sweefi/server` + `@sweefi/sui` | [`s402Gate` middleware](packages/server#server--charging-for-your-api) |
+| **Build an AI agent that auto-pays APIs** | `@sweefi/sui` | [`createS402Client`](packages/sui#quick-start) |
+| **Give my AI agent payment tools** (Claude, Cursor) | `@sweefi/mcp` | [MCP quickstart](packages/mcp#quickstart) |
+| **Pay from a CLI / script** | `@sweefi/cli` | [`sweefi pay`](packages/cli#quick-start) |
+| **Add a pay button to React** | `@sweefi/react` + `@sweefi/sui` + `@sweefi/ui-core` | [`useSweefiPayment()`](packages/react#provider-mode-recommended-for-apps) |
+| **Add a pay button to Vue** | `@sweefi/vue` + `@sweefi/sui` + `@sweefi/ui-core` | [`useSweefiPayment()`](packages/vue#plugin-mode-recommended-for-apps) |
+| **Build Move transactions directly** | `@sweefi/sui` | [`@sweefi/sui/ptb` builders](packages/sui#ptb-builder-reference) |
+| **Just use the protocol types** | `s402` | [s402 on npm](https://www.npmjs.com/package/s402) |
 
 ## The s402 Protocol
 
@@ -86,12 +99,12 @@ Agent                    Server                  Sui Testnet
 
 ## Architecture
 
-![SweeFi Architecture](docs/architecture.png)
+<!-- Architecture diagram source: docs/architecture.mmd (Mermaid) — regenerate with: mmdc -i docs/architecture.mmd -o docs/architecture.png -->
 
 ```
 AI Agent (Claude, GPT, Cursor, etc.)
     |
-    +-- s402 fetch wrapper ------> @sweefi/sdk (auto-pay client)
+    +-- s402 fetch wrapper ------> @sweefi/sui (createS402Client — auto-pay)
     |                                   |
     +-- MCP tool discovery -------> @sweefi/mcp (35 tools)
     |                                   |
@@ -101,8 +114,13 @@ AI Agent (Claude, GPT, Cursor, etc.)
     |                                   |
     |                         s402 (protocol spec, npm package)
     |                                   |
-    |                         @sweefi/facilitator (verify + settle)
+    |                         @sweefi/server (s402Gate, wrapFetchWithS402)
     |                                   |
+    |                         @sweefi/facilitator (verify + settle — self-hostable)
+    |
+    +-- Vue UI ------------------> @sweefi/vue + @sweefi/ui-core
+    +-- React UI ----------------> @sweefi/react + @sweefi/ui-core
+    |
     +-- Agent identity ----------> @sweeagent/identity   [FUTURE]
     +-- Agent reputation --------> @sweeagent/reputation [FUTURE]
     +-- Agent discovery ---------> @sweeagent/registry   [FUTURE]
@@ -127,15 +145,17 @@ AI Agent (Claude, GPT, Cursor, etc.)
 
 | Package | Description | Tests |
 |---------|-------------|-------|
-| [`@sweefi/sdk`](packages/sdk) | Client + server SDK — types, client factories, s402 gate (3-line integration) | 60 |
-| [`@sweefi/sui`](packages/sui) | 40 PTB builders for all contract operations | 176 |
-| [`@sweefi/facilitator`](packages/facilitator) | Self-hostable payment verification service (Apache 2.0) | 37 |
+| [`@sweefi/ui-core`](packages/ui-core) | Framework-agnostic state machine + `PaymentAdapter` interface | 13 |
+| [`@sweefi/server`](packages/server) | Chain-agnostic HTTP: `s402Gate` middleware + `wrapFetchWithS402` | — |
+| [`@sweefi/sui`](packages/sui) | 40 PTB builders + `SuiPaymentAdapter` + s402 client | 189 |
+| [`@sweefi/vue`](packages/vue) | Vue 3 plugin + `useSweefiPayment()` composable | 10 |
+| [`@sweefi/react`](packages/react) | React context + `useSweefiPayment()` hook (`useSyncExternalStore`) | 12 |
+| [`@sweefi/facilitator`](packages/facilitator) | Self-hostable payment verification — Docker/Fly.io (not on npm) | 37 |
 | [`@sweefi/mcp`](packages/mcp) | MCP server with 35 AI agent tools | 79 |
 | [`@sweefi/cli`](packages/cli) | CLI tool — wallet, pay, prepaid, mandates | 42 |
-| [`@sweefi/widget`](packages/widget) | Checkout UI — Vue + React adapters | 6 |
 | [`sweefi-contracts`](contracts) | 10 Move modules on Sui testnet (v7) | 185 |
 
-**Total: 585 tests (400 TypeScript + 185 Move)**
+**Total: 567 tests (382 TypeScript + 185 Move)**
 
 **External**: [`s402`](https://www.npmjs.com/package/s402) (HTTP 402 protocol, v0.1.2), `@mysten/sui@2.4.0`, `@mysten/seal@1.0.1`
 
@@ -179,7 +199,7 @@ Cost: ~6,000 MIST (0.000006 SUI) + gas on testnet.
 ### AI agent paying for APIs (client)
 
 ```typescript
-import { createS402Client } from '@sweefi/sdk/client';
+import { createS402Client } from '@sweefi/sui';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
 const wallet = Ed25519Keypair.fromSecretKey(myKey);
@@ -196,7 +216,7 @@ const response = await client.fetch('https://api.example.com/premium');
 
 ```typescript
 import { Hono } from 'hono';
-import { s402Gate } from '@sweefi/sdk/server';
+import { s402Gate } from '@sweefi/server';
 
 const app = new Hono();
 
@@ -318,6 +338,26 @@ Package ID (testnet v7): `0x242f22b9f8b3d77868f6cde06f294203d7c76afa0cd101f388a6
 
 Token-gated SEAL (standalone): `0xbf9f9d63cbe53f21ac81af068e25e2c736fa2b0537c7e34d7d2862e330fe4fbc`
 
+## Known Limitations
+
+### zkLogin not supported in facilitator signature verification
+
+`toFacilitatorSuiSigner`'s `verifySignature()` supports Ed25519 and Secp256k1 signatures only. zkLogin verification requires a `SuiGraphQLClient` and is not yet implemented. Agents signing transactions with zkLogin wallets will fail verification at the facilitator layer.
+
+**Workaround**: Use Ed25519Keypair or Secp256k1Keypair for agent wallets when using the hosted or self-hosted facilitator.
+
+### Identity module: only records PaymentReceipt
+
+The on-chain `identity.move` module (agent profiles, `did:sui`) currently records volume for `payment::PaymentReceipt` events only. `EscrowReceipt`, stream activity, and prepaid usage do **not** update the agent's on-chain reputation counters. TypeScript PTB builders for the identity module are not yet implemented.
+
+**Impact**: Agent identity/reputation metrics reflect direct payments only. Stream, escrow, and prepaid-based agents will show artificially low on-chain activity until identity PTBs are added.
+
+### SEAL mainnet key servers not yet configured
+
+`@sweefi/server`'s `NETWORKS.mainnet.sealKeyServers` is an empty array. SEAL pay-to-decrypt on mainnet requires populating key server object IDs once Mysten Labs publishes mainnet key servers.
+
+---
+
 ## x402 Compatibility
 
 s402 is wire-compatible with x402. An s402 server always includes `"exact"` in its `accepts` array, so x402 clients can talk to s402 servers without modification. s402 clients auto-detect x402 servers via protocol detection (presence of `s402Version` field).
@@ -375,15 +415,17 @@ SweeFi is fully open source. Every developer-facing package is published under *
 | Package | License | Published |
 |---------|---------|-----------|
 | `s402` | Apache 2.0 | npm (public) |
-| `@sweefi/sdk` | Apache 2.0 | npm (public) |
+| `@sweefi/ui-core` | Apache 2.0 | npm (public) |
+| `@sweefi/server` | Apache 2.0 | npm (public) |
 | `@sweefi/sui` | Apache 2.0 | npm (public) |
+| `@sweefi/vue` | Apache 2.0 | npm (public) |
+| `@sweefi/react` | Apache 2.0 | npm (public) |
 | `@sweefi/mcp` | Apache 2.0 | npm (public) |
 | `@sweefi/cli` | Apache 2.0 | npm (public) |
-| `@sweefi/widget` | Apache 2.0 | npm (public) |
 | `@sweefi/facilitator` | Apache 2.0 | Self-hostable (not on npm) |
 | `sweefi-contracts` | Apache 2.0 | Deployed on Sui |
 
-The facilitator source is open — you can read it, audit it, and self-host it. SweeFi also runs a **managed facilitator** as a hosted service (the default endpoint in `@sweefi/sdk`). Self-hosting is always an option. See [`packages/facilitator`](packages/facilitator) for Docker and Fly.io deployment instructions.
+The facilitator source is open — you can read it, audit it, and self-host it. SweeFi also runs a **managed facilitator** as a hosted service (the default in `@sweefi/server` and `@sweefi/sui`). Self-hosting is always an option. See [`packages/facilitator`](packages/facilitator) for Docker and Fly.io deployment instructions.
 
 ## License
 

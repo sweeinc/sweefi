@@ -280,9 +280,9 @@ SweeFi facilitator sponsors gas for settlement transactions via `sui-gas-station
 ```
 AI Agent (Claude, GPT, Cursor, etc.)
     |
-    +-- s402 fetch wrapper ------> @sweefi/sdk (auto-pay client)
+    +-- s402 fetch wrapper ------> @sweefi/sui (auto-pay client + SuiPaymentAdapter)
     |                                   |
-    +-- MCP tool discovery -------> @sweefi/mcp (35 tools)
+    +-- MCP tool discovery -------> @sweefi/mcp (30+5 opt-in tools)
     |                                   |
     +-- Direct PTB --------------> @sweefi/sui (40 PTB builders)
     |                                   |
@@ -320,16 +320,17 @@ AI Agent (Claude, GPT, Cursor, etc.)
 
 | Package | Description | Tests |
 |---------|-------------|-------|
-| [`@sweefi/core`](packages/core) | Shared types, client factories (Sui, SEAL, Walrus), constants | 54 |
-| [`@sweefi/sui`](packages/sui) | 40 PTB builders, signer utils, s402 scheme implementations | 176 |
-| [`@sweefi/sdk`](packages/sdk) | Client + server SDK (s402 auto-pay client, s402Gate middleware) | 6 |
-| [`@sweefi/facilitator`](packages/facilitator) | Self-hostable payment verification + settlement service | 37 |
+| [`@sweefi/ui-core`](packages/ui-core) | Framework-agnostic state machine + PaymentAdapter interface | 13 |
+| [`@sweefi/server`](packages/server) | Chain-agnostic HTTP: s402Gate, wrapFetchWithS402 | — |
+| [`@sweefi/sui`](packages/sui) | 40 PTB builders + SuiPaymentAdapter + s402 schemes | 189 |
+| [`@sweefi/vue`](packages/vue) | Vue 3 plugin + useSweefiPayment() composable | 10 |
+| [`@sweefi/react`](packages/react) | React context + useSweefiPayment() hook | 12 |
+| [`@sweefi/facilitator`](packages/facilitator) | Self-hostable payment verification + settlement — Docker/Fly.io | 37 |
 | [`@sweefi/mcp`](packages/mcp) | MCP server — 30 default + 5 opt-in AI agent tools | 79 |
 | [`@sweefi/cli`](packages/cli) | CLI for wallet, pay, prepaid, mandate operations | 42 |
-| [`@sweefi/widget`](packages/widget) | Framework-agnostic checkout core + React + Vue adapters | 6 |
 | [`sweefi-contracts`](contracts) | 10 Move modules on Sui testnet (v7) | 185 |
 
-**Total: 585 tests (400 TypeScript + 185 Move)**
+**Total: 567 tests (382 TypeScript + 185 Move)**
 
 ### External Dependencies
 
@@ -358,17 +359,21 @@ Everything below is DONE. Contracts deployed to testnet v7. All packages build, 
 - [x] Mandates: basic + agent (L0-L3) contracts + 9 PTB builders + MCP tools
 - [x] Admin: pause/unpause/burn contracts + 3 PTB builders
 - [x] Identity + math helper modules
-- [x] @sweefi/mcp: 35 MCP tools (30 default + 5 opt-in)
-- [x] @sweefi/cli: CLI for wallet, pay, prepaid, mandate operations
-- [x] @sweefi/widget: React + Vue checkout adapters
+- [x] @sweefi/mcp: 30+5 opt-in MCP tools (79 tests)
+- [x] @sweefi/cli: CLI for wallet, pay, prepaid, mandate operations (42 tests)
+- [x] @sweefi/ui-core: state machine + PaymentAdapter interface (13 tests)
+- [x] @sweefi/vue: Vue 3 plugin + useSweefiPayment() composable (10 tests)
+- [x] @sweefi/react: React context + useSweefiPayment() hook (12 tests)
 - [x] @sweefi/facilitator: settles 4 schemes (exact, prepaid, stream, escrow)
 - [x] Migrated to @mysten/sui 2.x + @mysten/seal 1.x
-- [x] 585 total tests (400 TypeScript + 185 Move)
+- [x] 567 total tests (382 TypeScript + 185 Move)
+- [x] SDK architecture restructure complete: sdk→server, widget deleted, ui-core/vue/react added
+- [x] Full adversarial audit complete: 10-phase audit + 7-expert coders council, 10 security/behavioral fixes applied, all 382 TS tests green
 
 ### Next — Ship It
 
 - [ ] Wire up `demos/agent-pays-api` end-to-end (live demo)
-- [ ] npm publish all packages (mechanically ready)
+- [ ] `pnpm publish` all packages (mechanically ready — see READY-QUEUE.md for sequence)
 - [ ] Unlock facilitator scheme (pay-to-decrypt settlement)
 - [ ] Identity PTB builders
 - [ ] Documentation site
@@ -376,16 +381,96 @@ Everything below is DONE. Contracts deployed to testnet v7. All packages build, 
 ### v1.0 — Production
 
 - [ ] Mainnet deployment (requires security audit + AdminCap governance decision)
-- [ ] Professional or rigorous self-audit
-- [ ] npm publish v1.0
+- [ ] Wave security audit (see Security Audit Policy below)
+- [ ] `pnpm publish` v1.0
 - [ ] Documentation site
-- [ ] Monitoring + incident response
+- [ ] Monitoring + incident response (see Monitoring Spec below)
 
 ### Exploratory (demand-driven, not committed)
 
 - [ ] Subscription scheme (natural extension of mandates)
 - [ ] Cross-chain routing (x402 wire compat already built)
 - [ ] Split payments as cross-cutting feature on all schemes
+
+---
+
+## Monitoring & Incident Response
+
+SweeFi operates on the **medical pager model**: every alert has a defined severity and a defined response time. No silent failures. No "we'll check it in the morning."
+
+### Alert Tiers
+
+| Tier | Name | Response SLA | Examples |
+|------|------|-------------|---------|
+| **Tier 1** | Page immediately | < 5 min | Facilitator down, settlement failure rate > 5%, on-chain contract exploit detected |
+| **Tier 2** | 15-min alert | < 15 min | Error rate spike (> 1%), latency p99 > 2s, rate limiter DDoS pattern |
+| **Tier 3** | Daily digest | Next business day | Unusual settlement volume (> 2x normal), API key abuse patterns, new error types |
+
+### What to Monitor
+
+**Facilitator Health**
+- HTTP 5xx rate by endpoint (`/settle`, `/verify`, `/s402/process`)
+- Settlement success rate (target: > 99.5%)
+- p50/p95/p99 latency per endpoint
+- Rate limiter hit rate by API key (anomaly detection)
+- Memory + CPU (if self-hosted)
+
+**On-Chain**
+- Facilitator wallet balance (gas sponsorship runway — alert at < 1 SUI)
+- Failed PTB rate from Sui RPC
+- Contract events: unexpected `PaymentSettled` with wrong fee recipient
+
+**Infrastructure**
+- Fly.io machine status (if managed facilitator)
+- RPC endpoint health (primary + fallback)
+- SSL certificate expiry
+
+### Monitoring Stack (Recommended)
+
+- **Metrics**: Fly.io built-in metrics + custom Prometheus-compatible endpoint at `/metrics`
+- **Alerting**: PagerDuty or ntfy.sh (self-hosted) for Tier 1/2; email digest for Tier 3
+- **Logging**: Structured JSON logs (already implemented in `middleware/logger.ts`) → Grafana Loki or Logtail
+- **On-chain**: Sui event indexer or Citus-based custom watcher for contract events
+- **Uptime**: UptimeRobot or Better Uptime polling `/health` every 30s
+
+### Incident Response Playbook
+
+1. **Page fires** → Check `/health` endpoint first
+2. **Facilitator down** → Restart process, check Fly.io logs, verify Sui RPC connectivity
+3. **High error rate** → Check recent deploys, check Sui network status at status.sui.io
+4. **On-chain anomaly** → Pause facilitator (kill switch in Fly.io), investigate contract state, do NOT restart until root cause understood
+5. **Security breach** → Rotate all API keys immediately, pause service, incident report
+
+---
+
+## Security Audit Policy
+
+### AI-First Wave Auditing
+
+SweeFi uses a **periodic, AI-first wave audit model** — a fresh council of expert AI agents is convened at each wave with no prior session context ("fresh eyes"). This is structurally superior to point-in-time external audits:
+
+| | Traditional External Audit | SweeFi Wave Audits |
+|--|---|---|
+| Frequency | Once (at launch) | Recurring (each wave) |
+| Cost | $50K-$200K | Near-zero marginal cost |
+| Context | Auditor has limited codebase history | AI council reviews full git history |
+| Freshness | Same team, same blind spots | Fresh council, no anchoring bias |
+| Speed | 4-8 weeks | Days |
+| Coverage | Snapshot of code at one moment | Continuous coverage across releases |
+
+**Wave cadence:**
+- **Pre-mainnet wave** (required before v1.0): Full audit — contracts, facilitator, SDK, protocol
+- **Post-major-feature wave** (per significant new scheme or DeFi integration)
+- **Quarterly wave** (ongoing — covers any changes since last wave)
+
+**Wave audit scope:**
+1. Move smart contracts (all schemes, fee logic, edge cases)
+2. Facilitator HTTP layer (auth, input validation, rate limiting)
+3. SDK trust boundaries (`pickRequirementsFields`, signature verification)
+4. Protocol spec consistency (s402 spec vs implementation)
+5. Dependency audit (npm + Move package freshness)
+
+**External audits:** Not abandoned — scheduled alongside Wave 2 (post-mainnet, when TVL justifies cost). Trail of Bits or equivalent as external validation of the AI-first wave methodology.
 
 ---
 
@@ -471,14 +556,25 @@ The protocol fees are the foundation. The data products are the profit center. T
 
 Every `PrepaidBalance`, `StreamMeter`, and `Escrow` object is locked capital — TVL sitting in SweeFi's smart contracts. Today it earns no yield. The natural evolution:
 
-**SweeFi Vaults** route idle payment capital into Sui DeFi protocols (Aftermath, Cetus, Scallop) while keeping it instantly spendable. SweeFi earns the spread between yield generated and yield passed to depositors.
+**SweeFi Vaults** route idle payment capital into Sui DeFi protocols (Aftermath, Cetus, Scallop) while keeping it instantly spendable.
 
 - Prepaid balances are ideal candidates — they sit idle between API calls
 - Escrow deposits earn yield during the settlement window
 - Stream meter deposits earn yield between per-second billing events
-- Neither payer nor provider needs to know this is happening — it's entirely in the facilitator layer
+- Neither payer nor provider needs to know this is happening — it's entirely in the contract layer
 
-This is how traditional payment processors earn their second revenue line. Stripe earns yield on funds in transit. SweeFi does it on-chain, transparently, at DeFi rates.
+#### On-Chain Distribution Model (Regulatory-First Design)
+
+**SweeFi Inc. never touches the yield spread directly.** The Move smart contract distributes yield in two flows:
+
+1. **User allocation** (majority): yield credited directly back to the depositor's `PrepaidBalance`, `StreamMeter`, or `Escrow` object
+2. **Protocol fee address** (minority): protocol's share sent directly to the designated on-chain fee address
+
+This keeps SweeFi Inc. completely outside the fund flow — we never receive, hold, or transmit user funds. This design is both the ethically correct architecture (non-custodial ethos) and the legally cleanest structure under payment services regulations (MAS PSA, EU PSD2, etc.), because SweeFi Inc. acts as a protocol publisher, not a money transmitter or fund manager.
+
+The yield spread earned by the protocol fee address is SweeFi's revenue, but it flows on-chain without SweeFi Inc. acting as an intermediary. Users opt into vaults explicitly — no silent fund routing.
+
+> **Status**: Yield infra not yet built. This section captures design philosophy for when we build it. No changes needed to current contracts — vaults will be a new Move module.
 
 ### Agent Credit
 
@@ -530,9 +626,9 @@ s402 is the protocol. SweeFi is the multi-chain runtime — the thing that makes
 s402 (npm, chain-agnostic — the protocol)
     ↑                          ↑
 @sweefi/sui              @sweefi/solana          (future: @sweefi/aptos, etc.)
-@sweefi/sdk              (chain selected at runtime via network field)
+@sweefi/server           (chain selected at runtime via network field)
 @sweefi/cli              (--chain sui | solana flag)
-@sweefi/mcp              (same MCP tools, different provider)
+@sweefi/mcp              (same MCP tools, different adapter)
 ```
 
 Developers who only want Sui install `@sweefi/sui`. Developers who only want Solana install `@sweefi/solana`. Nobody installs both unless they need both.
@@ -720,18 +816,19 @@ The protocol is open. The schemes are open. **The reputation graph is the moat.*
 
 | Package | Description | Tests |
 |---------|-------------|-------|
-| `@sweefi/sui` | 40 PTB builders for all contract operations | 176 |
-| `@sweefi/core` | Shared types, network configs, client factories | 54 |
-| `@sweefi/facilitator` | Self-hostable payment verification service | 37 |
-| `@sweefi/mcp` | MCP server with 35 AI agent tools | 79 |
-| `@sweefi/sdk` | Client + server SDK (3-line integration) | 6 |
+| `@sweefi/ui-core` | Framework-agnostic state machine + PaymentAdapter interface | 13 |
+| `@sweefi/server` | Chain-agnostic HTTP: s402Gate, wrapFetchWithS402 | — |
+| `@sweefi/sui` | 40 PTB builders + SuiPaymentAdapter + s402 schemes | 189 |
+| `@sweefi/vue` | Vue 3 plugin + useSweefiPayment() composable | 10 |
+| `@sweefi/react` | React context + useSweefiPayment() hook | 12 |
+| `@sweefi/facilitator` | Self-hostable payment verification (Docker/Fly.io) | 37 |
+| `@sweefi/mcp` | MCP server — 30 default + 5 opt-in AI agent tools | 79 |
 | `@sweefi/cli` | CLI for wallet, payments, and provider management | 42 |
-| `@sweefi/widget` | Checkout UI — Vue + React adapters | 6 |
 | `sweefi-contracts` | 10 Move modules on Sui testnet (v7) | 185 |
 
 **External dependencies**: `s402@0.1.2` (HTTP 402 protocol), `@mysten/sui@2.4.0`, `@mysten/seal@1.0.1`
 
-**Totals**: 400 TypeScript tests + 185 Move tests = 585
+**Totals**: 382 TypeScript tests + 185 Move tests = 567
 
 ### SweeAgent (future — architect seams now)
 

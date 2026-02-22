@@ -18,7 +18,6 @@
 
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
-import { fromBase64 } from "@mysten/sui/utils";
 import { s402Client, S402_VERSION } from "s402";
 import { ExactSuiClientScheme, toClientSuiSigner } from "@sweefi/sui";
 import { wrapFetchWithS402 } from "./s402-fetch-local.js";
@@ -79,12 +78,12 @@ export async function runAgent(privateKey?: string) {
   // ── Setup wallet ────────────────────────────────────────────
   const key = privateKey ?? process.env.SUI_PRIVATE_KEY;
   if (!key) {
-    console.error(`${COLORS.red}ERROR: Set SUI_PRIVATE_KEY env var (base64 Ed25519 key)${COLORS.reset}`);
+    console.error(`${COLORS.red}ERROR: Set SUI_PRIVATE_KEY env var (bech32 suiprivkey1... or base64)${COLORS.reset}`);
     console.error("Get testnet SUI: https://faucet.sui.io");
     process.exit(1);
   }
 
-  const keypair = Ed25519Keypair.fromSecretKey(fromBase64(key));
+  const keypair = Ed25519Keypair.fromSecretKey(key);
   const address = keypair.getPublicKey().toSuiAddress();
   const suiClient = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl("testnet"), network: "testnet" });
   const signer = toClientSuiSigner(keypair, suiClient);
