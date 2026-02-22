@@ -93,8 +93,6 @@ export class ExactSolanaClientScheme implements s402ClientScheme {
       }
     } else {
       // ── SPL token transfer ───────────────────────────────────────────────
-      // Assumes destination ATA exists. If not, the tx fails at simulation
-      // (the facilitator rejects it before it hits the network).
       const mint = new PublicKey(asset);
       const sourceAta = await getAssociatedTokenAddress(mint, payer);
       const destAta = await getAssociatedTokenAddress(mint, recipient);

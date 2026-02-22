@@ -21,10 +21,26 @@ import type { s402PaymentRequirements } from "s402";
 export interface SimulationResult {
   /** Whether the transaction would succeed on-chain. */
   success: boolean;
-  /** Projected fee in the chain's native asset. Present when success = true. */
+  /**
+   * Projected fee in the chain's native asset. Present when success = true.
+   * When `ataCreationRequired` is true, this amount already includes the ATA
+   * rent deposit — callers must not add `ataCreationCostLamports` again.
+   */
   estimatedFee?: { amount: bigint; currency: string };
   /** Typed error when success = false. */
   error?: { code: string; message: string };
+  /**
+   * True when the recipient's Associated Token Account (ATA) does not yet
+   * exist and will be created automatically on broadcast. Solana-specific;
+   * undefined on other chains.
+   */
+  ataCreationRequired?: boolean;
+  /**
+   * Lamports charged to the payer to create the recipient's ATA (~0.002 SOL).
+   * Already included in `estimatedFee.amount`. Present only when
+   * `ataCreationRequired` is true. Solana-specific; undefined on other chains.
+   */
+  ataCreationCostLamports?: bigint;
 }
 
 // ─── PaymentAdapter ──────────────────────────────────────────────────────────

@@ -47,6 +47,7 @@ export {
   SOL_DECIMALS,
   LAMPORTS_PER_SOL,
   BASE_FEE_LAMPORTS,
+  ATA_RENT_LAMPORTS,
 } from './constants.js';
 export type { SolanaNetwork } from './constants.js';
 

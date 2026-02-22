@@ -24,6 +24,7 @@ import {
   Transaction,
 } from '@solana/web3.js';
 import {
+  createAssociatedTokenAccountIdempotentInstruction,
   createTransferInstruction,
   getAssociatedTokenAddress,
   TOKEN_PROGRAM_ID,
@@ -34,7 +35,7 @@ import type { s402PaymentRequirements } from 's402';
 import type { ClientSolanaSigner } from '../signer.js';
 import { ExactSolanaClientScheme } from '../s402/exact/client.js';
 import type { SolanaNetwork } from '../constants.js';
-import { NATIVE_SOL_MINT, BASE_FEE_LAMPORTS } from '../constants.js';
+import { NATIVE_SOL_MINT, BASE_FEE_LAMPORTS, ATA_RENT_LAMPORTS } from '../constants.js';
 import { base64ToUint8Array } from '../utils/encoding.js';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -107,6 +108,7 @@ export class SolanaPaymentAdapter implements PaymentAdapter {
       // Build the same instruction set as ExactSolanaClientScheme.createPayment(),
       // including any protocol fee split, so simulation reflects the real tx structure.
       const tx = new Transaction();
+      let ataCreationRequired = false;
 
       if (isNative) {
         if (reqs.protocolFeeBps && reqs.protocolFeeBps > 0 && reqs.protocolFeeAddress) {
@@ -137,6 +139,22 @@ export class SolanaPaymentAdapter implements PaymentAdapter {
         const mint = new PublicKey(reqs.asset);
         const sourceAta = await getAssociatedTokenAddress(mint, payer);
         const destAta = await getAssociatedTokenAddress(mint, recipient);
+
+        // Pre-flight: check if the recipient's ATA exists. Returns null when uninitialized.
+        // Using getAccountInfo rather than post-simulation error parsing — RPC error
+        // message strings are not a stable API and vary across providers and validator versions.
+        const destAtaInfo = await this.connection.getAccountInfo(destAta, 'confirmed');
+        ataCreationRequired = destAtaInfo === null;
+
+        // CRITICAL: include the ATA creation instruction in the simulation tx so that
+        // the simulation accurately represents the transaction that will actually be
+        // broadcast. Without this, simulateTransaction targets a non-existent account
+        // and fails — making success: true unreachable when the ATA is missing.
+        if (ataCreationRequired) {
+          tx.add(
+            createAssociatedTokenAccountIdempotentInstruction(payer, destAta, recipient, mint),
+          );
+        }
 
         if (reqs.protocolFeeBps && reqs.protocolFeeBps > 0 && reqs.protocolFeeAddress) {
           const feeAmount = (totalAmount * BigInt(reqs.protocolFeeBps)) / 10000n;
@@ -189,10 +207,20 @@ export class SolanaPaymentAdapter implements PaymentAdapter {
         };
       }
 
-      // Base fee: 5000 lamports per signature (no priority fee assumed)
+      // Base fee: 5000 lamports per signature. When ATA creation is required,
+      // rent (~0.002 SOL) is included so the caller sees the true total cost.
       return {
         success: true,
-        estimatedFee: { amount: BASE_FEE_LAMPORTS, currency: 'SOL' },
+        estimatedFee: {
+          amount: ataCreationRequired
+            ? BASE_FEE_LAMPORTS + ATA_RENT_LAMPORTS
+            : BASE_FEE_LAMPORTS,
+          currency: 'SOL',
+        },
+        ...(ataCreationRequired && {
+          ataCreationRequired: true,
+          ataCreationCostLamports: ATA_RENT_LAMPORTS,
+        }),
       };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -216,6 +244,22 @@ export class SolanaPaymentAdapter implements PaymentAdapter {
    * to time out even though the transaction succeeds on-chain.
    */
   async signAndBroadcast(reqs: s402PaymentRequirements): Promise<{ txId: string }> {
+    const isNative = reqs.asset === NATIVE_SOL_MINT || reqs.asset === 'native';
+
+    // For SPL tokens, detect a missing recipient ATA and handle it atomically.
+    // Self-sufficient: does not assume simulate() was called first.
+    if (!isNative) {
+      const payer = new PublicKey(this.wallet.address);
+      const recipient = new PublicKey(reqs.payTo);
+      const mint = new PublicKey(reqs.asset);
+      const destAta = await getAssociatedTokenAddress(mint, recipient);
+      const destAtaInfo = await this.connection.getAccountInfo(destAta, 'confirmed');
+
+      if (destAtaInfo === null) {
+        return this.signBroadcastWithAtaCreate(reqs, payer, recipient, mint, destAta);
+      }
+    }
+
     const { s402Payload, blockhash, lastValidBlockHeight } =
       await this.exactScheme.createPaymentWithMeta(reqs);
 
@@ -239,6 +283,65 @@ export class SolanaPaymentAdapter implements PaymentAdapter {
 
     return { txId: signature };
   }
+
+  /**
+   * Build, sign, and broadcast a transaction that atomically creates the
+   * recipient's ATA and performs the SPL token transfer.
+   *
+   * Called when signAndBroadcast() detects that destAta does not yet exist.
+   * Uses createAssociatedTokenAccountIdempotentInstruction — safe to include
+   * even if the ATA was created between simulate() and signAndBroadcast()
+   * (race condition safety). The rent (~0.002 SOL) is charged to the payer.
+   */
+  private async signBroadcastWithAtaCreate(
+    reqs: s402PaymentRequirements,
+    payer: PublicKey,
+    recipient: PublicKey,
+    mint: PublicKey,
+    destAta: PublicKey,
+  ): Promise<{ txId: string }> {
+    const sourceAta = await getAssociatedTokenAddress(mint, payer);
+    const totalAmount = BigInt(reqs.amount);
+
+    const tx = new Transaction();
+
+    // Idempotent ATA creation — no-ops if ATA already exists (race condition safety).
+    tx.add(
+      createAssociatedTokenAccountIdempotentInstruction(payer, destAta, recipient, mint),
+    );
+
+    if (reqs.protocolFeeBps && reqs.protocolFeeBps > 0 && reqs.protocolFeeAddress) {
+      const feeAmount = (totalAmount * BigInt(reqs.protocolFeeBps)) / 10000n;
+      const merchantAmount = totalAmount - feeAmount;
+      const feeRecipient = new PublicKey(reqs.protocolFeeAddress);
+      const feeDestAta = await getAssociatedTokenAddress(mint, feeRecipient);
+      tx.add(
+        createTransferInstruction(sourceAta, destAta, payer, merchantAmount, [], TOKEN_PROGRAM_ID),
+        createTransferInstruction(sourceAta, feeDestAta, payer, feeAmount, [], TOKEN_PROGRAM_ID),
+      );
+    } else {
+      tx.add(
+        createTransferInstruction(sourceAta, destAta, payer, totalAmount, [], TOKEN_PROGRAM_ID),
+      );
+    }
+
+    const { serialized, blockhash, lastValidBlockHeight } =
+      await this.wallet.signTransaction(tx, this.connection);
+
+    const txBytes = base64ToUint8Array(serialized);
+    const txId = await this.connection.sendRawTransaction(txBytes, { skipPreflight: false });
+
+    const confirmation = await this.connection.confirmTransaction(
+      { signature: txId, blockhash, lastValidBlockHeight },
+      'confirmed',
+    );
+
+    if (confirmation.value.err) {
+      throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+    }
+
+    return { txId };
+  }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -250,6 +353,15 @@ function inferErrorCode(message: string): string {
   }
   if (m.includes('blockhash') || m.includes('expired')) {
     return 'TRANSACTION_EXPIRED';
+  }
+  // Belt-and-suspenders: primary detection is the getAccountInfo pre-flight check,
+  // but this catches ATA errors from any remaining code paths (e.g. fee recipient ATA).
+  if (
+    m.includes('account does not exist') ||
+    m.includes('invalid account data') ||
+    m.includes('accountnotfound')
+  ) {
+    return 'DESTINATION_ATA_NOT_FOUND';
   }
   return 'SIMULATION_FAILED';
 }

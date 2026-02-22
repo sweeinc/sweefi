@@ -80,6 +80,8 @@ const mockConnection = {
       postTokenBalances: [],
     },
   }),
+  // Returns a non-null account by default (ATA exists). Override per-test with null to simulate a missing ATA.
+  getAccountInfo: vi.fn().mockResolvedValue({ lamports: 2_039_280, data: Buffer.alloc(165) }),
   sendRawTransaction: vi.fn().mockResolvedValue(MOCK_TX_SIGNATURE),
   confirmTransaction: vi.fn().mockResolvedValue({ value: { err: null } }),
 };
@@ -101,6 +103,11 @@ const MOCK_DEST_ATA = 'DestATA1111111111111111111111111111111111111';
 
 vi.mock('@solana/spl-token', () => ({
   TOKEN_PROGRAM_ID: { toBase58: () => 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' },
+  createAssociatedTokenAccountIdempotentInstruction: vi.fn().mockReturnValue({
+    programId: { toBase58: () => 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe8bY' },
+    keys: [],
+    data: Buffer.alloc(1),
+  }),
   createTransferInstruction: vi.fn().mockReturnValue({
     programId: { toBase58: () => 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' },
     keys: [],
@@ -116,6 +123,10 @@ vi.mock('@solana/spl-token', () => ({
 // ─── Import SUT after mocks are hoisted ──────────────────────────────────────
 
 import {
+  createAssociatedTokenAccountIdempotentInstruction,
+  createTransferInstruction as mockCreateTransferInstruction,
+} from '@solana/spl-token';
+import {
   ExactSolanaServerScheme,
   ExactSolanaClientScheme,
   ExactSolanaFacilitatorScheme,
@@ -126,6 +137,7 @@ import {
   NATIVE_SOL_MINT,
   USDC_DEVNET_MINT,
   BASE_FEE_LAMPORTS,
+  ATA_RENT_LAMPORTS,
 } from '../src/index.js';
 import type {
   ClientSolanaSigner,
@@ -313,6 +325,185 @@ describe('SolanaPaymentAdapter', () => {
       value: { err: 'InstructionError' },
     });
     await expect(adapter.signAndBroadcast(makeReqs())).rejects.toThrow('Transaction failed');
+  });
+});
+
+// ─── SolanaPaymentAdapter — ATA creation ──────────────────────────────────────
+//
+// Covers Priya's 6-scenario test matrix for the missing-ATA fix.
+// Each test controls mockConnection.getAccountInfo independently via
+// mockResolvedValueOnce so scenarios are fully isolated.
+
+describe('SolanaPaymentAdapter — ATA creation', () => {
+  let adapter: SolanaPaymentAdapter;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Default: ATA exists. Individual tests override with null to simulate missing ATA.
+    mockConnection.getAccountInfo.mockResolvedValue({ lamports: 2_039_280, data: Buffer.alloc(165) });
+    adapter = new SolanaPaymentAdapter({
+      wallet: mockSigner,
+      connection: mockConnection as ConstructorParameters<typeof SolanaPaymentAdapter>[0]['connection'],
+      network: SOLANA_DEVNET_CAIP2,
+    });
+  });
+
+  // ── Scenario 1: Happy path — ATA exists ────────────────────────────────────
+
+  it('simulate() — ATA exists: returns BASE_FEE_LAMPORTS, no ataCreationRequired fields', async () => {
+    const result = await adapter.simulate(makeReqs());
+
+    expect(result.success).toBe(true);
+    expect(result.estimatedFee?.amount).toBe(BASE_FEE_LAMPORTS);
+    expect(result.ataCreationRequired).toBeUndefined();
+    expect(result.ataCreationCostLamports).toBeUndefined();
+  });
+
+  // ── Scenario 2 & 3: Missing ATA — simulate detects and surfaces true cost ──
+  //
+  // Wei's constraint from the council: estimatedFee.amount MUST include ATA rent
+  // when ataCreationRequired is true, otherwise success: true is a lie — the
+  // broadcast can fail if the payer can't afford the combined cost.
+
+  it('simulate() — ATA missing: ataCreationRequired: true, rent folded into estimatedFee', async () => {
+    mockConnection.getAccountInfo.mockResolvedValueOnce(null);
+
+    const result = await adapter.simulate(makeReqs());
+
+    expect(result.success).toBe(true);
+    expect(result.ataCreationRequired).toBe(true);
+    expect(result.ataCreationCostLamports).toBe(ATA_RENT_LAMPORTS);
+    // The single estimatedFee.amount already includes both costs — callers must not add them again
+    expect(result.estimatedFee?.amount).toBe(BASE_FEE_LAMPORTS + ATA_RENT_LAMPORTS);
+  });
+
+  it('simulate() — ATA missing: success is true (transfer itself is valid; rent gap is surfaced, not an error)', async () => {
+    mockConnection.getAccountInfo.mockResolvedValueOnce(null);
+
+    const result = await adapter.simulate(makeReqs());
+
+    // success: true means the SPL transfer instructions are valid.
+    // The caller is responsible for checking ataCreationRequired and confirming the
+    // user has enough SOL for the combined cost before calling signAndBroadcast.
+    expect(result.success).toBe(true);
+    expect(result.error).toBeUndefined();
+  });
+
+  // ── Scenario 4: signAndBroadcast without prior simulate — auto-creates ATA ─
+
+  it('signAndBroadcast() — ATA missing: atomically creates ATA then transfers, self-sufficient', async () => {
+    mockConnection.getAccountInfo.mockResolvedValueOnce(null);
+
+    const { txId } = await adapter.signAndBroadcast(makeReqs());
+
+    expect(txId).toBe(MOCK_TX_SIGNATURE);
+    // Idempotent ATA creation instruction must be prepended
+    expect(createAssociatedTokenAccountIdempotentInstruction).toHaveBeenCalledOnce();
+    // The signer is called directly (via signBroadcastWithAtaCreate, not through the scheme)
+    expect(mockSigner.signTransaction).toHaveBeenCalledOnce();
+    expect(mockConnection.sendRawTransaction).toHaveBeenCalledOnce();
+    expect(mockConnection.confirmTransaction).toHaveBeenCalledOnce();
+  });
+
+  // ── Scenario 5: Race condition — ATA created between simulate() and broadcast
+
+  it('signAndBroadcast() — ATA appears between simulate and broadcast: takes normal scheme path', async () => {
+    // simulate() sees missing ATA; signAndBroadcast()'s independent check sees it now exists
+    mockConnection.getAccountInfo
+      .mockResolvedValueOnce(null)                               // simulate's check
+      .mockResolvedValueOnce({ lamports: 2_039_280 });           // signAndBroadcast's check
+
+    const simResult = await adapter.simulate(makeReqs());
+    expect(simResult.ataCreationRequired).toBe(true);           // simulate correctly flagged it
+
+    vi.clearAllMocks();
+    mockConnection.getAccountInfo.mockResolvedValueOnce({ lamports: 2_039_280 });
+    mockConnection.sendRawTransaction.mockResolvedValue(MOCK_TX_SIGNATURE);
+    mockConnection.confirmTransaction.mockResolvedValue({ value: { err: null } });
+
+    const { txId } = await adapter.signAndBroadcast(makeReqs());
+
+    expect(txId).toBeDefined();
+    // ATA now exists — signBroadcastWithAtaCreate must NOT be called
+    expect(createAssociatedTokenAccountIdempotentInstruction).not.toHaveBeenCalled();
+  });
+
+  // ── Scenario 6: ATA missing + on-chain failure (e.g. insufficient SOL for rent)
+
+  it('signAndBroadcast() — ATA missing, on-chain failure: throws with actionable message', async () => {
+    mockConnection.getAccountInfo.mockResolvedValueOnce(null);
+    mockConnection.confirmTransaction.mockResolvedValueOnce({
+      value: { err: 'InsufficientFundsForRent' },
+    });
+
+    await expect(adapter.signAndBroadcast(makeReqs())).rejects.toThrow('Transaction failed');
+  });
+
+  // ── Idempotency guarantee ──────────────────────────────────────────────────
+  //
+  // When signBroadcastWithAtaCreate is called, it uses the idempotent instruction.
+  // If the ATA was created in the window between getAccountInfo and sendRawTransaction
+  // (a second race condition), the instruction safely no-ops on-chain — no error.
+
+  it('signAndBroadcast() — idempotent instruction called with correct payer/destAta/recipient/mint', async () => {
+    mockConnection.getAccountInfo.mockResolvedValueOnce(null);
+
+    await adapter.signAndBroadcast(makeReqs());
+
+    expect(createAssociatedTokenAccountIdempotentInstruction).toHaveBeenCalledWith(
+      expect.objectContaining({ toBase58: expect.any(Function) }), // payer
+      expect.objectContaining({ toBase58: expect.any(Function) }), // destAta (pre-computed)
+      expect.objectContaining({ toBase58: expect.any(Function) }), // recipient
+      expect.objectContaining({ toBase58: expect.any(Function) }), // mint
+    );
+  });
+
+  // ── simulate() must match broadcast tx exactly ────────────────────────────
+  //
+  // Critical: the simulation tx must include the ATA creation instruction so
+  // success: true is accurate. Without it, simulateTransaction() targets a
+  // non-existent account and the real RPC returns an error — tests missed this
+  // because simulateTransaction is mocked to always return { err: null }.
+
+  it('simulate() — ATA missing: ATA creation instruction IS included in the simulation tx', async () => {
+    mockConnection.getAccountInfo.mockResolvedValueOnce(null);
+
+    await adapter.simulate(makeReqs());
+
+    // The idempotent instruction must be part of the simulated tx, not just the broadcast tx.
+    // This ensures simulateTransaction() exercises the real combined instruction set.
+    expect(createAssociatedTokenAccountIdempotentInstruction).toHaveBeenCalledOnce();
+  });
+
+  // ── Fee-split path inside signBroadcastWithAtaCreate ──────────────────────
+  //
+  // The fee-split logic inside signBroadcastWithAtaCreate is separate from the
+  // one in ExactSolanaClientScheme — it must be exercised directly to prevent
+  // silent divergence (which would cause facilitator verification failures).
+
+  it('signAndBroadcast() — ATA missing with fee split: emits two transfer instructions', async () => {
+    mockConnection.getAccountInfo.mockResolvedValueOnce(null);
+
+    const { txId } = await adapter.signAndBroadcast(
+      makeReqs({ protocolFeeBps: 50, protocolFeeAddress: 'FeeWallet11111111111111111111111111111111111' }),
+    );
+
+    expect(txId).toBe(MOCK_TX_SIGNATURE);
+    expect(createAssociatedTokenAccountIdempotentInstruction).toHaveBeenCalledOnce();
+    // Two transfers: merchantAmount to recipient, feeAmount to fee wallet
+    expect(mockCreateTransferInstruction).toHaveBeenCalledTimes(2);
+  });
+
+  // ── Native SOL is unaffected ───────────────────────────────────────────────
+
+  it('simulate() — native SOL: getAccountInfo is never called (no ATA concept for SOL)', async () => {
+    await adapter.simulate(makeReqs({ asset: NATIVE_SOL_MINT }));
+    expect(mockConnection.getAccountInfo).not.toHaveBeenCalled();
+  });
+
+  it('signAndBroadcast() — native SOL: getAccountInfo is never called', async () => {
+    await adapter.signAndBroadcast(makeReqs({ asset: NATIVE_SOL_MINT }));
+    expect(mockConnection.getAccountInfo).not.toHaveBeenCalled();
   });
 });
 

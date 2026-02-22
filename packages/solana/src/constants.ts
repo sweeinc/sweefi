@@ -31,3 +31,10 @@ export const LAMPORTS_PER_SOL = 1_000_000_000;
 
 /** Base fee charged per transaction signature (no priority fee). */
 export const BASE_FEE_LAMPORTS = 5_000n;
+
+/**
+ * Rent-exempt minimum for an SPL token account (165 bytes).
+ * Charged to the payer when creating a recipient's Associated Token Account.
+ * Recoverable if the account is later closed.
+ */
+export const ATA_RENT_LAMPORTS = 2_039_280n;
