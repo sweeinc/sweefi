@@ -8,7 +8,7 @@
 
 The prepaid scheme (`prepaid.move`) enables deposit-based API access: an agent deposits funds into a shared `PrepaidBalance` object, makes API calls off-chain, and the provider claims earned funds by submitting a cumulative call count on-chain.
 
-This scheme delivers 500x gas savings over per-call settlement ($0.014 vs $7.00 for 1,000 calls). However, it introduces a fundamental trust gap: **Move cannot verify that API calls actually happened.** The provider's `call_count` claim is unverifiable on-chain.
+This scheme reduces 1,000 API calls from 1,000 on-chain transactions to 2 (deposit + batch-claim). However, it introduces a fundamental trust gap: **Move cannot verify that API calls actually happened.** The provider's `call_count` claim is unverifiable on-chain.
 
 ## Decision
 
@@ -72,8 +72,62 @@ This is the endgame but requires Nautilus TEE infrastructure to mature on Sui.
 - The trust-bounded model is standard in Web2 (AWS bills you based on their metering — you trust them)
 - Most real-world prepaid usage will be with established API providers where reputation suffices
 
+## Known Limitations (v0.2)
+
+These limitations are accepted and documented. They do not represent bugs in the
+implementation but rather design constraints of single-receipt fraud proofs.
+
+### L1: Semantically incomplete fraud proof (agent must submit their highest receipt)
+
+The on-chain dispute check verifies:
+```
+claimed_calls < receipt_call_number < pending_claim_count
+```
+
+This proves the submitted receipt is valid and within the current pending batch.
+It does **not** prove that the submitted receipt is the *highest* receipt the agent
+holds. A dishonest agent could submit an early receipt (e.g., call #51) to dispute
+a legitimate claim for 100 calls, even if the agent holds receipts up to call #100.
+
+**System assumption:** Agents submit their highest available receipt when disputing.
+This is the correct behavior for a rational agent (submit your best evidence).
+A dishonest agent who submits an early receipt to cheat the provider violates the
+terms of service and loses the ability to use that provider further.
+
+**v0.3 fix:** Change receipt semantics so each receipt certifies a *cumulative*
+count (`call_count_so_far`), not just a single call number. Then `dispute_claim`
+can check: "provider signed a receipt certifying N cumulative calls, but now claims
+M > N." This proof is unambiguous regardless of which receipt the agent submits.
+
+### L2: No on-chain proof of provider pubkey ownership
+
+The `provider_pubkey` stored in `PrepaidBalance` is provided by the agent at
+deposit time. If the provider advertises an incorrect or invalid public key, the
+dispute mechanism is silently disabled for that balance — all `dispute_claim`
+calls will fail with `EInvalidFraudProof` because the signature cannot verify
+against the wrong key.
+
+**Required client-side flow before depositing with receipts:**
+
+1. Request a signed challenge from the provider's API endpoint
+2. Verify the signature using the provider's claimed public key
+3. Only proceed to `deposit_with_receipts` if verification passes
+
+```
+Agent                         Provider
+  │──── "sign this nonce" ──────▶│
+  │◀─── signature ───────────────│
+  │ verify(sig, nonce, pubkey)   │
+  │ if valid → deposit_with_     │
+  │            receipts(pubkey)  │
+```
+
+This challenge-response flow is not enforced on-chain (Move cannot query external
+services) but should be implemented by all s402 client integrations.
+
 ## References
 
 - `sweefi/contracts/sources/prepaid.move` — contract implementation with trust model comments
 - Cetus $223M overflow — motivates u128 intermediate math in claim calculation
 - Nautilus TEE documentation — endgame for hardware-attested usage proofs
+- `SECURITY-REVIEW-V02.md` — v0.2 security audit findings and fixes

@@ -24,13 +24,13 @@ Create `tmp/paid-server.ts`:
 ```ts
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
-import { paymentGate } from "@sweefi/sdk/server";
+import { s402Gate } from "@sweefi/server";
 
 const app = new Hono();
 
 app.use(
   "/premium",
-  paymentGate({
+  s402Gate({
     price: "$0.01",
     network: "sui:testnet",
     payTo: "0xYOUR_TESTNET_ADDRESS",
@@ -57,11 +57,11 @@ Create `tmp/paid-client.ts`:
 
 ```ts
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import { createPayingClient } from "@sweefi/sdk/client";
+import { createS402Client } from "@sweefi/sui";
 
 const keypair = Ed25519Keypair.fromSecretKey(process.env.SUI_SECRET_KEY_BASE64!);
 
-const client = createPayingClient({
+const client = createS402Client({
   wallet: keypair,
   network: "sui:testnet",
 });
@@ -89,6 +89,14 @@ Expected result:
   - `README.md`
   - `docs/PROOF-OF-WORK.md`
   - `docs/BUSINESS-STRATEGY.md`
+
+## Note on API Keys (if self-hosting the facilitator)
+
+The facilitator validates that each API key is ≥ 16 characters at startup. Generate keys with:
+
+```bash
+openssl rand -hex 32
+```
 
 ## Troubleshooting
 

@@ -105,10 +105,34 @@ The agent never touches funds. It only holds a receipt — a proof that someone 
 - **No revocation**: Once a receipt is transferred, the original owner cannot revoke the new owner's access. This is intentional (bearer model) but may surprise users expecting "sharing" semantics. Content creators should understand: transferring a receipt = giving away your access permanently.
 - **Self-pay receipt farming**: A user could generate many receipts cheaply (self-pay with 0 fee). If receipt existence is used as a "proof of genuine commerce" signal (e.g., reputation systems), this could be gamed. Mitigated by: receipts contain `amount` and `fee_amount` fields — systems can filter by meaningful payment thresholds.
 
+## Security Audit Note (2026-02-21) — H-1 Finding & Fix
+
+During adversarial security review (SECURITY-REVIEW-A.md), a HIGH severity finding
+was identified: `seal_policy::check_policy` contradicted this ADR by checking
+`ctx.sender() == receipt.buyer` (the original buyer's address). This locked decryption
+to the original buyer forever, breaking:
+- The bearer model described in §2 above
+- The agent delegation pattern from §3
+- SEAL's own ownership-based access model
+
+**The fix** (2026-02-21): The `ctx.sender()` check was removed from `check_policy`.
+Sui's object ownership model already enforces holder-only access — only the address
+that owns the receipt object can include it as a transaction argument. The explicit
+sender check was redundant AND wrong (it prevented legitimate transfers).
+
+**Post-fix invariant**: `seal_approve` now enforces exactly two properties:
+1. The caller presents a valid `EscrowReceipt` object (ownership-enforced by Sui)
+2. The key_id starts with the receipt's `escrow_id` bytes (prefix check)
+
+This matches the bearer model: possession = access. Transfer receipt = transfer access.
+
+**Test coverage added**: `seal_policy_tests.move` — `test_seal_approve_bearer_transfer_new_holder_succeeds` (T-1) and `test_seal_approve_agent_delegation_succeeds` (T-2).
+
 ## References
 
 - `contracts/sources/payment.move` — `PaymentReceipt` struct, `pay()` function
 - `contracts/sources/escrow.move` — `EscrowReceipt` struct, `release()` function
-- `contracts/sources/seal_policy.move` — `seal_approve()` ownership check
+- `contracts/sources/seal_policy.move` — `seal_approve()` ownership check (H-1 fix)
 - `packages/sui/src/ptb/composable.ts` — `buildPayAndProveTx` with `receiptDestination`
 - ADR-001: Composable PTB Pattern (the foundation this ADR builds on)
+- `SECURITY-REVIEW-A.md` — Full adversarial security review (H-1 finding)

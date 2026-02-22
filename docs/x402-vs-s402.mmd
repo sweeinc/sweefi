@@ -14,7 +14,7 @@ graph TB
         S1["1. Client builds PTB"] --> S2["2. Atomic settlement<br/>✅ No intermediary"]
         S2 --> S3["3. ~400ms finality<br/>✅ On-chain receipt"]
         S3 --> S4["4. SEAL trustless delivery<br/>✅ Content decrypts"]
-        S4 --> S5["$0.014 / 1K calls<br/>✅ 500x cheaper"]
+        S4 --> S5["2 TXs / 1K calls<br/>✅ Prepaid batching"]
     end
 
     style X402 fill:#FFF3E0,stroke:#FF9800

@@ -1,28 +1,31 @@
 # SweeFi Proof of Work
 
-Last verified: 2026-02-14
+Last verified: 2026-02-21
 
 ## Verification Commands
 
 ```bash
 # TypeScript workspace tests (offline-safe default lane)
-pnpm test
+pnpm -r test
 
 # Move contract tests
 cd contracts && sui move test
 ```
 
-## Verified Test Counts (Current)
+## Verified Test Counts (Current — post V8 audit)
 
-- TypeScript tests: 417 passing
-  - `@sweefi/core`: 54
-  - `@sweefi/sui`: 123
-  - `@sweefi/sdk`: 39
-  - `@sweefi/facilitator`: 41
-  - `@sweefi/mcp`: 36
-  - `@sweefi/widget`: 6
-  - `s402`: 118
-- Move tests: 226 annotations (158 positive + 68 negative-path)
+- TypeScript tests: **382 passing**
+  - `@sweefi/ui-core`: 13
+  - `@sweefi/server`: 0 (integration-only tests — no offline unit tests)
+  - `@sweefi/sui`: 189
+  - `@sweefi/vue`: 10
+  - `@sweefi/react`: 12
+  - `@sweefi/facilitator`: 37
+  - `@sweefi/mcp`: 79
+  - `@sweefi/cli`: 42
+- Move tests: **180 functions** (all passing as of V8 security fixes)
+
+> **Note**: V8 Move changes are code-complete locally. V7 (`0x242f...54c3d`) is the current live testnet package. V8 awaits deployment by Danny.
 
 ## Live Testnet Transactions
 
@@ -45,6 +48,13 @@ cd contracts && sui move test
 
 ## Current Testnet Package
 
-- Package ID: `0xc80485e9182c607c41e16c2606abefa7ce9b7f78d809054e99486a20d62167d5`
-- Explorer: <https://suiscan.xyz/testnet/object/0xc80485e9182c607c41e16c2606abefa7ce9b7f78d809054e99486a20d62167d5>
+**V7 (live):**
+- Package ID: `0x242f22b9f8b3d77868f6cde06f294203d7c76afa0cd101f388a6cefa45b54c3d`
+- AdminCap: `0x2094ced6e92ce7632ae40bf1292f272cf4caa7c3ab110f2edbfa9f4fdafd119b`
+- ProtocolState: `0xbfe77423523556fe038a3e83ad4e5be2eac03bc28c453f7345eef7636a547b09`
+- UpgradeCap: `0x77c484495113c9fbfe9bce9b482f6974e83402ac65853a99c6273de23f9672ad`
+- Explorer: <https://suiscan.xyz/testnet/object/0x242f22b9f8b3d77868f6cde06f294203d7c76afa0cd101f388a6cefa45b54c3d>
 
+**V8 (pending deploy):**
+- Package ID: **TBD** — Danny runs `sui client publish --gas-budget 500000000` in `contracts/`
+- Includes: 3 HIGH security fixes (revocation bypass, remaining() underflow, ETimeoutTooLong)
