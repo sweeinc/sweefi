@@ -1122,7 +1122,7 @@ module sweefi::escrow_tests {
         // Stranger tries permissionless refund — should FAIL
         scenario.next_tx(STRANGER);
         let e = scenario.take_shared<escrow::Escrow<SUI>>();
-        escrow::refund<SUI>(e, &clock, scenario.ctx()); // aborts EDeadlineNotReached
+        escrow::refund<SUI>(e, &clock, scenario.ctx()); // aborts ENotArbiter
 
         admin::destroy_cap_for_testing(_cap);
         admin::destroy_state_for_testing(state);
