@@ -146,6 +146,7 @@ This creates an on-chain, indexable proof that the protocol is irrevocably trust
 
 ## References
 
+- **`docs/MAINNET-DEPLOYMENT.md`** — Step-by-step launch runbook implementing this ADR's multisig custody requirement. Contains the exact `sui keytool` commands for generating keys, creating the 2-of-3 multisig address, and verifying the AdminCap transfer. Run this checklist at mainnet deploy.
 - DeepBook v3 source: `packages/deepbook/sources/admin.move`
 - Cetus emergency pause: documented in their audit reports
 - Sui multisig: [docs.sui.io/concepts/cryptography/transaction-auth/multisig](https://docs.sui.io/concepts/cryptography/transaction-auth/multisig)
