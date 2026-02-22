@@ -33,7 +33,7 @@ sweefi-project/
 │   ├── sui/                      # 40 PTB builders + SuiPaymentAdapter + s402 schemes (189 tests)
 │   ├── vue/                      # Vue 3 plugin + useSweefiPayment() composable (10 tests)
 │   ├── react/                    # React context + useSweefiPayment() hook (12 tests)
-│   ├── facilitator/              # Self-hostable payment verification — private, Docker only (37 tests)
+│   ├── facilitator/              # Self-hostable payment verification — private, Docker only (51 tests)
 │   ├── mcp/                      # MCP server, 30+5 AI agent tools (79 tests)
 │   └── cli/                      # CLI tool — wallet, pay, prepaid, mandates (42 tests)
 ├── demos/
@@ -119,6 +119,7 @@ proposing a change that touches any of these areas, **read the relevant ADR firs
 | ADR-005 | Permissive Access & Receipt Transferability | Receipts are bearer credentials. Ownership = access. No sender checks. |
 | ADR-006 | Object Ownership Model | Owned = one-party mutations (fast path). Shared = multi-party mutations (consensus). |
 | ADR-007 | Prepaid Trust Model | v0.1 = economic trust bounds. v0.2 = signed receipts. v0.3 = TEE attestation. |
+| ADR-008 | Facilitator API Gaps | `GET /ready` checks RPC (not just config). `/settlements` is per-key only (fleet-wide = info leak). Dedup key must include apiKey (cross-tenant collision). 4xx/5xx not cached. |
 
 ---
 
@@ -438,6 +439,28 @@ Audits are performed as "AI council wave" reviews — fresh-eyes analysis with n
 | `/.well-known/s402-facilitator` | `routes.ts` | New endpoint — describes facilitator (who settles). Distinct from `/.well-known/s402.json` (resource server). Used by OpenClaw + ecosystem tooling for discovery. |
 | API_KEYS 16-char minimum | `config.ts` | Zod validates each API key individually after comma-split. Short keys abort server startup. |
 
+### Facilitator API surface review + fixes (Feb 2026, teaching session)
+
+Expert panel (5 domains) + skeptic agent reviewed the 6-endpoint API. Three true positives
+fixed, two false positives confirmed, several proposals rejected. See ADR-008 for the full
+decision log. New endpoints and middleware added:
+
+| Change | File | Description |
+|--------|------|-------------|
+| `GET /ready` | `app.ts` | Readiness probe — checks scheme registration AND pings Sui RPC (3s timeout). Returns 503 if either fails. Distinct from `/health` (liveness). |
+| `GET /settlements` | `routes.ts` | Per-key settlement history with pagination (`?limit`, `?offset`) and `dataRetainedSince` (server start time). Returns data for calling key only — not fleet-wide. |
+| `src/middleware/dedup.ts` | new file | Payload dedup for `/settle` + `/s402/process`. Solves network-timeout reliability: if HTTP response is lost after Sui broadcast, retry returns cached `{ success: true }` with `X-Idempotent-Replay: true` instead of 500. Key = SHA-256(apiKey + canonicalBody). TTL = 60s. In-memory Phase 1. |
+| `CHANGELOG.md` | new file | Per-package changelog (Keep a Changelog format, matching s402). |
+| `docs/adr/008-facilitator-api-gaps.md` | new file | Full decision log for above changes. |
+
+**Facilitator test count**: 37 → 51 (all passing, zero type errors)
+
+**Key non-obvious findings from skeptic review:**
+- `/stats` aggregate endpoint was dropped — any API key holder seeing total key count = competitor intelligence leak
+- Dedup key must include apiKey — body-only key causes cross-tenant cache collisions (CustomerA gets CustomerB's receipt)
+- Hono body stream concern was a false positive — `c.req.json()` uses internal `bodyCache`; safe to call in middleware and handler
+- Blockchain-level idempotency (Sui rejects duplicate signed tx) means dedup is a reliability improvement, not a safety requirement
+
 ---
 
 ## Related Files
@@ -453,5 +476,6 @@ Audits are performed as "AI council wave" reviews — fresh-eyes analysis with n
 - **docs/adr/005** — Receipt transferability & SEAL bearer model
 - **docs/adr/006** — Owned vs shared object model
 - **docs/adr/007** — Prepaid trust model (v0.1 economic → v0.2 signed receipts → v0.3 TEE)
+- **docs/adr/008** — Facilitator API gaps: /ready, /settlements, dedup middleware — decisions + rejected alternatives
 - **SECURITY-REVIEW-A.md** — Adversarial Move contract audit (all findings + fixes)
 - **packages/sui/ADR-001.md** — PTB composability detail
