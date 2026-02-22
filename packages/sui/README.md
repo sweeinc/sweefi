@@ -120,6 +120,23 @@ const config = { packageId: "0x...", protocolStateId: "0x..." };
 | `buildPrepaidAgentCloseTx` | Agent closes a fully-consumed balance |
 | `buildPrepaidProviderCloseTx` | Provider closes a balance |
 
+#### v0.2 Signed Receipts (fraud proofs)
+
+| Builder | Description |
+|---------|-------------|
+| `buildDepositWithReceiptsTx` | Deposit with Ed25519 provider pubkey bound — enables dispute flow |
+| `buildPrepaidFinalizeClaimTx` | Finalize a pending claim after the dispute window (permissionless) |
+| `buildDisputeClaimTx` | Dispute a pending claim with a signed receipt as fraud proof (agent only) |
+| `buildWithdrawDisputedTx` | Withdraw all funds from a disputed balance (agent only, immediate) |
+
+Receipt utilities (also from `@sweefi/sui/ptb`):
+
+| Export | Description |
+|--------|-------------|
+| `buildReceiptMessage` | Build the BCS-encoded message that gets signed by the provider |
+| `signReceipt` | Sign a receipt using a pluggable `Ed25519Signer` |
+| `verifyReceipt` | Verify a receipt signature offline (agent-side check before on-chain dispute) |
+
 ### Mandates
 
 Basic mandates enforce a simple per-transaction spending cap on a delegated agent:
@@ -282,7 +299,7 @@ convertToTokenAmount("1.5", 9);              // "1500000000" (1.5 SUI in MIST)
 
 | Package | Version |
 |---------|---------|
-| `@mysten/sui` | `^1.20.0` |
+| `@mysten/sui` | `^2.0.0` |
 
 ## License
 

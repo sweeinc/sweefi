@@ -209,3 +209,58 @@ export interface PrepaidTopUpParams {
   /** Additional deposit amount in base units */
   amount: bigint;
 }
+
+// ══════════════════════════════════════════════════════════════
+// Prepaid v0.2 types (signed receipts / fraud proofs)
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * Parameters for creating a v0.2 prepaid balance with signed receipt support.
+ * Extends PrepaidDepositParams with provider's Ed25519 public key and dispute window.
+ */
+export interface PrepaidDepositWithReceiptsParams extends PrepaidDepositParams {
+  /** Provider's Ed25519 public key (32 bytes, hex-encoded with 0x prefix) */
+  providerPubkey: string;
+  /** Dispute window in milliseconds. Min 60s (60000), max 24h (86400000). */
+  disputeWindowMs: bigint;
+}
+
+/** Parameters for finalizing a pending claim (permissionless) */
+export interface PrepaidFinalizeClaimParams {
+  /** Coin type (e.g., "0x2::sui::SUI") */
+  coinType: string;
+  /** PrepaidBalance object ID */
+  balanceId: string;
+  /** Sender address (anyone can call — permissionless) */
+  sender: string;
+}
+
+/** Parameters for disputing a pending claim with a fraud proof */
+export interface PrepaidDisputeClaimParams {
+  /** Coin type (e.g., "0x2::sui::SUI") */
+  coinType: string;
+  /** PrepaidBalance object ID */
+  balanceId: string;
+  /** Sender (agent) address */
+  sender: string;
+  /** Balance ID from the receipt (must match balanceId) */
+  receiptBalanceId: string;
+  /** Call number from the signed receipt */
+  receiptCallNumber: bigint;
+  /** Timestamp from the signed receipt */
+  receiptTimestampMs: bigint;
+  /** Response hash from the signed receipt */
+  receiptResponseHash: Uint8Array;
+  /** Ed25519 signature over the receipt message (64 bytes) */
+  signature: Uint8Array;
+}
+
+/** Parameters for withdrawing from a disputed balance (agent only, immediate) */
+export interface PrepaidWithdrawDisputedParams {
+  /** Coin type (e.g., "0x2::sui::SUI") */
+  coinType: string;
+  /** PrepaidBalance object ID */
+  balanceId: string;
+  /** Sender (agent) address */
+  sender: string;
+}

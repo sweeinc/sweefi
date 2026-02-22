@@ -1,10 +1,39 @@
 import { Transaction, coinWithBalance } from "@mysten/sui/transactions";
-import type { SweefiConfig, PrepaidDepositParams, PrepaidClaimParams, PrepaidOpParams, PrepaidTopUpParams } from "./types";
+import type {
+  SweefiConfig,
+  PrepaidDepositParams,
+  PrepaidClaimParams,
+  PrepaidOpParams,
+  PrepaidTopUpParams,
+  PrepaidDepositWithReceiptsParams,
+  PrepaidFinalizeClaimParams,
+  PrepaidDisputeClaimParams,
+  PrepaidWithdrawDisputedParams,
+} from "./types";
 import { SUI_CLOCK } from "./deployments";
 import { assertFeeBps, assertPositive } from "./assert";
 
 /** u64::MAX as string — use as max_calls for unlimited prepaid balances */
 export const UNLIMITED_CALLS = "18446744073709551615";
+
+/** Convert hex string (with optional 0x prefix) to number array for tx.pure */
+function hexToBytes(hex: string): number[] {
+  const clean = hex.replace(/^0x/, "");
+  if (clean.length % 2 !== 0) {
+    throw new Error(
+      `hexToBytes: hex string has odd length (${clean.length} chars). ` +
+      "Each byte requires exactly 2 hex characters.",
+    );
+  }
+  if (clean.length > 0 && !/^[0-9a-fA-F]+$/.test(clean)) {
+    throw new Error("hexToBytes: hex string contains non-hex characters.");
+  }
+  const bytes: number[] = [];
+  for (let i = 0; i < clean.length; i += 2) {
+    bytes.push(parseInt(clean.substring(i, i + 2), 16));
+  }
+  return bytes;
+}
 
 function requireProtocolState(config: SweefiConfig, fn: string): string {
   if (!config.protocolStateId) {
@@ -222,6 +251,124 @@ export function buildTopUpTx(
       tx.object(params.balanceId),
       coin,
       tx.object(protocolStateId),
+      tx.object(SUI_CLOCK),
+    ],
+  });
+
+  return tx;
+}
+
+// ══════════════════════════════════════════════════════════════
+// v0.2: Signed receipts / fraud proofs
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * Build a PTB for an agent to deposit funds with signed receipt support (v0.2).
+ * The provider's Ed25519 public key is bound at deposit time. Claims on this
+ * balance enter a pending state and can be disputed with fraud proofs.
+ */
+export function buildDepositWithReceiptsTx(
+  config: SweefiConfig,
+  params: PrepaidDepositWithReceiptsParams,
+): Transaction {
+  assertPositive(params.amount, "amount", "buildDepositWithReceiptsTx");
+  assertPositive(params.ratePerCall, "ratePerCall", "buildDepositWithReceiptsTx");
+  assertFeeBps(params.feeBps, "buildDepositWithReceiptsTx");
+
+  const protocolStateId = requireProtocolState(config, "buildDepositWithReceiptsTx");
+  const tx = new Transaction();
+  tx.setSender(params.sender);
+
+  const coin = coinWithBalance({ type: params.coinType, balance: params.amount });
+
+  tx.moveCall({
+    target: `${config.packageId}::prepaid::deposit_with_receipts`,
+    typeArguments: [params.coinType],
+    arguments: [
+      coin,
+      tx.pure.address(params.provider),
+      tx.pure.u64(params.ratePerCall),
+      tx.pure.u64(params.maxCalls ?? UNLIMITED_CALLS),
+      tx.pure.u64(params.withdrawalDelayMs),
+      tx.pure.u64(params.feeBps),
+      tx.pure.address(params.feeRecipient),
+      tx.pure("vector<u8>", hexToBytes(params.providerPubkey)),
+      tx.pure.u64(params.disputeWindowMs),
+      tx.object(protocolStateId),
+      tx.object(SUI_CLOCK),
+    ],
+  });
+
+  return tx;
+}
+
+/**
+ * Build a PTB to finalize a pending claim after the dispute window.
+ * Permissionless — anyone can call to prevent provider griefing.
+ */
+export function buildFinalizeClaimTx(
+  config: SweefiConfig,
+  params: PrepaidFinalizeClaimParams,
+): Transaction {
+  const tx = new Transaction();
+  tx.setSender(params.sender);
+
+  tx.moveCall({
+    target: `${config.packageId}::prepaid::finalize_claim`,
+    typeArguments: [params.coinType],
+    arguments: [
+      tx.object(params.balanceId),
+      tx.object(SUI_CLOCK),
+    ],
+  });
+
+  return tx;
+}
+
+/**
+ * Build a PTB for the agent to dispute a pending claim with a signed receipt.
+ * The receipt proves the provider's claim count is fraudulent.
+ */
+export function buildDisputeClaimTx(
+  config: SweefiConfig,
+  params: PrepaidDisputeClaimParams,
+): Transaction {
+  const tx = new Transaction();
+  tx.setSender(params.sender);
+
+  tx.moveCall({
+    target: `${config.packageId}::prepaid::dispute_claim`,
+    typeArguments: [params.coinType],
+    arguments: [
+      tx.object(params.balanceId),
+      tx.pure.address(params.receiptBalanceId),
+      tx.pure.u64(params.receiptCallNumber),
+      tx.pure.u64(params.receiptTimestampMs),
+      tx.pure("vector<u8>", Array.from(params.receiptResponseHash)),
+      tx.pure("vector<u8>", Array.from(params.signature)),
+      tx.object(SUI_CLOCK),
+    ],
+  });
+
+  return tx;
+}
+
+/**
+ * Build a PTB for the agent to withdraw all funds from a disputed balance.
+ * Immediate — no delay. Trust is broken, agent recovers everything.
+ */
+export function buildWithdrawDisputedTx(
+  config: SweefiConfig,
+  params: PrepaidWithdrawDisputedParams,
+): Transaction {
+  const tx = new Transaction();
+  tx.setSender(params.sender);
+
+  tx.moveCall({
+    target: `${config.packageId}::prepaid::withdraw_disputed`,
+    typeArguments: [params.coinType],
+    arguments: [
+      tx.object(params.balanceId),
       tx.object(SUI_CLOCK),
     ],
   });

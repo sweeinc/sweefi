@@ -101,6 +101,10 @@ export type {
   PrepaidClaimParams,
   PrepaidOpParams,
   PrepaidTopUpParams,
+  PrepaidDepositWithReceiptsParams,
+  PrepaidFinalizeClaimParams,
+  PrepaidDisputeClaimParams,
+  PrepaidWithdrawDisputedParams,
 } from "./types";
 export {
   UNLIMITED_CALLS,
@@ -112,4 +116,13 @@ export {
   buildAgentCloseTx as buildPrepaidAgentCloseTx,
   buildProviderCloseTx as buildPrepaidProviderCloseTx,
   buildTopUpTx as buildPrepaidTopUpTx,
+  // v0.2 signed receipts
+  buildDepositWithReceiptsTx,
+  buildFinalizeClaimTx as buildPrepaidFinalizeClaimTx,
+  buildDisputeClaimTx,
+  buildWithdrawDisputedTx,
 } from "./prepaid";
+
+// Receipt utilities (v0.2 signed usage receipts — BCS message construction + pluggable Ed25519)
+export type { Ed25519Signer, Ed25519Verifier } from "../receipts";
+export { buildReceiptMessage, signReceipt, verifyReceipt } from "../receipts";

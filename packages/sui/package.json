@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Sui-native s402 protocol implementation for SweeFi",
+  "keywords": ["sui", "s402", "http-402", "payment", "web3", "ai-agent", "defi", "micropayments"],
+  "homepage": "https://github.com/sweeinc/sweefi#readme",
   "license": "Apache-2.0",
   "author": "Danny Devs",
   "main": "./dist/index.mjs",
@@ -40,9 +42,9 @@
     "test:live": "SWEEFI_LIVE_TESTNET=1 vitest run test/integration/dryrun.test.ts",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run build && npm run typecheck && npm run test"
+    "prepublishOnly": "pnpm run build && pnpm run typecheck && pnpm run test"
   },
-  "files": ["dist/**/*.mjs", "dist/**/*.cjs", "dist/**/*.d.mts", "dist/**/*.d.cts", "README.md", "LICENSE"],
+  "files": ["dist", "README.md", "LICENSE"],
   "repository": {
     "type": "git",
     "url": "https://github.com/sweeinc/sweefi.git",
@@ -52,7 +54,9 @@
     "access": "public"
   },
   "dependencies": {
-    "s402": "^0.1.0"
+    "s402": "^0.1.0",
+    "@sweefi/server": "workspace:*",
+    "@sweefi/ui-core": "workspace:*"
   },
   "peerDependencies": {
     "@mysten/sui": "^2.0.0"
