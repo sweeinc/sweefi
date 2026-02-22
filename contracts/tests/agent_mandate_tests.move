@@ -27,7 +27,7 @@ module sweefi::agent_mandate_tests {
             5_000_000_000,       // daily_limit: 5 SUI
             20_000_000_000,      // weekly_limit: 20 SUI
             100_000_000_000,     // max_total: 100 SUI
-            1_000_000,           // expires_at_ms: 1000s
+            option::some(1_000_000), // expires_at_ms: 1000s
             &clock,
             ctx,
         );
@@ -76,7 +76,7 @@ module sweefi::agent_mandate_tests {
         let mut m = agent_mandate::create<SUI>(
             DELEGATE, 3, // L3
             1_000_000_000, 5_000_000_000, 20_000_000_000, 100_000_000_000,
-            1_000_000, &clock, ctx,
+            option::some(1_000_000), &clock, ctx,
         );
 
         ts::next_tx(&mut scenario, DELEGATE);
@@ -106,7 +106,7 @@ module sweefi::agent_mandate_tests {
 
         let mut m = agent_mandate::create<SUI>(
             DELEGATE, 0, // L0: read-only
-            0, 0, 0, 0, 1_000_000, &clock, ctx,
+            0, 0, 0, 0, option::some(1_000_000), &clock, ctx,
         );
 
         ts::next_tx(&mut scenario, DELEGATE);
@@ -132,7 +132,7 @@ module sweefi::agent_mandate_tests {
         let mut m = agent_mandate::create<SUI>(
             DELEGATE, 1, // L1: monitor
             1_000_000_000, 5_000_000_000, 20_000_000_000, 100_000_000_000,
-            1_000_000, &clock, ctx,
+            option::some(1_000_000), &clock, ctx,
         );
 
         ts::next_tx(&mut scenario, DELEGATE);
@@ -165,7 +165,7 @@ module sweefi::agent_mandate_tests {
             2_000_000_000,       // daily_limit: 2 SUI (low)
             100_000_000_000,     // weekly_limit: 100 SUI
             100_000_000_000,     // max_total: 100 SUI
-            1_000_000, &clock, ctx,
+            option::some(1_000_000), &clock, ctx,
         );
 
         ts::next_tx(&mut scenario, DELEGATE);
@@ -201,7 +201,7 @@ module sweefi::agent_mandate_tests {
             0,                   // daily_limit: 0 (no daily limit)
             3_000_000_000,       // weekly_limit: 3 SUI (low)
             100_000_000_000,
-            1_000_000, &clock, ctx,
+            option::some(1_000_000), &clock, ctx,
         );
 
         ts::next_tx(&mut scenario, DELEGATE);
@@ -236,7 +236,7 @@ module sweefi::agent_mandate_tests {
             2_000_000_000,       // daily_limit: 2 SUI
             100_000_000_000,     // weekly_limit: 100 SUI
             100_000_000_000,     // max_total
-            10_000_000_000,      // expires far future (10M seconds)
+            option::some(10_000_000_000), // expires far future (10M seconds)
             &clock, ctx,
         );
 
@@ -281,7 +281,7 @@ module sweefi::agent_mandate_tests {
             0,                   // no daily limit
             3_000_000_000,       // weekly_limit: 3 SUI
             100_000_000_000,
-            1_000_000_000,       // expires at 1M seconds
+            option::some(1_000_000_000), // expires at 1M seconds
             &clock, ctx,
         );
 
@@ -322,7 +322,7 @@ module sweefi::agent_mandate_tests {
             DELEGATE, 2,
             1_000_000_000,       // max_per_tx: 1 SUI
             5_000_000_000, 20_000_000_000, 100_000_000_000,
-            1_000_000, &clock, ctx,
+            option::some(1_000_000), &clock, ctx,
         );
 
         ts::next_tx(&mut scenario, DELEGATE);
@@ -355,7 +355,7 @@ module sweefi::agent_mandate_tests {
             0,                   // no daily limit
             0,                   // no weekly limit
             3_000_000_000,       // max_total: 3 SUI (tight)
-            10_000_000_000,
+            option::some(10_000_000_000),
             &clock, ctx,
         );
 
@@ -392,7 +392,7 @@ module sweefi::agent_mandate_tests {
         let mut m = agent_mandate::create<SUI>(
             DELEGATE, 2,
             1_000_000_000, 5_000_000_000, 20_000_000_000, 100_000_000_000,
-            50_000, // expires at 50s
+            option::some(50_000), // expires at 50s
             &clock, ctx,
         );
 
@@ -425,7 +425,7 @@ module sweefi::agent_mandate_tests {
         let mut m = agent_mandate::create<SUI>(
             DELEGATE, 2,
             1_000_000_000, 5_000_000_000, 20_000_000_000, 100_000_000_000,
-            1_000_000, &clock, ctx,
+            option::some(1_000_000), &clock, ctx,
         );
 
         // Stay as DELEGATOR
@@ -451,7 +451,7 @@ module sweefi::agent_mandate_tests {
         let mut m = agent_mandate::create<SUI>(
             DELEGATE, 1, // L1: monitor
             1_000_000_000, 5_000_000_000, 20_000_000_000, 100_000_000_000,
-            1_000_000, &clock, ctx,
+            option::some(1_000_000), &clock, ctx,
         );
 
         assert!(agent_mandate::level(&m) == 1);
@@ -484,7 +484,7 @@ module sweefi::agent_mandate_tests {
         let mut m = agent_mandate::create<SUI>(
             DELEGATE, 2, // L2
             1_000_000_000, 5_000_000_000, 20_000_000_000, 100_000_000_000,
-            1_000_000, &clock, ctx,
+            option::some(1_000_000), &clock, ctx,
         );
 
         // Try to downgrade to L1 — should fail
@@ -505,7 +505,7 @@ module sweefi::agent_mandate_tests {
         let mut m = agent_mandate::create<SUI>(
             DELEGATE, 1,
             1_000_000_000, 5_000_000_000, 20_000_000_000, 100_000_000_000,
-            1_000_000, &clock, ctx,
+            option::some(1_000_000), &clock, ctx,
         );
 
         // Switch to delegate
@@ -533,7 +533,7 @@ module sweefi::agent_mandate_tests {
         let mut m = agent_mandate::create<SUI>(
             DELEGATE, 2,
             1_000_000_000, 5_000_000_000, 20_000_000_000, 100_000_000_000,
-            1_000_000, &clock, ctx,
+            option::some(1_000_000), &clock, ctx,
         );
 
         // Delegator increases daily limit
@@ -564,7 +564,7 @@ module sweefi::agent_mandate_tests {
         let mut m = agent_mandate::create<SUI>(
             DELEGATE, 2,
             1_000_000_000, 5_000_000_000, 20_000_000_000, 100_000_000_000,
-            1_000_000, &clock, ctx,
+            option::some(1_000_000), &clock, ctx,
         );
         let mandate_id = object::id(&m);
 
@@ -604,7 +604,7 @@ module sweefi::agent_mandate_tests {
         let m = agent_mandate::create<SUI>(
             DELEGATE, 1,
             1_000_000_000, 5_000_000_000, 20_000_000_000, 100_000_000_000,
-            50_000, &clock, ctx,
+            option::some(50_000), &clock, ctx,
         );
 
         assert!(!agent_mandate::is_expired(&m, &clock));
@@ -629,7 +629,7 @@ module sweefi::agent_mandate_tests {
 
         // L1 mandate — can't spend
         let m1 = agent_mandate::create<SUI>(
-            DELEGATE, 1, 0, 0, 0, 0, 50_000, &clock, ctx,
+            DELEGATE, 1, 0, 0, 0, 0, option::some(50_000), &clock, ctx,
         );
         assert!(!agent_mandate::can_spend(&m1, &clock));
 
@@ -637,7 +637,7 @@ module sweefi::agent_mandate_tests {
         let m2 = agent_mandate::create<SUI>(
             DELEGATE, 2,
             1_000_000_000, 5_000_000_000, 20_000_000_000, 100_000_000_000,
-            50_000, &clock, ctx,
+            option::some(50_000), &clock, ctx,
         );
         assert!(agent_mandate::can_spend(&m2, &clock));
 
@@ -666,7 +666,7 @@ module sweefi::agent_mandate_tests {
         let m = agent_mandate::create<SUI>(
             DELEGATE, 4,
             1_000_000_000, 5_000_000_000, 20_000_000_000, 100_000_000_000,
-            1_000_000, &clock, ctx,
+            option::some(1_000_000), &clock, ctx,
         );
 
         agent_mandate::destroy_for_testing(m);
@@ -691,7 +691,7 @@ module sweefi::agent_mandate_tests {
             0,               // daily_limit: 0 (no daily cap)
             0,               // weekly_limit: 0 (no weekly cap)
             50_000_000_000,  // max_total: 50 SUI
-            1_000_000, &clock, ctx,
+            option::some(1_000_000), &clock, ctx,
         );
 
         ts::next_tx(&mut scenario, DELEGATE);
@@ -724,7 +724,7 @@ module sweefi::agent_mandate_tests {
         let m = agent_mandate::create<SUI>(
             DELEGATE, 2,
             1_000_000_000, 5_000_000_000, 20_000_000_000, 100_000_000_000,
-            1_000_000, &clock, ctx,
+            option::some(1_000_000), &clock, ctx,
         );
 
         // Delegate destroys their own mandate
@@ -746,12 +746,126 @@ module sweefi::agent_mandate_tests {
         let m = agent_mandate::create<SUI>(
             DELEGATE, 2,
             1_000_000_000, 5_000_000_000, 20_000_000_000, 100_000_000_000,
-            1_000_000, &clock, ctx,
+            option::some(1_000_000), &clock, ctx,
         );
 
         // Delegator tries to destroy — should fail (only delegate can)
         agent_mandate::destroy(m, ctx);
 
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // No-expiry agent mandate tests (Option<u64> = None)
+    // ══════════════════════════════════════════════════════════════
+
+    #[test]
+    fun test_create_and_spend_no_expiry() {
+        // None-expiry agent mandate works past any timestamp — spending limited
+        // only by per-tx, daily, weekly, total caps and revocation, never by clock.
+        let mut scenario = ts::begin(DELEGATOR);
+        let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            1_000_000_000,       // max_per_tx: 1 SUI
+            5_000_000_000,       // daily_limit: 5 SUI
+            20_000_000_000,      // weekly_limit: 20 SUI
+            100_000_000_000,     // max_total: 100 SUI
+            option::none(),      // no expiry
+            &clock,
+            ctx,
+        );
+
+        // Advance clock to year 3000 (≈ 32.5 trillion ms)
+        clock::set_for_testing(&mut clock, 32_503_680_000_000);
+
+        ts::next_tx(&mut scenario, DELEGATE);
+        let ctx = ts::ctx(&mut scenario);
+
+        // Should succeed — no expiry means clock is irrelevant
+        agent_mandate::validate_and_spend(&mut m, 500_000_000, &registry, &clock, ctx);
+        assert!(agent_mandate::total_spent(&m) == 500_000_000);
+        assert!(agent_mandate::daily_spent(&m) == 500_000_000);
+        assert!(agent_mandate::remaining(&m) == 99_500_000_000);
+
+        agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    #[test]
+    fun test_no_expiry_agent_mandate_is_not_expired() {
+        // is_expired() returns false for None agent mandate regardless of clock value.
+        let mut scenario = ts::begin(DELEGATOR);
+        let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            1_000_000_000, 5_000_000_000, 20_000_000_000, 100_000_000_000,
+            option::none(),
+            &clock,
+            ctx,
+        );
+
+        // Not expired at creation
+        assert!(!agent_mandate::is_expired(&m, &clock));
+
+        // Not expired at year 3000
+        clock::set_for_testing(&mut clock, 32_503_680_000_000);
+        assert!(!agent_mandate::is_expired(&m, &clock));
+
+        // can_spend still returns true (L2 + not expired)
+        assert!(agent_mandate::can_spend(&m, &clock));
+
+        // Verify accessor returns None
+        assert!(agent_mandate::expires_at_ms(&m).is_none());
+
+        agent_mandate::destroy_for_testing(m);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = agent_mandate::ERevoked)]
+    fun test_no_expiry_agent_mandate_revocation_still_works() {
+        // Revocation kills a None-expiry agent mandate. The kill switch
+        // is orthogonal to expiry — the delegator always has an active exit.
+        let mut scenario = ts::begin(DELEGATOR);
+        let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            1_000_000_000, 5_000_000_000, 20_000_000_000, 100_000_000_000,
+            option::none(),
+            &clock,
+            ctx,
+        );
+        let mandate_id = object::id(&m);
+
+        // Create and take registry
+        mandate::create_registry(ctx);
+
+        ts::next_tx(&mut scenario, DELEGATOR);
+        let mut registry = ts::take_shared<mandate::RevocationRegistry>(&scenario);
+        let ctx = ts::ctx(&mut scenario);
+
+        // Delegator revokes
+        mandate::revoke<SUI>(&mut registry, mandate_id, ctx);
+
+        // Delegate tries to spend — should fail with ERevoked
+        ts::next_tx(&mut scenario, DELEGATE);
+        let ctx = ts::ctx(&mut scenario);
+        agent_mandate::validate_and_spend(&mut m, 100_000_000, &registry, &clock, ctx);
+
+        ts::return_shared(registry);
+        agent_mandate::destroy_for_testing(m);
         clock::destroy_for_testing(clock);
         ts::end(scenario);
     }

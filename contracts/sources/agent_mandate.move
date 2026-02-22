@@ -77,7 +77,7 @@ module sweefi::agent_mandate {
         max_total: u64,             // lifetime ceiling across all spends (base units)
         total_spent: u64,           // cumulative sum; never decreases; invariant: total_spent <= max_total
 
-        expires_at_ms: u64,         // Clock.timestamp_ms() threshold; spending blocked at or after this
+        expires_at_ms: Option<u64>, // None = permanent (revocation-only control), Some(t) = expires at t
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -94,7 +94,7 @@ module sweefi::agent_mandate {
         daily_limit: u64,
         weekly_limit: u64,
         max_total: u64,
-        expires_at_ms: u64,
+        expires_at_ms: Option<u64>,
     }
 
     /// Emitted when a mandate level is upgraded
@@ -138,11 +138,14 @@ module sweefi::agent_mandate {
         daily_limit: u64,
         weekly_limit: u64,
         max_total: u64,
-        expires_at_ms: u64,
+        expires_at_ms: Option<u64>,
         clock: &Clock,
         ctx: &mut TxContext,
     ): AgentMandate<T> {
-        assert!(expires_at_ms > clock.timestamp_ms(), EExpired);
+        // If an expiry is provided, it must be in the future
+        if (expires_at_ms.is_some()) {
+            assert!(*expires_at_ms.borrow() > clock.timestamp_ms(), EExpired);
+        };
         assert!(level <= LEVEL_AUTONOMOUS, EInvalidLevel);
 
         let now = clock.timestamp_ms();
@@ -189,7 +192,7 @@ module sweefi::agent_mandate {
         daily_limit: u64,
         weekly_limit: u64,
         max_total: u64,
-        expires_at_ms: u64,
+        expires_at_ms: Option<u64>,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
@@ -239,8 +242,10 @@ module sweefi::agent_mandate {
         // 2. Only the delegate can spend
         assert!(ctx.sender() == mandate.delegate, ENotDelegate);
 
-        // 3. Check expiry
-        assert!(now < mandate.expires_at_ms, EExpired);
+        // 3. Check expiry (None = never expires)
+        if (mandate.expires_at_ms.is_some()) {
+            assert!(now < *mandate.expires_at_ms.borrow(), EExpired);
+        };
 
         // 4. Level check — only L2+ can spend
         assert!(mandate.level >= LEVEL_CAPPED, ELevelNotAuthorized);
@@ -381,7 +386,7 @@ module sweefi::agent_mandate {
     public fun weekly_spent<T>(m: &AgentMandate<T>): u64 { m.weekly_spent }
     public fun max_total<T>(m: &AgentMandate<T>): u64 { m.max_total }
     public fun total_spent<T>(m: &AgentMandate<T>): u64 { m.total_spent }
-    public fun expires_at_ms<T>(m: &AgentMandate<T>): u64 { m.expires_at_ms }
+    public fun expires_at_ms<T>(m: &AgentMandate<T>): Option<u64> { m.expires_at_ms }
     /// Remaining lifetime budget. Saturates to 0 if caps were lowered
     /// below total_spent via update_caps (prevents underflow abort).
     public fun remaining<T>(m: &AgentMandate<T>): u64 {
@@ -407,8 +412,13 @@ module sweefi::agent_mandate {
         else m.weekly_limit - m.weekly_spent
     }
 
+    /// None = never expires → always returns false.
     public fun is_expired<T>(m: &AgentMandate<T>, clock: &Clock): bool {
-        clock.timestamp_ms() >= m.expires_at_ms
+        if (m.expires_at_ms.is_some()) {
+            clock.timestamp_ms() >= *m.expires_at_ms.borrow()
+        } else {
+            false
+        }
     }
 
     public fun is_revoked<T>(m: &AgentMandate<T>, registry: &RevocationRegistry): bool {

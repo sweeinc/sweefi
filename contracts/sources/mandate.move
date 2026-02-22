@@ -50,7 +50,7 @@ module sweefi::mandate {
         max_per_tx: u64,        // ceiling per individual spend (base units)
         max_total: u64,         // lifetime ceiling across all spends (base units)
         total_spent: u64,       // running sum; never decreases; invariant: total_spent <= max_total
-        expires_at_ms: u64,     // Clock.timestamp_ms() threshold; spending blocked at or after this
+        expires_at_ms: Option<u64>, // None = permanent (revocation-only control), Some(t) = expires at t
     }
 
     /// Shared revocation registry. One per delegator.
@@ -79,11 +79,14 @@ module sweefi::mandate {
         delegate: address,
         max_per_tx: u64,
         max_total: u64,
-        expires_at_ms: u64,
+        expires_at_ms: Option<u64>,
         clock: &Clock,
         ctx: &mut TxContext,
     ): Mandate<T> {
-        assert!(expires_at_ms > clock.timestamp_ms(), EExpired);
+        // If an expiry is provided, it must be in the future
+        if (expires_at_ms.is_some()) {
+            assert!(*expires_at_ms.borrow() > clock.timestamp_ms(), EExpired);
+        };
 
         Mandate<T> {
             id: object::new(ctx),
@@ -101,7 +104,7 @@ module sweefi::mandate {
         delegate: address,
         max_per_tx: u64,
         max_total: u64,
-        expires_at_ms: u64,
+        expires_at_ms: Option<u64>,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
@@ -143,8 +146,10 @@ module sweefi::mandate {
         // Only the delegate can spend
         assert!(ctx.sender() == mandate.delegate, ENotDelegate);
 
-        // Check expiry
-        assert!(clock.timestamp_ms() < mandate.expires_at_ms, EExpired);
+        // Check expiry (None = never expires)
+        if (mandate.expires_at_ms.is_some()) {
+            assert!(clock.timestamp_ms() < *mandate.expires_at_ms.borrow(), EExpired);
+        };
 
         // Per-transaction limit
         assert!(amount <= mandate.max_per_tx, EPerTxLimitExceeded);
@@ -235,16 +240,21 @@ module sweefi::mandate {
     public fun max_per_tx<T>(m: &Mandate<T>): u64 { m.max_per_tx }
     public fun max_total<T>(m: &Mandate<T>): u64 { m.max_total }
     public fun total_spent<T>(m: &Mandate<T>): u64 { m.total_spent }
-    public fun expires_at_ms<T>(m: &Mandate<T>): u64 { m.expires_at_ms }
+    public fun expires_at_ms<T>(m: &Mandate<T>): Option<u64> { m.expires_at_ms }
     /// Returns remaining spend capacity. Saturates to 0 if max_total was lowered below
     /// total_spent (e.g., via update_caps) — prevents abort in composing modules.
     public fun remaining<T>(m: &Mandate<T>): u64 {
         if (m.total_spent >= m.max_total) { 0 } else { m.max_total - m.total_spent }
     }
 
-    /// Check if a mandate is expired (view only, no abort)
+    /// Check if a mandate is expired (view only, no abort).
+    /// None = never expires → always returns false.
     public fun is_expired<T>(m: &Mandate<T>, clock: &Clock): bool {
-        clock.timestamp_ms() >= m.expires_at_ms
+        if (m.expires_at_ms.is_some()) {
+            clock.timestamp_ms() >= *m.expires_at_ms.borrow()
+        } else {
+            false
+        }
     }
 
     /// Check if a mandate is revoked

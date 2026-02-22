@@ -22,10 +22,10 @@ module sweefi::mandate_tests {
 
         // Delegator creates mandate
         let mut m = mandate::create<SUI>(
-            DELEGATE,        // delegate
-            1_000_000_000,   // max_per_tx: 1 SUI
-            10_000_000_000,  // max_total: 10 SUI
-            100_000,         // expires_at_ms: 100s from epoch
+            DELEGATE,                   // delegate
+            1_000_000_000,              // max_per_tx: 1 SUI
+            10_000_000_000,             // max_total: 10 SUI
+            option::some(100_000),      // expires_at_ms: 100s from epoch
             &clock,
             ctx,
         );
@@ -71,7 +71,7 @@ module sweefi::mandate_tests {
             DELEGATE,
             1_000_000_000,   // max_per_tx: 1 SUI
             10_000_000_000,
-            100_000,
+            option::some(100_000),
             &clock,
             ctx,
         );
@@ -104,7 +104,7 @@ module sweefi::mandate_tests {
             DELEGATE,
             5_000_000_000,   // max_per_tx: 5 SUI
             2_000_000_000,   // max_total: 2 SUI (lower than per_tx for this test)
-            100_000,
+            option::some(100_000),
             &clock,
             ctx,
         );
@@ -140,7 +140,7 @@ module sweefi::mandate_tests {
             DELEGATE,
             1_000_000_000,
             10_000_000_000,
-            50_000, // expires at 50s
+            option::some(50_000), // expires at 50s
             &clock,
             ctx,
         );
@@ -176,7 +176,7 @@ module sweefi::mandate_tests {
             DELEGATE,
             1_000_000_000,
             10_000_000_000,
-            100_000,
+            option::some(100_000),
             &clock,
             ctx,
         );
@@ -205,7 +205,7 @@ module sweefi::mandate_tests {
             DELEGATE,
             1_000_000_000,
             10_000_000_000,
-            50_000,
+            option::some(50_000),
             &clock,
             ctx,
         );
@@ -239,7 +239,7 @@ module sweefi::mandate_tests {
         let clock = clock::create_for_testing(ts::ctx(&mut scenario));
         let ctx = ts::ctx(&mut scenario);
 
-        let m = mandate::create<SUI>(DELEGATE, 1_000_000_000, 10_000_000_000, 100_000, &clock, ctx);
+        let m = mandate::create<SUI>(DELEGATE, 1_000_000_000, 10_000_000_000, option::some(100_000), &clock, ctx);
 
         // Transfer to THIRD_PARTY (non-delegate) — simulates erroneous transfer
         // (e.g., a higher-level protocol accidentally forwarded the wrong mandate)
@@ -268,7 +268,7 @@ module sweefi::mandate_tests {
         let clock = clock::create_for_testing(ts::ctx(&mut scenario));
         let ctx = ts::ctx(&mut scenario);
 
-        let m = mandate::create<SUI>(DELEGATE, 1_000_000_000, 10_000_000_000, 100_000, &clock, ctx);
+        let m = mandate::create<SUI>(DELEGATE, 1_000_000_000, 10_000_000_000, option::some(100_000), &clock, ctx);
 
         // Transfer to THIRD_PARTY (non-delegate)
         transfer::public_transfer(m, THIRD_PARTY);
@@ -278,6 +278,110 @@ module sweefi::mandate_tests {
         let m = scenario.take_from_sender<mandate::Mandate<SUI>>();
         mandate::destroy_held(m); // any holder can clean up — safe because no funds held
 
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // No-expiry mandate tests (Option<u64> = None)
+    // ══════════════════════════════════════════════════════════════
+
+    #[test]
+    fun test_create_and_spend_no_expiry() {
+        // None-expiry mandate works past any timestamp — spending limited only
+        // by max_total and revocation, never by clock.
+        let mut scenario = ts::begin(DELEGATOR);
+        let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = mandate::create<SUI>(
+            DELEGATE,
+            1_000_000_000,         // max_per_tx: 1 SUI
+            10_000_000_000,        // max_total: 10 SUI
+            option::none(),        // no expiry
+            &clock,
+            ctx,
+        );
+
+        // Advance clock to year 3000 (≈ 32.5 trillion ms)
+        clock::set_for_testing(&mut clock, 32_503_680_000_000);
+
+        ts::next_tx(&mut scenario, DELEGATE);
+        let ctx = ts::ctx(&mut scenario);
+
+        // Should succeed — no expiry means clock is irrelevant
+        mandate::validate_and_spend(&mut m, 500_000_000, &registry, &clock, ctx);
+        assert!(mandate::total_spent(&m) == 500_000_000);
+        assert!(mandate::remaining(&m) == 9_500_000_000);
+
+        mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    #[test]
+    fun test_no_expiry_mandate_is_not_expired() {
+        // is_expired() returns false for None mandate regardless of clock value.
+        let mut scenario = ts::begin(DELEGATOR);
+        let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let m = mandate::create<SUI>(
+            DELEGATE,
+            1_000_000_000,
+            10_000_000_000,
+            option::none(),
+            &clock,
+            ctx,
+        );
+
+        // Not expired at creation
+        assert!(!mandate::is_expired(&m, &clock));
+
+        // Not expired at year 3000
+        clock::set_for_testing(&mut clock, 32_503_680_000_000);
+        assert!(!mandate::is_expired(&m, &clock));
+
+        // Verify accessor returns None
+        assert!(mandate::expires_at_ms(&m).is_none());
+
+        mandate::destroy_for_testing(m);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = mandate::ERevoked)]
+    fun test_no_expiry_mandate_revocation_still_works() {
+        // Revocation kills a None-expiry mandate. Confirms the kill switch
+        // is orthogonal to expiry — the delegator always has an active exit.
+        let mut scenario = ts::begin(DELEGATOR);
+        let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let mut registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = mandate::create<SUI>(
+            DELEGATE,
+            1_000_000_000,
+            10_000_000_000,
+            option::none(),
+            &clock,
+            ctx,
+        );
+
+        // Delegator revokes
+        let mandate_id = object::id(&m);
+        mandate::revoke<SUI>(&mut registry, mandate_id, ctx);
+
+        // Delegate tries to spend — should fail with ERevoked
+        ts::next_tx(&mut scenario, DELEGATE);
+        let ctx = ts::ctx(&mut scenario);
+        mandate::validate_and_spend(&mut m, 100_000_000, &registry, &clock, ctx);
+
+        mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
         clock::destroy_for_testing(clock);
         ts::end(scenario);
     }
