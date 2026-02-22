@@ -41,9 +41,15 @@ module sweefi::seal_policy {
     /// Any current holder of the matching EscrowReceipt can decrypt — including
     /// secondary buyers and AI agents who received the receipt via delegation.
     ///
-    /// No explicit sender check is needed: Sui's object ownership model guarantees
-    /// that only the address owning the receipt object can include it as an argument
-    /// in a transaction. The ownership IS the authorization.
+    /// SECURITY: No explicit ctx.sender() check is performed here. This is intentional
+    /// (H-1 fix). Sui's object ownership model guarantees that only the address currently
+    /// owning the EscrowReceipt can include it as a transaction argument. The ownership
+    /// IS the authorization — adding a redundant sender check would be noise that
+    /// obscures the real security property and breaks the bearer model.
+    ///
+    /// `_ctx` is prefixed with underscore because it is intentionally unused after the H-1
+    /// fix. It remains in the signature because the SEAL key server interface requires a
+    /// &TxContext parameter for consistency across all seal_approve implementations.
     entry fun seal_approve(
         id: vector<u8>,
         receipt: &escrow::EscrowReceipt,
@@ -61,6 +67,10 @@ module sweefi::seal_policy {
     ///
     /// No address check needed: Sui object ownership guarantees only the current
     /// receipt holder can present it. Bearer model — transfer = transfer of access.
+    ///
+    /// Prefix match (not exact match) enables the nonce pattern: a seller can
+    /// encrypt multiple deliverables for the same escrow using distinct nonces
+    /// (escrow_id || nonce_1, escrow_id || nonce_2) without needing separate escrows.
     fun check_policy(
         id: vector<u8>,
         receipt: &escrow::EscrowReceipt,

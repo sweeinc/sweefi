@@ -59,6 +59,8 @@ module sweefi::stream {
     /// Dynamic field key for per-stream recipient close timeout.
     /// Stored on the StreamingMeter UID via dynamic_field.
     /// Absence means "use RECIPIENT_CLOSE_TIMEOUT_MS default."
+    /// A distinct struct key (not a string or integer) prevents accidental
+    /// collisions with other dynamic fields attached to the same UID.
     public struct TimeoutKey has copy, drop, store {}
 
     // ══════════════════════════════════════════════════════════════
@@ -68,23 +70,20 @@ module sweefi::stream {
     /// Streaming payment meter — shared object.
     /// Payer deposits funds, recipient claims accrued amount over time.
     /// phantom T: the coin type (USDC, SUI, suiUSDe, etc.)
-    /// NOTE: budget_cap tracks GROSS claimed (including fees). With 5% fees
-    /// and budget_cap=100k, recipient receives 95k. This is the payer's total
-    /// outflow cap, not the recipient's total inflow cap.
     public struct StreamingMeter<phantom T> has key {
         id: UID,
         payer: address,
         recipient: address,
-        balance: Balance<T>,
-        rate_per_second: u64,       // tokens per second (human-readable unit)
-        budget_cap: u64,            // max total spend (gross, including fees)
-        total_claimed: u64,         // cumulative gross claimed by recipient
-        last_claim_ms: u64,         // Clock timestamp of last claim (ms)
-        created_at_ms: u64,         // Clock timestamp of creation (ms)
-        active: bool,               // pause/resume control
-        paused_at_ms: u64,          // Clock timestamp when paused (0 if not paused or already claimed)
-        fee_bps: u64,               // facilitator fee on claims (basis points)
-        fee_recipient: address,     // where fees go
+        balance: Balance<T>,        // live funds; decreases as claims and fee splits occur
+        rate_per_second: u64,       // tokens per second (human-readable unit); divide by 1000 internally for ms math
+        budget_cap: u64,            // max GROSS outflow for payer (including fees); not recipient's net inflow
+        total_claimed: u64,         // cumulative gross claimed; invariant: total_claimed <= budget_cap
+        last_claim_ms: u64,         // accrual window starts here; updated on claim or time-shifted on resume
+        created_at_ms: u64,         // creation timestamp for off-chain analytics
+        active: bool,               // false = paused or exhausted; accrual only occurs when true
+        paused_at_ms: u64,          // non-zero = pause timestamp with pending unclaimed accrual; 0 = no pending accrual
+        fee_bps: u64,               // facilitator fee on claims; 1_000_000 = 100% — see math.move
+        fee_recipient: address,     // where the fee portion is sent on each claim
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -171,7 +170,7 @@ module sweefi::stream {
         let deposit_value = deposit.value();
         assert!(deposit_value > 0, EZeroDeposit);
         assert!(rate_per_second > 0, EZeroRate);
-        assert!(fee_bps <= 10_000, EInvalidFeeBps);
+        assert!(fee_bps <= 1_000_000, EInvalidFeeBps);
         assert!(budget_cap > 0, EBudgetCapExceeded);
         // H-5: Deposit must not exceed budget_cap — excess is unclaimable and
         // only refundable via close(), making the stream appear overfunded.
@@ -230,7 +229,7 @@ module sweefi::stream {
         let deposit_value = deposit.value();
         assert!(deposit_value > 0, EZeroDeposit);
         assert!(rate_per_second > 0, EZeroRate);
-        assert!(fee_bps <= 10_000, EInvalidFeeBps);
+        assert!(fee_bps <= 1_000_000, EInvalidFeeBps);
         assert!(budget_cap > 0, EBudgetCapExceeded);
         // H-5: Deposit must not exceed budget_cap — excess is unclaimable and
         // only refundable via close(), making the stream appear overfunded.
@@ -257,8 +256,8 @@ module sweefi::stream {
             fee_recipient,
         };
 
-        // Store custom timeout as dynamic field on the UID.
-        // No struct change needed — backward compatible with existing objects.
+        // Dynamic field used instead of a struct field so objects created with create()
+        // remain structurally compatible — no migration needed for existing meters.
         dynamic_field::add(&mut meter.id, TimeoutKey {}, recipient_close_timeout_ms);
 
         event::emit(StreamCreated {
@@ -316,7 +315,8 @@ module sweefi::stream {
             0
         };
 
-        // Cap at actual balance
+        // Cap at actual balance — budget math and balance can diverge if fees
+        // were charged on prior claims (fee is gross, so balance < budget_remaining)
         let claimable = if (accrued > meter.balance.value()) {
             meter.balance.value()
         } else {
@@ -353,7 +353,7 @@ module sweefi::stream {
         if (meter.active) {
             meter.last_claim_ms = now_ms;
         } else {
-            // Claimed the paused accrual — clear paused_at_ms to prevent double-claim
+            // paused_at_ms = 0 signals "pre-pause accrual consumed" — prevents double-claim
             meter.paused_at_ms = 0;
         };
 
@@ -388,8 +388,9 @@ module sweefi::stream {
 
         let now_ms = clock.timestamp_ms();
 
-        // Snapshot the pause time — accrual from last_claim_ms to paused_at_ms
-        // remains claimable. We DON'T update last_claim_ms here.
+        // Snapshot the pause time — accrual window [last_claim_ms, paused_at_ms]
+        // remains claimable. last_claim_ms is NOT updated here; updating it would
+        // silently forfeit the recipient's earned but unclaimed tokens.
         meter.active = false;
         meter.paused_at_ms = now_ms;
 
@@ -552,7 +553,8 @@ module sweefi::stream {
             balance.destroy_zero();
         };
 
-        // Remove dynamic field if present (streams created with create_with_timeout)
+        // Dynamic field must be explicitly removed before UID deletion —
+        // Move's linear type system prevents deletion of UIDs with live children.
         if (dynamic_field::exists_<TimeoutKey>(&id, TimeoutKey {})) {
             let _: u64 = dynamic_field::remove(&mut id, TimeoutKey {});
         };
@@ -680,7 +682,7 @@ module sweefi::stream {
             balance.destroy_zero();
         };
 
-        // Remove dynamic field if present (streams created with create_with_timeout)
+        // Dynamic field must be explicitly removed before UID deletion
         if (dynamic_field::exists_<TimeoutKey>(&id, TimeoutKey {})) {
             let _: u64 = dynamic_field::remove(&mut id, TimeoutKey {});
         };
@@ -795,10 +797,11 @@ module sweefi::stream {
 
         let elapsed_ms = now_ms - last_claim_ms;
 
-        // rate_per_second * elapsed_ms / 1000, via u128
+        // Divide by 1000 to convert milliseconds to seconds (rate is per-second).
+        // u128 prevents overflow: rate_per_second (u64) * elapsed_ms (u64) can exceed u64::MAX.
         let raw = ((rate_per_second as u128) * (elapsed_ms as u128)) / 1000u128;
 
-        // Cap at u64::MAX
+        // Cap at u64::MAX before casting
         let accrued = if (raw > 0xFFFFFFFFFFFFFFFF) {
             0xFFFFFFFFFFFFFFFF
         } else {

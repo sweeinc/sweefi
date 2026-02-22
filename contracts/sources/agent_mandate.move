@@ -57,38 +57,27 @@ module sweefi::agent_mandate {
     /// Owned by the delegate (agent) for fast single-owner transactions.
     public struct AgentMandate<phantom T> has key, store {
         id: UID,
-        /// Human who authorized the spending
-        delegator: address,
-        /// Agent who can spend
-        delegate: address,
+        delegator: address,     // human who created and can upgrade/revoke this mandate
+        delegate: address,      // agent who may call validate_and_spend
 
         /// Mandate level: 0=L0 (read-only), 1=L1 (monitor), 2=L2 (capped), 3=L3 (autonomous)
+        /// Only L2+ can spend. Level can only increase (upgrade_level); downgrade = revoke + recreate.
         level: u8,
 
-        /// Maximum amount per transaction (base units)
-        max_per_tx: u64,
+        max_per_tx: u64,            // ceiling per individual spend (base units)
 
-        /// Daily spending cap (base units). 0 = no daily limit.
-        daily_limit: u64,
-        /// Amount spent in current daily period
-        daily_spent: u64,
-        /// Timestamp (ms) when daily counter was last reset
-        last_daily_reset_ms: u64,
+        daily_limit: u64,           // daily spending ceiling; 0 = no daily limit
+        daily_spent: u64,           // amount spent in the current daily period
+        last_daily_reset_ms: u64,   // when daily_spent was last zeroed; initialized to creation time, not epoch 0
 
-        /// Weekly spending cap (base units). 0 = no weekly limit.
-        weekly_limit: u64,
-        /// Amount spent in current weekly period
-        weekly_spent: u64,
-        /// Timestamp (ms) when weekly counter was last reset
-        last_weekly_reset_ms: u64,
+        weekly_limit: u64,          // weekly spending ceiling; 0 = no weekly limit
+        weekly_spent: u64,          // amount spent in the current weekly period
+        last_weekly_reset_ms: u64,  // when weekly_spent was last zeroed; initialized to creation time, not epoch 0
 
-        /// Lifetime spending cap (base units)
-        max_total: u64,
-        /// Running total of all spending
-        total_spent: u64,
+        max_total: u64,             // lifetime ceiling across all spends (base units)
+        total_spent: u64,           // cumulative sum; never decreases; invariant: total_spent <= max_total
 
-        /// Expiry timestamp in milliseconds
-        expires_at_ms: u64,
+        expires_at_ms: u64,         // Clock.timestamp_ms() threshold; spending blocked at or after this
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -165,6 +154,9 @@ module sweefi::agent_mandate {
             max_per_tx,
             daily_limit,
             daily_spent: 0,
+            // Initialize to now, not epoch 0. If set to 0, the first spend could
+            // trigger a lazy reset against a window stretching back to the Unix epoch,
+            // allowing the full daily_limit to appear "fresh" regardless of actual age.
             last_daily_reset_ms: now,
             weekly_limit,
             weekly_spent: 0,
@@ -236,11 +228,9 @@ module sweefi::agent_mandate {
         clock: &Clock,
         ctx: &TxContext,
     ) {
-        // 1. Check revocation first — verify registry belongs to the delegator,
-        //    then check the mandate ID is not present in it.
-        //    H-1 (Revocation bypass): mandate::is_id_revoked() is a low-level helper
-        //    that does NOT check registry ownership. Without the owner check, a rogue
-        //    delegate could pass an empty registry they control, bypassing revocation.
+        // 1. SECURITY (H-1 equivalent): Verify registry belongs to this mandate's delegator.
+        //    mandate::is_id_revoked() does NOT check registry ownership. Without this guard,
+        //    a rogue delegate could pass an empty registry they control to bypass revocation.
         assert!(mandate::registry_owner(registry) == mandate.delegator, ENotDelegator);
         assert!(!mandate::is_id_revoked(registry, object::id(mandate)), ERevoked);
 
@@ -305,6 +295,8 @@ module sweefi::agent_mandate {
 
     /// Upgrade a mandate's level. Only the delegator can upgrade.
     /// Cannot downgrade — use revoke + recreate for that.
+    /// One-way constraint prevents an agent from briefly self-downgrading to L1
+    /// (bypassing spend tracking) and then upgrading back.
     entry fun upgrade_level<T>(
         mandate: &mut AgentMandate<T>,
         new_level: u8,

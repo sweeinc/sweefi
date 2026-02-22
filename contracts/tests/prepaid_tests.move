@@ -35,7 +35,7 @@ module sweefi::prepaid_tests {
             RATE,
             UNLIMITED,
             DELAY_MS,
-            50,             // 0.5% fee
+            5_000,          // 0.5% fee
             FEE_RECIPIENT,
             &state,
             &clock,
@@ -52,7 +52,7 @@ module sweefi::prepaid_tests {
         assert!(prepaid::balance_max_calls(&bal) == UNLIMITED);
         assert!(prepaid::balance_claimed_calls(&bal) == 0);
         assert!(prepaid::balance_withdrawal_pending(&bal) == false);
-        assert!(prepaid::balance_fee_bps(&bal) == 50);
+        assert!(prepaid::balance_fee_bps(&bal) == 5_000);
 
         ts::return_shared(bal);
         admin::destroy_cap_for_testing(_cap);
@@ -127,7 +127,7 @@ module sweefi::prepaid_tests {
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
         let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
-        prepaid::deposit<SUI>(deposit, PROVIDER, RATE, UNLIMITED, DELAY_MS, 10_001, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        prepaid::deposit<SUI>(deposit, PROVIDER, RATE, UNLIMITED, DELAY_MS, 1_000_001, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         admin::destroy_cap_for_testing(_cap);
         admin::destroy_state_for_testing(state);
@@ -374,16 +374,16 @@ module sweefi::prepaid_tests {
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        // 500 bps = 5% fee
+        // 50_000 fee_bps = 5% fee
         let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
-        prepaid::deposit<SUI>(deposit, PROVIDER, RATE, UNLIMITED, DELAY_MS, 500, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        prepaid::deposit<SUI>(deposit, PROVIDER, RATE, UNLIMITED, DELAY_MS, 50_000, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         clock.increment_for_testing(1_000);
         scenario.next_tx(PROVIDER);
         let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
 
         // Claim 100 calls → gross = 100,000
-        // Fee: 100,000 * 500 / 10,000 = 5,000
+        // Fee: 100,000 * 50_000 / 1_000_000 = 5,000
         // Provider gets: 100,000 - 5,000 = 95,000
         prepaid::claim(&mut bal, 100, &clock, scenario.ctx());
 
@@ -1059,7 +1059,7 @@ module sweefi::prepaid_tests {
             RATE,
             UNLIMITED,
             DELAY_MS,
-            50,             // 0.5% fee
+            5_000,          // 0.5% fee
             FEE_RECIPIENT,
             TEST_PUBKEY,
             DISPUTE_WINDOW_MS,
@@ -1400,7 +1400,7 @@ module sweefi::prepaid_tests {
 
         let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
         prepaid::deposit<SUI>(
-            deposit, PROVIDER, RATE, UNLIMITED, DELAY_MS, 50, FEE_RECIPIENT,
+            deposit, PROVIDER, RATE, UNLIMITED, DELAY_MS, 5_000, FEE_RECIPIENT,
             &state, &clock, scenario.ctx(),
         );
 

@@ -27,7 +27,7 @@ module sweefi::seal_policy_tests {
             SELLER,
             ARBITER,
             999_999_999, // far future deadline
-            200,         // 2% fee
+            20_000,      // 2% fee
             FEE_RECIPIENT,
             b"SEAL demo",
             &state,

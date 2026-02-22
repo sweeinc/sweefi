@@ -55,27 +55,28 @@ module sweefi::identity {
     /// Owner can destroy their identity (soulbound ≠ permanent).
     public struct AgentIdentity has key {
         id: UID,
-        /// The address this identity represents
-        owner: address,
-        /// When this identity was created (ms)
-        created_at_ms: u64,
-        /// Count of recorded payments
-        total_payments: u64,
-        /// Cumulative volume in base units (MIST)
-        total_volume: u64,
-        /// Last activity timestamp (ms) — used for decay calculations
-        last_active_ms: u64,
-        /// Receipt IDs already recorded — prevents replay inflation.
-        /// Table<ID, bool> for O(1) lookups (replaces VecSet which was O(n)).
+        owner: address,             // the address this identity represents; fixed at creation
+        created_at_ms: u64,         // Clock.timestamp_ms() at creation
+        total_payments: u64,        // count of successfully recorded PaymentReceipts
+        total_volume: u64,          // sum of receipt_amount across all recorded receipts (base units)
+        last_active_ms: u64,        // Clock.timestamp_ms() of most recent record_payment; used for activity decay
+        /// Per-identity receipt dedup table. O(1) lookup vs O(n) VecSet.
+        /// Table<ID, bool>: Move Table requires a non-zero-size value type; `bool` is the
+        /// minimal choice. The value is always `true` — only presence matters.
+        ///
+        /// LIMITATION (B-13): dedup is scoped to this identity. Destroying and recreating
+        /// allows the same receipt to be recorded again. Off-chain indexers are the
+        /// authoritative dedup layer across identity lifetimes.
         recorded_receipts: Table<ID, bool>,
     }
 
     /// Shared registry for O(1) address → identity ID lookups.
-    /// AdminCap-gated creation prevents shadow registries.
-    /// Same pattern as RevocationRegistry but with Table<address, ID>.
+    /// AdminCap-gated creation prevents shadow registries that would fragment
+    /// the off-chain reputation lookup space.
+    /// Same dynamic-field-free pattern as RevocationRegistry but with Table<address, ID>.
     public struct IdentityRegistry has key {
         id: UID,
-        identities: Table<address, ID>,
+        identities: Table<address, ID>,  // maps owner address → AgentIdentity object ID
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -207,6 +208,8 @@ module sweefi::identity {
             id, owner: _, created_at_ms: _, total_payments: _,
             total_volume: _, last_active_ms: _, recorded_receipts,
         } = identity;
+        // Table must be explicitly dropped before UID deletion —
+        // Move's linear type system requires all fields to be consumed.
         recorded_receipts.drop();
         object::delete(id);
     }
@@ -277,8 +280,8 @@ module sweefi::identity {
     // ══════════════════════════════════════════════════════════════
 
     /// Read-only UID accessor for dynamic field reads by external modules.
-    /// Mutation is kept internal to preserve encapsulation — future
-    /// credential/bond attachment will use explicit functions in this module.
+    /// Returns &UID, not &mut UID — prevents external modules from attaching
+    /// unauthorized dynamic fields. Mutation is kept internal to this module.
     public fun uid(i: &AgentIdentity): &UID { &i.id }
 
     public fun owner(i: &AgentIdentity): address { i.owner }

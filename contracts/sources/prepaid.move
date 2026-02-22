@@ -28,6 +28,10 @@
 ///   - Zero-delta claims are no-ops (prevents withdrawal lock griefing)
 ///   - Per-provider isolation: one PrepaidBalance per agent-provider pair
 ///
+/// LIMITATION: Move cannot verify off-chain calls actually happened.
+///   A dishonest provider can lie about cumulative_call_count.
+///   Protection: rate cap + max_calls bound the maximum extraction per deposit.
+///
 /// C-06 (Bilateral key loss): If both the agent and provider lose access to
 /// their keys, the PrepaidBalance becomes permanently locked — no admin or
 /// third-party can recover the funds. This is by design (no admin backdoor),
@@ -114,26 +118,28 @@ module sweefi::prepaid {
     /// NOTE: `agent` field (not `owner`) to distinguish from Sui object ownership.
     public struct PrepaidBalance<phantom T> has key {
         id: UID,
-        agent: address,                // depositor
-        provider: address,             // authorized claimer
-        deposited: Balance<T>,         // locked collateral
-        rate_per_call: u64,            // max base-units per call (rate cap)
-        claimed_calls: u64,            // CUMULATIVE calls claimed (not incremental)
-        max_calls: u64,                // hard cap; u64::MAX = unlimited
-        last_claim_ms: u64,            // Clock timestamp of last claim
-        withdrawal_delay_ms: u64,      // agent waits this long after last claim to withdraw
-        withdrawal_pending: bool,      // two-phase withdrawal flag
-        withdrawal_requested_ms: u64,  // when withdrawal was requested
-        fee_bps: u64,                  // protocol fee on claims (basis points)
-        fee_recipient: address,        // where fees go
-        // ── v0.2 fraud proof fields ──────────────────────────────
-        provider_pubkey: vector<u8>,   // 32-byte Ed25519 pubkey (empty = v0.1 mode)
-        dispute_window_ms: u64,        // 0 = v0.1, >0 = v0.2 optimistic mode
-        pending_claim_count: u64,      // Cumulative count (0 = no pending claim)
-        pending_claim_amount: u64,     // Gross amount locked in pending claim
-        pending_claim_fee: u64,        // Fee portion of pending claim
-        pending_claim_ms: u64,         // When pending claim was submitted
-        disputed: bool,                // Fraud proven → frozen for agent withdrawal
+        agent: address,                // depositor and authorized withdrawer
+        provider: address,             // sole authorized claimer; fixed at deposit time
+        deposited: Balance<T>,         // live collateral; decreases as claims settle
+        rate_per_call: u64,            // max base-units the provider may claim per call; acts as a rate cap
+        claimed_calls: u64,            // CUMULATIVE total calls settled on-chain (not per-batch incremental)
+        max_calls: u64,                // hard lifetime cap; u64::MAX = effectively unlimited
+        last_claim_ms: u64,            // Clock.timestamp_ms() of last settled claim; initialized to deposit time (not 0) to prevent first-claim timing games
+        withdrawal_delay_ms: u64,      // agent must wait this long after request_withdrawal() before finalizing
+        withdrawal_pending: bool,      // true = withdrawal requested; claims still allowed during this period
+        withdrawal_requested_ms: u64,  // when request_withdrawal() was called; 0 = no pending withdrawal
+        fee_bps: u64,                  // protocol fee on each claim; 1_000_000 = 100% — see math.move
+        fee_recipient: address,        // where fee portion is sent on each claim
+        // ── v0.2 fraud proof fields ──────────────────────────────────────────────
+        // dispute_window_ms == 0 selects v0.1 mode (immediate settlement).
+        // dispute_window_ms > 0 selects v0.2 mode (optimistic: claim → pending → finalize/dispute).
+        provider_pubkey: vector<u8>,   // 32-byte Ed25519 pubkey; empty vector = v0.1 (unsigned) mode
+        dispute_window_ms: u64,        // 0 = v0.1 immediate; >0 = v0.2 optimistic window length (ms)
+        pending_claim_count: u64,      // cumulative count from in-flight v0.2 claim; 0 = no pending claim
+        pending_claim_amount: u64,     // gross amount locked in the pending claim (base units)
+        pending_claim_fee: u64,        // fee portion of pending claim; pre-computed to avoid recomputation on finalize
+        pending_claim_ms: u64,         // Clock.timestamp_ms() when claim() was called; starts the dispute window
+        disputed: bool,                // true = fraud proven; balance frozen for agent withdrawal only
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -249,7 +255,7 @@ module sweefi::prepaid {
         // max_calls=0 means provider can never claim (claim() checks cumulative <= max_calls,
         // so any non-zero count fails). Use u64::MAX for unlimited calls.
         assert!(max_calls > 0, EZeroRate);
-        assert!(fee_bps <= 10_000, EInvalidFeeBps);
+        assert!(fee_bps <= 1_000_000, EInvalidFeeBps);
         assert!(withdrawal_delay_ms >= MIN_WITHDRAWAL_DELAY_MS, EWithdrawalDelayTooShort);
         assert!(withdrawal_delay_ms <= MAX_WITHDRAWAL_DELAY_MS, EWithdrawalDelayTooLong);
 
@@ -264,6 +270,8 @@ module sweefi::prepaid {
             rate_per_call,
             claimed_calls: 0,
             max_calls,
+            // Initialized to now, not 0. If set to 0, the provider could claim
+            // a full withdrawal_delay_ms window of "accrual" on the very first claim.
             last_claim_ms: now_ms,
             withdrawal_delay_ms,
             withdrawal_pending: false,
@@ -317,7 +325,7 @@ module sweefi::prepaid {
         assert!(amount >= MIN_DEPOSIT, EZeroDeposit);
         assert!(rate_per_call > 0, EZeroRate);
         assert!(max_calls > 0, EZeroRate);
-        assert!(fee_bps <= 10_000, EInvalidFeeBps);
+        assert!(fee_bps <= 1_000_000, EInvalidFeeBps);
         assert!(withdrawal_delay_ms >= MIN_WITHDRAWAL_DELAY_MS, EWithdrawalDelayTooShort);
         assert!(withdrawal_delay_ms <= MAX_WITHDRAWAL_DELAY_MS, EWithdrawalDelayTooLong);
 
@@ -378,19 +386,15 @@ module sweefi::prepaid {
     /// Provider says "I've served N total calls". Move computes the delta
     /// from the last claim and transfers `delta * rate_per_call` (minus fees).
     ///
+    /// v0.1 mode (dispute_window_ms == 0): immediate settlement.
+    /// v0.2 mode (dispute_window_ms > 0): stores pending claim, defers transfer.
+    ///
     /// IMPORTANT: Zero-delta claims (cumulative == claimed_calls) are no-ops.
     /// This prevents the provider from griefing the withdrawal lock by spamming
     /// claim(same_count) to indefinitely extend last_claim_ms.
     ///
     /// Claims are ALLOWED during pending withdrawal — the grace period IS
     /// the provider's window to submit final claims.
-    /// Provider claims earned funds based on cumulative call count.
-    ///
-    /// v0.1 mode (dispute_window_ms == 0): immediate settlement.
-    /// v0.2 mode (dispute_window_ms > 0): stores pending claim, defers transfer.
-    ///
-    /// Zero-delta claims are no-ops (prevents withdrawal lock griefing).
-    /// Claims are ALLOWED during pending withdrawal (provider's grace period).
     public fun claim<T>(
         balance: &mut PrepaidBalance<T>,
         cumulative_call_count: u64,
@@ -412,10 +416,11 @@ module sweefi::prepaid {
         // max_calls cap check
         assert!(cumulative_call_count <= balance.max_calls, EMaxCallsExceeded);
 
-        // u128 intermediate math for overflow safety (council CRITICAL F-05)
+        // SECURITY: overflow guard — delta * rate_per_call can exceed u64::MAX before
+        // division if both values are large. u128 intermediate prevents silent wrap.
         let gross_amount_u128 = (delta as u128) * (balance.rate_per_call as u128);
 
-        // Cap at u64::MAX
+        // Cap at u64::MAX before casting — theoretical edge case with very large values
         let gross_amount = if (gross_amount_u128 > 0xFFFFFFFFFFFFFFFF) {
             0xFFFFFFFFFFFFFFFF
         } else {
@@ -467,6 +472,7 @@ module sweefi::prepaid {
             });
         } else {
             // ── v0.2: Optimistic claim (pending) ────────────────
+            // No funds move yet. The dispute window starts now.
             let now_ms = clock.timestamp_ms();
             balance.pending_claim_count = cumulative_call_count;
             balance.pending_claim_amount = gross_amount;
@@ -486,7 +492,8 @@ module sweefi::prepaid {
     }
 
     /// Finalizes a pending claim after the dispute window has elapsed.
-    /// Permissionless — anyone can call to prevent provider griefing.
+    /// Permissionless — anyone can call to prevent provider griefing if the
+    /// provider loses their key or refuses to finalize.
     public fun finalize_claim<T>(
         balance: &mut PrepaidBalance<T>,
         clock: &Clock,
@@ -529,7 +536,7 @@ module sweefi::prepaid {
         balance.claimed_calls = cumulative;
         balance.last_claim_ms = now_ms;
 
-        // Clear pending state
+        // Clear pending state — pending_claim_count = 0 is the "no pending" sentinel
         balance.pending_claim_count = 0;
         balance.pending_claim_amount = 0;
         balance.pending_claim_fee = 0;
@@ -611,18 +618,19 @@ module sweefi::prepaid {
         msg.append(bcs::to_bytes(&receipt_timestamp_ms));
         msg.append(bcs::to_bytes(&receipt_response_hash));
 
-        // Verify Ed25519 signature from provider's key
+        // SECURITY: Ed25519 signature must come from the provider's registered key.
+        // An attacker who forges a receipt must break Ed25519 — computationally infeasible.
         assert!(signature.length() == ED25519_SIG_LEN, EInvalidFraudProof);
         assert!(
             ed25519::ed25519_verify(&signature, &balance.provider_pubkey, &msg),
             EInvalidFraudProof,
         );
 
-        // Fraud proven — freeze the balance
+        // Fraud proven — freeze the balance for agent recovery
         let pending_count = balance.pending_claim_count;
         balance.disputed = true;
 
-        // Clear pending state (no funds move)
+        // Clear pending state — no funds move; the full balance is now reserved for the agent
         balance.pending_claim_count = 0;
         balance.pending_claim_amount = 0;
         balance.pending_claim_fee = 0;

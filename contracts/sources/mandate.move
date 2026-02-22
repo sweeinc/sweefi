@@ -38,35 +38,33 @@ module sweefi::mandate {
     /// Spending authorization owned by the delegate (agent).
     /// phantom T constrains which coin type this mandate covers.
     ///
-    /// B-03: `store` ability is intentional — enables wrapping by higher-level
-    /// protocols (AgentMandate, portfolio managers). Trade-off: `store` allows
-    /// transfer via public_transfer, but transfer doesn't bypass revocation
-    /// (the revocation registry uses the Mandate's UID, which is immutable).
-    /// Removing `store` would break composability with no security benefit.
+    /// `store` ability is intentional (B-03) — enables AgentMandate and other
+    /// higher-level protocols to wrap Mandate without a contract upgrade.
+    /// Trade-off: `store` permits public_transfer, but transferring the object
+    /// doesn't change mandate.delegate — spending still requires the original
+    /// delegate's signature, so there is no security regression from `store`.
     public struct Mandate<phantom T> has key, store {
         id: UID,
-        /// Human who authorized the spending
-        delegator: address,
-        /// Agent who can spend
-        delegate: address,
-        /// Maximum amount per transaction (base units)
-        max_per_tx: u64,
-        /// Lifetime spending cap (base units)
-        max_total: u64,
-        /// Running total of amount spent
-        total_spent: u64,
-        /// Expiry timestamp in milliseconds
-        expires_at_ms: u64,
+        delegator: address,     // human who created and can revoke this mandate
+        delegate: address,      // agent who may call validate_and_spend
+        max_per_tx: u64,        // ceiling per individual spend (base units)
+        max_total: u64,         // lifetime ceiling across all spends (base units)
+        total_spent: u64,       // running sum; never decreases; invariant: total_spent <= max_total
+        expires_at_ms: u64,     // Clock.timestamp_ms() threshold; spending blocked at or after this
     }
 
     /// Shared revocation registry. One per delegator.
     /// Uses dynamic fields keyed by mandate ID for O(1) lookups.
+    /// `owner` records the delegator to prevent a rogue delegate from passing
+    /// a different, empty registry they control to bypass the revocation check.
     public struct RevocationRegistry has key {
         id: UID,
-        owner: address,
+        owner: address,         // the delegator; must match mandate.delegator on every spend
     }
 
-    /// Dynamic field key for revocation status
+    /// Dynamic field key for revocation status.
+    /// A struct key (not a raw string or integer) prevents namespace collisions
+    /// with any other dynamic fields that might be added to the registry UID.
     public struct RevokedKey has copy, drop, store {
         mandate_id: ID,
     }
@@ -134,8 +132,10 @@ module sweefi::mandate {
         clock: &Clock,
         ctx: &TxContext,
     ) {
-        // C-2: Verify this is the delegator's own registry — prevents delegate passing
-        // an empty registry they control to bypass the delegator's revocation.
+        // SECURITY (C-2): Verify this is the delegator's own registry.
+        // is_id_revoked() is a low-level helper that does NOT check registry ownership.
+        // Without this check, a rogue delegate could pass an empty registry they
+        // control to bypass the delegator's revocation entirely.
         assert!(registry.owner == mandate.delegator, ENotDelegator);
         let key = RevokedKey { mandate_id: object::id(mandate) };
         assert!(!df::exists_(&registry.id, key), ERevoked);
@@ -180,6 +180,7 @@ module sweefi::mandate {
     ) {
         assert!(ctx.sender() == registry.owner, ENotDelegator);
         let key = RevokedKey { mandate_id };
+        // Idempotent: revoking the same mandate twice is a no-op, not an abort.
         if (!df::exists_(&registry.id, key)) {
             df::add(&mut registry.id, key, true);
         };
@@ -252,13 +253,15 @@ module sweefi::mandate {
         df::exists_(&registry.id, key)
     }
 
-    /// Check if an arbitrary object ID is revoked in a registry.
-    /// Used by agent_mandate module for cross-module revocation checks.
     /// Return the owner (delegator) of a RevocationRegistry.
     /// Used by composing modules (e.g. agent_mandate) to verify registry ownership
-    /// before calling is_id_revoked() — the low-level helper does not check ownership.
+    /// before calling is_id_revoked() — that helper does NOT check ownership itself.
     public fun registry_owner(registry: &RevocationRegistry): address { registry.owner }
 
+    /// Check if an arbitrary object ID is revoked in a registry.
+    /// LIMITATION: Does NOT verify that registry.owner matches any particular delegator.
+    /// Callers MUST call registry_owner() and verify the match themselves before using
+    /// this result for authorization — see validate_and_spend for the correct pattern.
     public fun is_id_revoked(registry: &RevocationRegistry, mandate_id: ID): bool {
         let key = RevokedKey { mandate_id };
         df::exists_(&registry.id, key)

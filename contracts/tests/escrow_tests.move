@@ -33,7 +33,7 @@ module sweefi::escrow_tests {
             SELLER,
             ARBITER,
             DEADLINE_MS,
-            50,             // 0.5% fee
+            5_000,          // 0.5% fee
             FEE_RECIPIENT,
             b"deliver NFT",
             &state,
@@ -51,7 +51,7 @@ module sweefi::escrow_tests {
         assert!(escrow::escrow_amount(&e) == 1_000_000);
         assert!(escrow::escrow_deadline_ms(&e) == DEADLINE_MS);
         assert!(escrow::escrow_state(&e) == 0); // STATE_ACTIVE
-        assert!(escrow::escrow_fee_bps(&e) == 50);
+        assert!(escrow::escrow_fee_bps(&e) == 5_000);
         assert!(escrow::escrow_description(&e) == &b"deliver NFT");
 
         ts::return_shared(e);
@@ -108,7 +108,7 @@ module sweefi::escrow_tests {
         let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
-            deposit, SELLER, ARBITER, DEADLINE_MS, 10_001, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
+            deposit, SELLER, ARBITER, DEADLINE_MS, 1_000_001, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
         );
 
         admin::destroy_cap_for_testing(_cap);
@@ -174,7 +174,7 @@ module sweefi::escrow_tests {
         let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
-            deposit, SELLER, ARBITER, DEADLINE_MS, 50, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
+            deposit, SELLER, ARBITER, DEADLINE_MS, 5_000, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
         );
 
         // Buyer releases
@@ -186,7 +186,7 @@ module sweefi::escrow_tests {
         assert!(escrow::receipt_buyer(&receipt) == BUYER);
         assert!(escrow::receipt_seller(&receipt) == SELLER);
         assert!(escrow::receipt_amount(&receipt) == 1_000_000);
-        assert!(escrow::receipt_fee_amount(&receipt) == 5_000); // 1_000_000 * 50bps / 10000 = 5_000
+        assert!(escrow::receipt_fee_amount(&receipt) == 5_000); // 1_000_000 * 5_000 / 1_000_000 = 5_000
         assert!(escrow::receipt_released_by(&receipt) == BUYER);
 
         transfer::public_transfer(receipt, BUYER);
@@ -194,13 +194,13 @@ module sweefi::escrow_tests {
         // Verify seller received funds (1_000_000 - 5_000 fee = 995_000)
         scenario.next_tx(SELLER);
         let seller_coin = scenario.take_from_address<coin::Coin<SUI>>(SELLER);
-        assert!(seller_coin.value() == 995_000); // 1_000_000 - 5_000 fee (50 bps)
+        assert!(seller_coin.value() == 995_000); // 1_000_000 - 5_000 fee (5_000 fee_bps)
         ts::return_to_address(SELLER, seller_coin);
 
         // Verify fee recipient got fee
         scenario.next_tx(FEE_RECIPIENT);
         let fee_coin = scenario.take_from_address<coin::Coin<SUI>>(FEE_RECIPIENT);
-        assert!(fee_coin.value() == 5_000); // 1_000_000 * 50 bps
+        assert!(fee_coin.value() == 5_000); // 1_000_000 * 5_000 fee_bps / 1_000_000
         ts::return_to_address(FEE_RECIPIENT, fee_coin);
 
         admin::destroy_cap_for_testing(_cap);
@@ -249,7 +249,7 @@ module sweefi::escrow_tests {
         let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
-            deposit, SELLER, ARBITER, DEADLINE_MS, 10_000, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
+            deposit, SELLER, ARBITER, DEADLINE_MS, 1_000_000, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
         );
 
         scenario.next_tx(BUYER);
@@ -378,7 +378,7 @@ module sweefi::escrow_tests {
         let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
-            deposit, SELLER, ARBITER, DEADLINE_MS, 50, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
+            deposit, SELLER, ARBITER, DEADLINE_MS, 5_000, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
         );
 
         // Advance past deadline
@@ -420,7 +420,7 @@ module sweefi::escrow_tests {
 
         // Create escrow with 2% fee (but fee does NOT apply to refunds)
         escrow::create<SUI>(
-            deposit, SELLER, ARBITER, DEADLINE_MS, 200, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
+            deposit, SELLER, ARBITER, DEADLINE_MS, 20_000, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
         );
 
         // Advance past deadline
@@ -475,7 +475,7 @@ module sweefi::escrow_tests {
         let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
-            deposit, SELLER, ARBITER, DEADLINE_MS, 50, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
+            deposit, SELLER, ARBITER, DEADLINE_MS, 5_000, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
         );
 
         // Seller disputes
@@ -532,7 +532,9 @@ module sweefi::escrow_tests {
 
     #[test]
     fun test_deadline_refund_on_disputed_escrow() {
-        // Arbiter griefing protection: if arbiter disappears, deadline still works
+        // Arbiter griefing protection: if arbiter disappears, deadline still works.
+        // Note: dispute() may extend deadline via grace period, so we advance
+        // past the *effective* deadline, not the original one.
         let mut scenario = ts::begin(BUYER);
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
@@ -546,10 +548,11 @@ module sweefi::escrow_tests {
         scenario.next_tx(BUYER);
         let mut e = scenario.take_shared<escrow::Escrow<SUI>>();
         escrow::dispute(&mut e, &clock, scenario.ctx());
+        let effective_deadline = escrow::escrow_deadline_ms(&e);
         ts::return_shared(e);
 
-        // Advance past deadline — anyone can trigger refund even while disputed
-        clock.set_for_testing(DEADLINE_MS + 1);
+        // Advance past effective deadline (may be extended by grace period)
+        clock.set_for_testing(effective_deadline + 1);
 
         scenario.next_tx(STRANGER);
         let e = scenario.take_shared<escrow::Escrow<SUI>>();
@@ -714,14 +717,14 @@ module sweefi::escrow_tests {
         let deposit = coin::mint_for_testing<SUI>(large_amount, scenario.ctx());
 
         escrow::create<SUI>(
-            deposit, SELLER, ARBITER, DEADLINE_MS, 50, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
+            deposit, SELLER, ARBITER, DEADLINE_MS, 5_000, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
         );
 
         scenario.next_tx(BUYER);
         let e = scenario.take_shared<escrow::Escrow<SUI>>();
         let receipt = escrow::release<SUI>(e, &clock, scenario.ctx());
 
-        // 10^18 * 50 / 10000 = 5 * 10^15
+        // 10^18 * 5_000 / 1_000_000 = 5 * 10^15
         assert!(escrow::receipt_fee_amount(&receipt) == 5_000_000_000_000_000);
 
         transfer::public_transfer(receipt, BUYER);
@@ -765,7 +768,7 @@ module sweefi::escrow_tests {
         let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
-            deposit, SELLER, ARBITER, DEADLINE_MS, 200, FEE_RECIPIENT, b"digital art", &state, &clock, scenario.ctx(),
+            deposit, SELLER, ARBITER, DEADLINE_MS, 20_000, FEE_RECIPIENT, b"digital art", &state, &clock, scenario.ctx(),
         );
 
         // Buyer disputes
@@ -781,7 +784,7 @@ module sweefi::escrow_tests {
 
         // Verify receipt
         assert!(escrow::receipt_amount(&receipt) == 1_000_000);
-        assert!(escrow::receipt_fee_amount(&receipt) == 20_000); // 1_000_000 * 200 bps / 10_000
+        assert!(escrow::receipt_fee_amount(&receipt) == 20_000); // 1_000_000 * 20_000 / 1_000_000
         assert!(escrow::receipt_released_by(&receipt) == ARBITER);
 
         transfer::public_transfer(receipt, BUYER);
@@ -789,13 +792,13 @@ module sweefi::escrow_tests {
         // Seller: 50000 - 1000 = 49000
         scenario.next_tx(SELLER);
         let seller_coin = scenario.take_from_address<coin::Coin<SUI>>(SELLER);
-        assert!(seller_coin.value() == 980_000); // 1_000_000 - 20_000 fee (200 bps)
+        assert!(seller_coin.value() == 980_000); // 1_000_000 - 20_000 fee (20_000 fee_bps)
         ts::return_to_address(SELLER, seller_coin);
 
         // Fee: 1000
         scenario.next_tx(FEE_RECIPIENT);
         let fee_coin = scenario.take_from_address<coin::Coin<SUI>>(FEE_RECIPIENT);
-        assert!(fee_coin.value() == 20_000); // 1_000_000 * 200 bps / 10_000
+        assert!(fee_coin.value() == 20_000); // 1_000_000 * 20_000 / 1_000_000
         ts::return_to_address(FEE_RECIPIENT, fee_coin);
 
         admin::destroy_cap_for_testing(_cap);
@@ -813,7 +816,7 @@ module sweefi::escrow_tests {
         let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
-            deposit, SELLER, ARBITER, DEADLINE_MS, 200, FEE_RECIPIENT, b"digital art", &state, &clock, scenario.ctx(),
+            deposit, SELLER, ARBITER, DEADLINE_MS, 20_000, FEE_RECIPIENT, b"digital art", &state, &clock, scenario.ctx(),
         );
 
         // Seller disputes (buyer won't release)
@@ -856,7 +859,7 @@ module sweefi::escrow_tests {
         // Try to create an escrow — should fail
         let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
         escrow::create<SUI>(
-            deposit, SELLER, ARBITER, DEADLINE_MS, 50, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
+            deposit, SELLER, ARBITER, DEADLINE_MS, 5_000, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
         );
 
         admin::destroy_cap_for_testing(cap);
@@ -944,6 +947,296 @@ module sweefi::escrow_tests {
 
         ts::return_shared(e);
         admin::destroy_cap_for_testing(cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // Dispute grace period tests
+    //
+    // The grace period prevents a race condition on DISPUTED escrows
+    // after the deadline passes. Without it, a buyer's refund bot can
+    // front-run the arbiter's release(), enabling theft (buyer keeps
+    // goods + gets full refund).
+    //
+    // Grace = clamp(original_duration × 50%, 7 days, 30 days)
+    //   GRACE_FLOOR_MS = 604_800_000  (7 days)
+    //   GRACE_CAP_MS   = 2_592_000_000 (30 days)
+    // ══════════════════════════════════════════════════════════════
+
+    // Helper constants for grace period tests
+    // 1 day = 86_400_000 ms
+    const ONE_DAY_MS: u64 = 86_400_000;
+    // 7 days = 604_800_000 ms (grace floor)
+    const SEVEN_DAYS_MS: u64 = 604_800_000;
+    // 30 days = 2_592_000_000 ms (grace cap)
+    const THIRTY_DAYS_MS: u64 = 2_592_000_000;
+
+    #[test]
+    fun test_dispute_extends_deadline_when_close_to_expiry() {
+        // Scenario: 7-day escrow, dispute filed on day 6 (1 day remaining).
+        // Grace = clamp(7d × 50%, 7d, 30d) = 7d (floor).
+        // New deadline = day 6 + 7 days = day 13.
+        let mut scenario = ts::begin(BUYER);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        let deadline = SEVEN_DAYS_MS; // 7 day escrow
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, deadline, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
+        );
+
+        // Advance to day 6 (1 day before deadline)
+        let day_6 = 6 * ONE_DAY_MS;
+        clock.set_for_testing(day_6);
+
+        scenario.next_tx(SELLER);
+        let mut e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::dispute(&mut e, &clock, scenario.ctx());
+
+        // Deadline should be extended: day 6 + 7 days grace = day 13
+        assert!(escrow::escrow_deadline_ms(&e) == day_6 + SEVEN_DAYS_MS);
+        // Verify it's beyond the original deadline
+        assert!(escrow::escrow_deadline_ms(&e) > deadline);
+
+        ts::return_shared(e);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    fun test_dispute_does_not_extend_when_far_from_expiry() {
+        // Scenario: 90-day escrow, dispute filed on day 1 (89 days remaining).
+        // Grace = clamp(90d × 50%, 7d, 30d) = 30d (cap).
+        // min_deadline = day 1 + 30 days = day 31.
+        // Original deadline = day 90. 31 < 90, so deadline unchanged.
+        let mut scenario = ts::begin(BUYER);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        let deadline = 90 * ONE_DAY_MS; // 90-day escrow
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, deadline, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
+        );
+
+        // Dispute on day 1
+        let day_1 = ONE_DAY_MS;
+        clock.set_for_testing(day_1);
+
+        scenario.next_tx(BUYER);
+        let mut e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::dispute(&mut e, &clock, scenario.ctx());
+
+        // Deadline should NOT change — 89 days remaining > 30 day grace cap
+        assert!(escrow::escrow_deadline_ms(&e) == deadline);
+
+        ts::return_shared(e);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    fun test_arbiter_release_after_original_deadline_within_grace() {
+        // THE KEY RACE CONDITION TEST.
+        // Before the fix: arbiter's release() could be front-run by refund().
+        // After the fix: refund() blocked during grace period, arbiter release() works.
+        //
+        // Scenario: 7-day escrow, dispute on day 6.
+        // Grace extends deadline to day 13.
+        // On day 8 (past original deadline, within grace), arbiter releases.
+        let mut scenario = ts::begin(BUYER);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        let deadline = SEVEN_DAYS_MS;
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, deadline, 5_000, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
+        );
+
+        // Dispute on day 6
+        clock.set_for_testing(6 * ONE_DAY_MS);
+        scenario.next_tx(SELLER);
+        let mut e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::dispute(&mut e, &clock, scenario.ctx());
+        ts::return_shared(e);
+
+        // Day 8 — past original 7-day deadline, but within grace period
+        clock.set_for_testing(8 * ONE_DAY_MS);
+
+        // Arbiter releases (this is the fix — without grace, a refund bot could race this)
+        scenario.next_tx(ARBITER);
+        let e = scenario.take_shared<escrow::Escrow<SUI>>();
+        let receipt = escrow::release<SUI>(e, &clock, scenario.ctx());
+
+        assert!(escrow::receipt_released_by(&receipt) == ARBITER);
+        assert!(escrow::receipt_amount(&receipt) == 1_000_000);
+        transfer::public_transfer(receipt, BUYER);
+
+        // Verify seller got paid
+        scenario.next_tx(SELLER);
+        let seller_coin = scenario.take_from_address<coin::Coin<SUI>>(SELLER);
+        assert!(seller_coin.value() == 995_000); // 1M - 5_000 fee
+        ts::return_to_address(SELLER, seller_coin);
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    #[expected_failure(abort_code = escrow::ENotArbiter)]
+    fun test_permissionless_refund_blocked_during_grace_period() {
+        // After dispute extends deadline, permissionless refund should fail
+        // during the grace window — even though we're past the ORIGINAL deadline.
+        // Error is ENotArbiter (not EDeadlineNotReached) because the refund logic
+        // for DISPUTED + pre-deadline escrows requires arbiter authorization.
+        let mut scenario = ts::begin(BUYER);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        let deadline = SEVEN_DAYS_MS;
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, deadline, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
+        );
+
+        // Dispute on day 6
+        clock.set_for_testing(6 * ONE_DAY_MS);
+        scenario.next_tx(SELLER);
+        let mut e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::dispute(&mut e, &clock, scenario.ctx());
+        ts::return_shared(e);
+
+        // Day 8 — past original deadline (7d), but within grace (extends to day 13)
+        clock.set_for_testing(8 * ONE_DAY_MS);
+
+        // Stranger tries permissionless refund — should FAIL
+        scenario.next_tx(STRANGER);
+        let e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::refund<SUI>(e, &clock, scenario.ctx()); // aborts EDeadlineNotReached
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    fun test_permissionless_refund_succeeds_after_grace_period() {
+        // After the grace period expires, permissionless refund works again.
+        // This is the arbiter griefing protection: if arbiter disappears,
+        // funds are not locked forever.
+        let mut scenario = ts::begin(BUYER);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        let deadline = SEVEN_DAYS_MS;
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, deadline, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
+        );
+
+        // Dispute on day 6 → grace extends deadline to day 13
+        clock.set_for_testing(6 * ONE_DAY_MS);
+        scenario.next_tx(SELLER);
+        let mut e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::dispute(&mut e, &clock, scenario.ctx());
+        let extended_deadline = escrow::escrow_deadline_ms(&e);
+        ts::return_shared(e);
+
+        // Advance past extended deadline
+        clock.set_for_testing(extended_deadline + 1);
+
+        // Permissionless refund now works
+        scenario.next_tx(STRANGER);
+        let e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::refund<SUI>(e, &clock, scenario.ctx());
+
+        // Buyer gets full refund (no fee on refund)
+        scenario.next_tx(BUYER);
+        let refund = scenario.take_from_address<coin::Coin<SUI>>(BUYER);
+        assert!(refund.value() == 1_000_000);
+        ts::return_to_address(BUYER, refund);
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    fun test_grace_period_proportional_30day_escrow() {
+        // 30-day escrow: grace = clamp(30d × 50%, 7d, 30d) = 15 days.
+        // Dispute on day 28 (2 days remaining).
+        // New deadline = day 28 + 15 days = day 43.
+        let mut scenario = ts::begin(BUYER);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        let deadline = 30 * ONE_DAY_MS; // 30-day escrow
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, deadline, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
+        );
+
+        // Dispute on day 28
+        let day_28 = 28 * ONE_DAY_MS;
+        clock.set_for_testing(day_28);
+
+        scenario.next_tx(BUYER);
+        let mut e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::dispute(&mut e, &clock, scenario.ctx());
+
+        // Grace = 30d × 50% = 15d. New deadline = day 28 + 15d = day 43
+        let expected_deadline = day_28 + 15 * ONE_DAY_MS;
+        assert!(escrow::escrow_deadline_ms(&e) == expected_deadline);
+
+        ts::return_shared(e);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    fun test_grace_period_caps_at_30_days() {
+        // 120-day escrow: grace = clamp(120d × 50%, 7d, 30d) = 30 days (cap).
+        // Dispute on day 115 (5 days remaining).
+        // New deadline = day 115 + 30 days = day 145.
+        let mut scenario = ts::begin(BUYER);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        let deadline = 120 * ONE_DAY_MS; // 120-day escrow
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, deadline, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
+        );
+
+        // Dispute on day 115
+        let day_115 = 115 * ONE_DAY_MS;
+        clock.set_for_testing(day_115);
+
+        scenario.next_tx(SELLER);
+        let mut e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::dispute(&mut e, &clock, scenario.ctx());
+
+        // Grace = 120d × 50% = 60d, capped at 30d.
+        // New deadline = day 115 + 30d = day 145
+        let expected_deadline = day_115 + THIRTY_DAYS_MS;
+        assert!(escrow::escrow_deadline_ms(&e) == expected_deadline);
+
+        ts::return_shared(e);
+        admin::destroy_cap_for_testing(_cap);
         admin::destroy_state_for_testing(state);
         clock.destroy_for_testing();
         scenario.end();

@@ -11,7 +11,7 @@
 ///     creation functions only (two-tier guard — see ADR-004).
 ///
 /// Two-tier guard design:
-///   - Stream + Escrow: Guard creation/deposit functions only
+///   - Stream + Escrow + Prepaid + Identity: Guard creation/deposit functions only
 ///     (stop new money entering a broken system)
 ///   - Payment + Seal: No guard (preserve owned-object fast path)
 ///   - User withdrawals: Never guarded (users must always exit)
@@ -37,15 +37,17 @@ module sweefi::admin {
 
     /// Authorization token for admin operations.
     /// key + store: `store` enables wrapping in a multisig module without upgrade.
+    /// Intentionally has no fields beyond `id` — its presence in a transaction IS the proof.
     public struct AdminCap has key, store {
         id: UID,
     }
 
     /// Global protocol state — shared object.
+    /// No `store` ability — only this module can share it, preventing shadow registries.
     /// Currently just a pause flag. Granularity can be added later if needed.
     public struct ProtocolState has key {
         id: UID,
-        paused: bool,
+        paused: bool,   // true = only withdrawals allowed; new deposits/creations blocked
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -68,6 +70,8 @@ module sweefi::admin {
     // Init — creates AdminCap + ProtocolState on publish
     // ══════════════════════════════════════════════════════════════
 
+    // Both objects are created atomically in the same transaction, so there is
+    // no window where ProtocolState exists but the AdminCap hasn't been delivered.
     fun init(ctx: &mut TxContext) {
         transfer::transfer(
             AdminCap { id: object::new(ctx) },
@@ -98,6 +102,8 @@ module sweefi::admin {
 
     /// Pause the protocol. Prevents new stream/escrow creation.
     /// Existing streams/escrows and all withdrawals are unaffected.
+    /// `_cap` is unused beyond proving capability — the underscore is intentional
+    /// (Move's capability pattern: object presence in a tx is the authorization).
     public entry fun pause(
         _cap: &AdminCap,
         state: &mut ProtocolState,

@@ -31,7 +31,7 @@ module sweefi::stream_tests {
             PROVIDER,
             RATE,
             100_000,    // budget_cap = deposit
-            50,         // 0.5% fee
+            5_000,      // 0.5% fee
             FEE_RECIPIENT,
             &state,
             &clock,
@@ -138,8 +138,8 @@ module sweefi::stream_tests {
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
         let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 500, FEE_RECIPIENT, &state, &clock, scenario.ctx());
-        // 500 bps = 5%
+        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 50_000, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        // 50_000 fee_bps = 5%
 
         // Advance 10 seconds → accrued = 3000
         clock.increment_for_testing(10_000);
@@ -148,7 +148,7 @@ module sweefi::stream_tests {
         let mut meter = scenario.take_shared<stream::StreamingMeter<SUI>>();
         stream::claim(&mut meter, &clock, scenario.ctx());
 
-        // Fee: 3000 * 500 / 10000 = 150
+        // Fee: 3000 * 50_000 / 1_000_000 = 150
         // Recipient: 3000 - 150 = 2850
         assert!(stream::meter_total_claimed(&meter) == 3_000);
         assert!(stream::meter_balance(&meter) == 97_000);

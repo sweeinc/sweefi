@@ -35,28 +35,32 @@ module sweefi::payment {
     /// Invoice NFT — owned by creator, consumed on payment.
     /// Council Finding #2: Sui-idiomatic replay dedup without shared registry.
     /// The facilitator (or merchant) creates this. The payer's PTB consumes it.
+    ///
+    /// `key` only (no `store`): prevents wrapping or bridging by third parties;
+    /// transfers are module-controlled via send_invoice(). This ensures the Invoice
+    /// cannot escape the module's transfer logic into an arbitrary wrapper.
     public struct Invoice has key {
         id: UID,
-        creator: address,
-        recipient: address,
-        expected_amount: u64,
-        fee_bps: u64,
-        fee_recipient: address,
+        creator: address,       // address that called create_invoice
+        recipient: address,     // where payment proceeds go
+        expected_amount: u64,   // exact amount the payer must provide (base units)
+        fee_bps: u64,           // fee rate; 1_000_000 = 100% — see math.move
+        fee_recipient: address, // where the fee portion is sent
     }
 
     /// On-chain payment receipt — owned by payer.
     /// Council Finding #5: Owned object, no contention.
-    /// Council Finding #6: Has `store` for composability (SEAL access condition,
-    /// transfer to other protocols). Can be made soul-bound by removing `store`.
+    /// `store` enables SEAL access condition composition and delegation
+    /// (see seal_policy.move). Removing `store` makes it soul-bound to the payer.
     public struct PaymentReceipt has key, store {
         id: UID,
-        payer: address,
-        recipient: address,
-        amount: u64,
-        fee_amount: u64,
-        token_type: ascii::String,
-        timestamp_ms: u64,
-        memo: vector<u8>,
+        payer: address,             // address that signed the payment transaction
+        recipient: address,         // address that received the net amount
+        amount: u64,                // gross payment amount (before fee deduction)
+        fee_amount: u64,            // fee deducted from amount and sent to fee_recipient
+        token_type: ascii::String,  // fully-qualified coin type, e.g. "0x2::sui::SUI"
+        timestamp_ms: u64,          // Clock.timestamp_ms() at settlement; never decreases
+        memo: vector<u8>,           // arbitrary caller-supplied bytes; not validated
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -109,7 +113,7 @@ module sweefi::payment {
         ctx: &mut TxContext,
     ): Invoice {
         assert!(expected_amount > 0, EZeroAmount);
-        assert!(fee_bps <= 10_000, EInvalidFeeBps);
+        assert!(fee_bps <= 1_000_000, EInvalidFeeBps);
 
         let invoice = Invoice {
             id: object::new(ctx),
@@ -162,6 +166,9 @@ module sweefi::payment {
     ///
     /// Council Finding #1: Takes ownership of Coin<T> (not &Coin<T>).
     /// Returns change to payer if overpayment.
+    ///
+    /// PRECONDITION: caller must validate fee_bps <= 1_000_000 before calling.
+    ///   (enforced here, but the error message is clearer if caught at the call site)
     public fun pay<T>(
         mut payment: Coin<T>,
         recipient: address,
@@ -174,10 +181,11 @@ module sweefi::payment {
     ): PaymentReceipt {
         // Validate inputs
         assert!(amount > 0, EZeroAmount);
-        assert!(fee_bps <= 10_000, EInvalidFeeBps);
+        assert!(fee_bps <= 1_000_000, EInvalidFeeBps);
         assert!(payment.value() >= amount, EInsufficientPayment);
 
-        // Return change if overpayment
+        // Return change before fee split — fee is computed on `amount`, not on
+        // payment.value(). Returning change first simplifies balance accounting.
         let payment_value = payment.value();
         if (payment_value > amount) {
             let change = payment.split(payment_value - amount, ctx);
@@ -215,7 +223,7 @@ module sweefi::payment {
             memo,
         };
 
-        // Emit event for indexing
+        // token_type must be re-captured here — it was moved into the receipt struct above.
         event::emit(PaymentSettled {
             receipt_id: object::id(&receipt),
             payer: ctx.sender(),
@@ -260,7 +268,9 @@ module sweefi::payment {
         clock: &Clock,
         ctx: &mut TxContext,
     ): PaymentReceipt {
-        // Destructure and consume invoice (replay protection)
+        // Destructure and consume invoice — this is the replay protection.
+        // After this point the Invoice UID is deleted; the same Invoice cannot
+        // be passed to this function again.
         let Invoice {
             id: invoice_uid,
             creator: _,
@@ -273,7 +283,8 @@ module sweefi::payment {
         let invoice_id = invoice_uid.to_inner();
         invoice_uid.delete();
 
-        // Validate payment
+        // Belt-and-suspenders: expected_amount was validated at create_invoice time,
+        // but re-checked here to guard against any future construction path that skips it.
         assert!(expected_amount > 0, EZeroAmount);
         let payment_value = payment.value();
         assert!(payment_value >= expected_amount, EInsufficientPayment);
@@ -312,10 +323,10 @@ module sweefi::payment {
             fee_amount,
             token_type,
             timestamp_ms,
-            memo: b"", // Invoice-based payments don't need a memo
+            memo: b"", // Invoice terms are in the Invoice fields; no free-form memo needed
         };
 
-        // Emit event for indexing
+        // token_type re-captured — moved into receipt above
         event::emit(InvoicePaid {
             invoice_id,
             receipt_id: object::id(&receipt),

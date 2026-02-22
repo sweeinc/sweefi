@@ -19,7 +19,9 @@
 ///   - Shared object (3 parties: buyer, seller, arbiter all need to mutate)
 ///   - NOT on the hot payment path — shared object contention is acceptable
 ///   - No partial release (V2 if market demands)
-///   - No deadline extension (griefing vector — create new escrow instead)
+///   - No deadline extension on ACTIVE escrows (griefing vector)
+///   - DISPUTED escrows get bounded proportional grace period (prevents refund race condition)
+///     Grace = clamp(original_duration × 50%, 7 days, 30 days)
 ///   - No fee on refund (buyer shouldn't pay for failed delivery)
 ///   - Error codes: 200-series (payment=0-series, stream=100-series)
 #[allow(lint(self_transfer), unused_const)]
@@ -57,6 +59,9 @@ module sweefi::escrow {
     // State constants
     // ══════════════════════════════════════════════════════════════
 
+    // Move has no enums; u8 is the idiomatic alternative. Only these four
+    // values are ever written; the type system cannot enforce exhaustiveness,
+    // so every match must be reviewed manually against this set.
     const STATE_ACTIVE: u8 = 0;
     const STATE_DISPUTED: u8 = 1;
     const STATE_RELEASED: u8 = 2;
@@ -65,6 +70,25 @@ module sweefi::escrow {
     /// Minimum deposit: 1,000,000 base units (0.001 SUI or 1 USDC).
     /// Prevents dust-deposit spam creating near-empty shared escrow objects.
     const MIN_DEPOSIT: u64 = 1_000_000;
+
+    // ══════════════════════════════════════════════════════════════
+    // Dispute grace period constants
+    //
+    // When dispute() is called, the deadline is extended (if needed) to give
+    // the arbiter time to investigate and rule. Without this, a buyer's
+    // refund bot can front-run the arbiter's release() after the original
+    // deadline passes — enabling theft (buyer keeps goods + gets refund).
+    //
+    // Grace = clamp(original_duration × 50%, FLOOR, CAP)
+    // Uses the same micro-percent unit as math.move's FEE_DENOMINATOR.
+    // ══════════════════════════════════════════════════════════════
+
+    /// 50% of original escrow duration, in micro-percent (500_000 / 1_000_000 = 50%)
+    const GRACE_RATIO: u64 = 500_000;
+    /// Minimum grace period: 7 days. Protects short escrows (digital goods).
+    const GRACE_FLOOR_MS: u64 = 604_800_000;
+    /// Maximum grace period: 30 days. Bounds lockup extension on long escrows.
+    const GRACE_CAP_MS: u64 = 2_592_000_000;
 
     // ══════════════════════════════════════════════════════════════
     // Types
@@ -78,14 +102,14 @@ module sweefi::escrow {
         buyer: address,
         seller: address,
         arbiter: address,
-        balance: Balance<T>,
-        amount: u64,                // original deposit (for receipt/events)
-        deadline_ms: u64,           // Clock timestamp — after this, buyer can refund
-        state: u8,                  // STATE_ACTIVE, STATE_DISPUTED, STATE_RELEASED, STATE_REFUNDED
-        fee_bps: u64,
-        fee_recipient: address,
-        created_at_ms: u64,
-        description: vector<u8>,
+        balance: Balance<T>,    // live balance; decreases as fee/proceeds are split on resolution
+        amount: u64,            // original deposit — balance cannot be used for events after destructuring
+        deadline_ms: u64,       // Clock.timestamp_ms() threshold; after this anyone can trigger refund
+        state: u8,              // STATE_ACTIVE | STATE_DISPUTED | STATE_RELEASED | STATE_REFUNDED
+        fee_bps: u64,           // facilitator fee on release only; 1_000_000 = 100% — see math.move
+        fee_recipient: address, // where the fee portion goes on release
+        created_at_ms: u64,     // creation timestamp for off-chain analytics
+        description: vector<u8>, // buyer-supplied context; max 1024 bytes; not validated on-chain
     }
 
     /// Escrow receipt — proof of successful release.
@@ -96,14 +120,14 @@ module sweefi::escrow {
     /// After release, buyer gets this receipt and can decrypt via SEAL.
     public struct EscrowReceipt has key, store {
         id: UID,
-        escrow_id: ID,              // links to resolved escrow — THIS is the SEAL anchor
+        escrow_id: ID,          // ID of the now-deleted Escrow — THIS is the SEAL anchor
         buyer: address,
         seller: address,
-        amount: u64,
-        fee_amount: u64,
+        amount: u64,            // original deposit amount (gross, including fee)
+        fee_amount: u64,        // portion sent to fee_recipient; seller received amount - fee_amount
         token_type: ascii::String,
         released_at_ms: u64,
-        released_by: address,       // buyer or arbiter
+        released_by: address,   // buyer (voluntary) or arbiter (dispute resolved in seller's favor)
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -140,7 +164,7 @@ module sweefi::escrow {
         seller: address,
         amount: u64,
         refunded_by: address,
-        reason: u8,                 // STATE_ACTIVE (timeout) or STATE_DISPUTED (arbiter)
+        reason: u8,             // STATE_ACTIVE (timeout refund) or STATE_DISPUTED (arbiter refund)
         token_type: ascii::String,
         timestamp_ms: u64,
     }
@@ -149,6 +173,7 @@ module sweefi::escrow {
         escrow_id: ID,
         disputed_by: address,
         timestamp_ms: u64,
+        new_deadline_ms: u64,   // effective deadline after grace period (may equal original)
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -178,7 +203,7 @@ module sweefi::escrow {
         // H-6: Enforce minimum deposit to prevent dust spam on shared objects
         assert!(deposit_value >= MIN_DEPOSIT, EZeroAmount);
         assert!(deadline_ms > now_ms, EDeadlineInPast);
-        assert!(fee_bps <= 10_000, EInvalidFeeBps);
+        assert!(fee_bps <= 1_000_000, EInvalidFeeBps);
         assert!(description.length() <= 1024, EDescriptionTooLong);
         // Prevent seller == arbiter: seller could dispute() then release() as arbiter,
         // bypassing buyer consent entirely. See security audit session 128.
@@ -257,7 +282,8 @@ module sweefi::escrow {
         let sender = ctx.sender();
         let escrow_id = id.to_inner();
 
-        // Authorization check
+        // State check before sender check: gives the caller a more informative abort
+        // ("already resolved") rather than a confusing "not buyer/arbiter" error.
         assert!(state == STATE_ACTIVE || state == STATE_DISPUTED, EAlreadyResolved);
         if (state == STATE_ACTIVE) {
             assert!(sender == buyer, ENotBuyer);
@@ -270,6 +296,8 @@ module sweefi::escrow {
 
         // Calculate fee with overflow protection (u128 intermediate)
         let fee_amount = math::calculate_fee(amount, fee_bps);
+        // _seller_amount is computed for documentation clarity — the balance split
+        // handles the arithmetic implicitly; this makes the intent legible to auditors.
         let _seller_amount = amount - fee_amount;
 
         // Split fee from balance
@@ -376,8 +404,9 @@ module sweefi::escrow {
         // 1. Deadline passed — anyone can trigger (permissionless timeout)
         // 2. Arbiter refund on disputed escrow
         if (now_ms >= deadline_ms) {
-            // Path 1: Deadline passed — permissionless refund
-            // Works for both ACTIVE and DISPUTED states
+            // Path 1: Deadline passed — permissionless refund.
+            // The empty block is intentional: Move has no "else if" with an empty body
+            // shorthand. The logic here is "no auth required; proceed unconditionally."
         } else if (state == STATE_DISPUTED) {
             // Path 2: Arbiter refund before deadline
             assert!(sender == arbiter, ENotArbiter);
@@ -386,7 +415,8 @@ module sweefi::escrow {
             abort EDeadlineNotReached
         };
 
-        // No fee on refund — buyer shouldn't pay for failed delivery
+        // No fee on refund — buyer shouldn't pay for failed delivery.
+        // `reason` captures the pre-destructure state for the event.
         let reason = state;
 
         if (balance.value() > 0) {
@@ -434,10 +464,29 @@ module sweefi::escrow {
 
         escrow.state = STATE_DISPUTED;
 
+        // Grace period: ensure arbiter has proportional time to resolve.
+        // Without this, a buyer's refund bot can front-run the arbiter's
+        // release() the instant the original deadline passes.
+        let now_ms = clock.timestamp_ms();
+        let duration = escrow.deadline_ms - escrow.created_at_ms;
+        let proportional = ((((duration as u128) * (GRACE_RATIO as u128)) / 1_000_000u128) as u64);
+        let grace = if (proportional < GRACE_FLOOR_MS) {
+            GRACE_FLOOR_MS
+        } else if (proportional > GRACE_CAP_MS) {
+            GRACE_CAP_MS
+        } else {
+            proportional
+        };
+        let min_deadline = now_ms + grace;
+        if (min_deadline > escrow.deadline_ms) {
+            escrow.deadline_ms = min_deadline;
+        };
+
         event::emit(EscrowDisputed {
             escrow_id: object::id(escrow),
             disputed_by: sender,
-            timestamp_ms: clock.timestamp_ms(),
+            timestamp_ms: now_ms,
+            new_deadline_ms: escrow.deadline_ms,
         });
     }
 

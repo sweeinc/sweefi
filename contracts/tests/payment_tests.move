@@ -22,12 +22,12 @@ module sweefi::payment_tests {
         // Create payment coin (1000 units)
         let payment = coin::mint_for_testing<SUI>(1000, scenario.ctx());
 
-        // Pay exact amount with 50 bps fee (0.5%)
+        // Pay exact amount with 5_000 fee_bps (0.5%)
         let receipt = payment::pay<SUI>(
             payment,
             MERCHANT,
             1000,       // amount
-            50,         // fee_bps (0.5%)
+            5_000,      // fee_bps (0.5%)
             FEE_RECIPIENT,
             b"test-payment-001",
             &clock,
@@ -36,7 +36,7 @@ module sweefi::payment_tests {
 
         // Verify receipt
         assert!(payment::receipt_amount(&receipt) == 1000);
-        assert!(payment::receipt_fee_amount(&receipt) == 5); // 1000 * 50 / 10000 = 5
+        assert!(payment::receipt_fee_amount(&receipt) == 5); // 1000 * 5_000 / 1_000_000 = 5
         assert!(payment::receipt_payer(&receipt) == PAYER);
         assert!(payment::receipt_recipient(&receipt) == MERCHANT);
 
@@ -113,12 +113,12 @@ module sweefi::payment_tests {
 
         let payment = coin::mint_for_testing<SUI>(1000, scenario.ctx());
 
-        // 10000 bps = 100% fee
+        // 1_000_000 = 100% fee
         let receipt = payment::pay<SUI>(
             payment,
             MERCHANT,
             1000,
-            10_000,
+            1_000_000,
             FEE_RECIPIENT,
             b"max-fee",
             &clock,
@@ -169,7 +169,7 @@ module sweefi::payment_tests {
             payment,
             MERCHANT,
             0,    // zero amount — should fail
-            50,
+            5_000,
             FEE_RECIPIENT,
             b"should-fail",
             &clock,
@@ -193,7 +193,7 @@ module sweefi::payment_tests {
             payment,
             MERCHANT,
             1000,
-            10_001,   // > 10000 bps — should fail
+            1_000_001,   // > 1_000_000 — should fail
             FEE_RECIPIENT,
             b"should-fail",
             &clock,
@@ -219,14 +219,14 @@ module sweefi::payment_tests {
             payment,
             MERCHANT,
             large_amount,
-            50,   // 0.5%
+            5_000,   // 0.5%
             FEE_RECIPIENT,
             b"large-amount",
             &clock,
             scenario.ctx(),
         );
 
-        // 10^18 * 50 / 10000 = 5 * 10^15
+        // 10^18 * 5_000 / 1_000_000 = 5 * 10^15
         assert!(payment::receipt_fee_amount(&receipt) == 5_000_000_000_000_000);
 
         transfer::public_transfer(receipt, PAYER);
@@ -246,7 +246,7 @@ module sweefi::payment_tests {
         let invoice = payment::create_invoice(
             MERCHANT,
             1000,
-            50,
+            5_000,
             FEE_RECIPIENT,
             scenario.ctx(),
         );
@@ -254,7 +254,7 @@ module sweefi::payment_tests {
         // Verify invoice fields
         assert!(payment::invoice_recipient(&invoice) == MERCHANT);
         assert!(payment::invoice_expected_amount(&invoice) == 1000);
-        assert!(payment::invoice_fee_bps(&invoice) == 50);
+        assert!(payment::invoice_fee_bps(&invoice) == 5_000);
 
         // Transfer invoice to payer (simulating off-chain handoff)
         payment::send_invoice(invoice, PAYER);
@@ -395,7 +395,7 @@ module sweefi::payment_tests {
         let _invoice = payment::create_invoice(
             MERCHANT,
             1000,
-            10_001, // > 100% — should fail
+            1_000_001, // > 1_000_000 — should fail
             FEE_RECIPIENT,
             scenario.ctx(),
         );
