@@ -75,6 +75,7 @@ export function createRoutes(
   usageTracker: UsageTracker,
   feeBps: number,
   feeRecipient?: string,
+  serverStartTime: Date = new Date(),
 ) {
   const app = new Hono();
 
@@ -258,6 +259,42 @@ export function createRoutes(
       directSettlement: true,
       mandateSupport: false,
       protocolFeeBps: feeBps,
+    });
+  });
+
+  /**
+   * Per-key settlement history.
+   *
+   * Returns all settlements recorded for the authenticated API key since the
+   * server last started. Supports offset-based pagination.
+   *
+   * IMPORTANT — dataRetainedSince: UsageTracker is in-memory (Phase 1).
+   * Records are lost on restart. The dataRetainedSince field tells callers
+   * exactly when the current retention window began so they know gaps exist
+   * before that timestamp. Do not use this endpoint as a sole audit trail —
+   * cross-reference with on-chain transaction digests for full history.
+   */
+  app.get("/settlements", (c) => {
+    const apiKey = getApiKey(c);
+    if (!apiKey) {
+      return c.json({ error: "API key not found in context" }, 401);
+    }
+
+    const limitParam = parseInt(c.req.query("limit") ?? "100", 10);
+    const offsetParam = parseInt(c.req.query("offset") ?? "0", 10);
+    const limit = Math.min(Math.max(1, Number.isNaN(limitParam) ? 100 : limitParam), 1000);
+    const offset = Math.max(0, Number.isNaN(offsetParam) ? 0 : offsetParam);
+
+    const allRecords = usageTracker.getAllRecords();
+    const keyRecords = allRecords.get(apiKey) ?? [];
+    const totalSettled = usageTracker.getTotalSettled(apiKey).toString();
+    const paginated = keyRecords.slice(offset, offset + limit);
+
+    return c.json({
+      dataRetainedSince: serverStartTime.toISOString(),
+      totalSettled,
+      count: keyRecords.length,
+      records: paginated,
     });
   });
 
