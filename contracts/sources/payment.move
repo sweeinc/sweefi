@@ -80,6 +80,7 @@ module sweefi::payment {
         recipient: address,
         expected_amount: u64,
         fee_bps: u64,
+        fee_recipient: address,
     }
 
     public struct InvoicePaid has copy, drop {
@@ -89,6 +90,7 @@ module sweefi::payment {
         recipient: address,
         amount: u64,
         fee_amount: u64,
+        fee_recipient: address,
         token_type: ascii::String,
         timestamp_ms: u64,
     }
@@ -124,6 +126,7 @@ module sweefi::payment {
             recipient,
             expected_amount,
             fee_bps,
+            fee_recipient,
         });
 
         invoice
@@ -320,6 +323,7 @@ module sweefi::payment {
             recipient,
             amount: expected_amount,
             fee_amount,
+            fee_recipient,
             token_type: type_name::into_string(type_name::with_defining_ids<T>()),
             timestamp_ms,
         });

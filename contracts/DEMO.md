@@ -4,9 +4,9 @@
 
 **Package (v7):** `0xc80485e9182c607c41e16c2606abefa7ce9b7f78d809054e99486a20d62167d5`
 **Modules:** `payment`, `stream`, `escrow`, `seal_policy`, `mandate`, `agent_mandate`, `prepaid`, `admin`
-**Move tests:** 226 annotations passing (158 positive + 68 negative-path)
-**TypeScript tests:** 417 passing (25+ PTB builders, composable pay-and-prove)
-**Total:** 640+ tests across Move + TypeScript
+**Move tests:** 208 passing (v8 contracts incl. prepaid v0.2 dispute flow)
+**TypeScript tests:** 208+ passing (PTB builders, adapters, receipt signing)
+**Total:** 416+ tests across Move + TypeScript
 
 ---
 
@@ -138,7 +138,7 @@ sui client call --package $PKG --module escrow --function release_and_keep \
 | Escrow | `escrow::Escrow<SUI>` | `0x7e4447a8...e41ff` |
 | PaymentReceipt | `payment::PaymentReceipt` | `0xaabfaec0...8e7e` |
 
-All three primitives are live on Sui Testnet. Verifiable. Open source. 226 Move test annotations.
+All three primitives are live on Sui Testnet. Verifiable. Open source. 208 Move tests passing.
 
 ---
 
@@ -146,7 +146,7 @@ All three primitives are live on Sui Testnet. Verifiable. Open source. 226 Move 
 
 SweeFi isn't just contracts — it's an **MCP server** that any AI agent can discover and call. The agent doesn't need to know Move, PTBs, or Sui internals. It calls tools.
 
-**16 MCP tools across all 3 modules:**
+**35 MCP tools across all modules:**
 
 | Tool | What It Does |
 |------|-------------|
@@ -199,14 +199,14 @@ This is what "safety layer for autonomous agent commerce" means — every failur
     └────────────────────────┬────────────────────────────────┘
                              │ discovers tools via MCP
     ┌────────────────────────▼────────────────────────────────┐
-    │              SweeFi MCP Server (16 tools)               │
+    │              SweeFi MCP Server (35 tools)               │
     │  sweefi_pay · sweefi_create_stream · sweefi_claim    │
     │  sweefi_pause · sweefi_recipient_close · ...           │
     └────────────────────────┬────────────────────────────────┘
                              │ builds PTBs via @sweefi/sui
     ┌────────────────────────▼────────────────────────────────┐
-    │  s402 (HTTP 402)          @sweefi/sdk                   │
-    │  (402 headers)            (TypeScript client)            │
+    │  s402 (HTTP 402)          @sweefi/sui + @sweefi/server   │
+    │  (402 headers)            (TypeScript client + gateway)  │
     └────────────────────────┬────────────────────────────────┘
                              │ submits transactions
     ┌────────────────────────▼────────────────────────────────┐

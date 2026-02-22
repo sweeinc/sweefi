@@ -71,11 +71,37 @@ module sweefi::admin_tests {
         let mut scenario = ts::begin(ADMIN);
         let (cap, state) = admin::create_for_testing(scenario.ctx());
 
-        // Burn the cap — irrevocable
-        admin::burn_admin_cap(cap, scenario.ctx());
+        // Burn the cap — irrevocable (state must be unpaused, which it is)
+        admin::burn_admin_cap(cap, &state, scenario.ctx());
 
         // State still exists and is not paused
         assert!(admin::is_paused(&state) == false);
+
+        admin::destroy_state_for_testing(state);
+        scenario.end();
+    }
+
+    #[test]
+    #[expected_failure(abort_code = admin::EAlreadyPaused)]
+    fun test_burn_admin_cap_while_paused_fails() {
+        // T-4: burn_admin_cap blocked when protocol is paused (M-1 fix).
+        //
+        // Before the fix: burning the cap while paused was allowed. This created an
+        // irrecoverable freeze: paused protocol + no AdminCap = impossible to unpause.
+        // All new stream/escrow/prepaid creation would be permanently blocked.
+        //
+        // The fix adds: assert!(!state.paused, EAlreadyPaused) to burn_admin_cap,
+        // ensuring the cap can only be burned when the protocol is running normally.
+        let mut scenario = ts::begin(ADMIN);
+        let (cap, mut state) = admin::create_for_testing(scenario.ctx());
+
+        // Pause the protocol
+        admin::pause(&cap, &mut state, scenario.ctx());
+        assert!(admin::is_paused(&state) == true);
+
+        // Attempt to burn AdminCap while paused → EAlreadyPaused
+        // (would make the freeze permanent — no cap = no way to ever unpause)
+        admin::burn_admin_cap(cap, &state, scenario.ctx());
 
         admin::destroy_state_for_testing(state);
         scenario.end();

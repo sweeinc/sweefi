@@ -13,11 +13,12 @@
 /// If it doesn't abort, the decryption key is released to the caller.
 ///
 /// Security properties:
-///   - Only the buyer (receipt owner) can decrypt
+///   - Only the current holder of the EscrowReceipt can decrypt (bearer model)
 ///   - Only receipts matching the escrow_id can decrypt
 ///   - Receipts are non-forgeable (minted only by escrow::release)
-///   - Receipts have `store` for composability, but decrypt rights remain with the
-///     original buyer address (check_policy verifies sender == receipt_buyer)
+///   - Receipts have `store` — transferring the receipt transfers decryption rights
+///   - Sui's object ownership model enforces holder-only access: only the address
+///     that owns the receipt object can present it in a transaction (no sender check needed)
 ///
 /// Error codes: 300-series (payment=0, stream=100, escrow=200, seal=300)
 #[allow(lint(self_transfer))]
@@ -30,14 +31,19 @@ module sweefi::seal_policy {
     // SEAL entry point
     // ══════════════════════════════════════════════════════════════
 
-    /// SEAL approval: verifies the caller owns an EscrowReceipt matching the key ID.
+    /// SEAL approval: verifies the caller currently holds an EscrowReceipt matching the key ID.
     ///
     /// Key ID format: [escrow_id_bytes][arbitrary_nonce]
     ///   - escrow_id = 32 bytes (the ID of the resolved Escrow object)
     ///   - nonce = arbitrary bytes (allows multiple encrypted items per escrow)
     ///
     /// The seller encrypts content using this key format at escrow creation time.
-    /// The buyer decrypts after release by presenting their EscrowReceipt.
+    /// Any current holder of the matching EscrowReceipt can decrypt — including
+    /// secondary buyers and AI agents who received the receipt via delegation.
+    ///
+    /// No explicit sender check is needed: Sui's object ownership model guarantees
+    /// that only the address owning the receipt object can include it as an argument
+    /// in a transaction. The ownership IS the authorization.
     entry fun seal_approve(
         id: vector<u8>,
         receipt: &escrow::EscrowReceipt,
@@ -51,18 +57,15 @@ module sweefi::seal_policy {
     // ══════════════════════════════════════════════════════════════
 
     /// Check that:
-    ///   1. Caller is the receipt buyer
-    ///   2. Key ID starts with the escrow_id from the receipt
+    ///   1. Key ID starts with the escrow_id from the receipt
+    ///
+    /// No address check needed: Sui object ownership guarantees only the current
+    /// receipt holder can present it. Bearer model — transfer = transfer of access.
     fun check_policy(
         id: vector<u8>,
         receipt: &escrow::EscrowReceipt,
-        ctx: &TxContext,
+        _ctx: &TxContext,
     ): bool {
-        // Only the buyer can decrypt
-        if (ctx.sender() != escrow::receipt_buyer(receipt)) {
-            return false
-        };
-
         // Key ID must start with the escrow_id bytes
         let prefix = escrow::receipt_escrow_id(receipt).to_bytes();
         let prefix_len = prefix.length();

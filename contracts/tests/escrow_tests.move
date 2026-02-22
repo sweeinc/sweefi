@@ -26,7 +26,7 @@ module sweefi::escrow_tests {
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
             deposit,
@@ -47,8 +47,8 @@ module sweefi::escrow_tests {
         assert!(escrow::escrow_buyer(&e) == BUYER);
         assert!(escrow::escrow_seller(&e) == SELLER);
         assert!(escrow::escrow_arbiter(&e) == ARBITER);
-        assert!(escrow::escrow_balance(&e) == 10_000);
-        assert!(escrow::escrow_amount(&e) == 10_000);
+        assert!(escrow::escrow_balance(&e) == 1_000_000);
+        assert!(escrow::escrow_amount(&e) == 1_000_000);
         assert!(escrow::escrow_deadline_ms(&e) == DEADLINE_MS);
         assert!(escrow::escrow_state(&e) == 0); // STATE_ACTIVE
         assert!(escrow::escrow_fee_bps(&e) == 50);
@@ -87,7 +87,7 @@ module sweefi::escrow_tests {
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
         clock.set_for_testing(5_000_000); // clock is ahead of deadline
 
-        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
             deposit, SELLER, ARBITER, 1_000_000, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
@@ -105,7 +105,7 @@ module sweefi::escrow_tests {
         let mut scenario = ts::begin(BUYER);
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
-        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
             deposit, SELLER, ARBITER, DEADLINE_MS, 10_001, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
@@ -123,7 +123,7 @@ module sweefi::escrow_tests {
         let mut scenario = ts::begin(BUYER);
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
-        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         // Seller == Arbiter: seller could dispute→release to bypass buyer consent
         escrow::create<SUI>(
@@ -142,7 +142,7 @@ module sweefi::escrow_tests {
         let mut scenario = ts::begin(BUYER);
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
-        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         // 1025 bytes — over the 1024 limit
         let mut desc = vector[];
@@ -171,7 +171,7 @@ module sweefi::escrow_tests {
         let mut scenario = ts::begin(BUYER);
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
-        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
             deposit, SELLER, ARBITER, DEADLINE_MS, 50, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
@@ -185,22 +185,22 @@ module sweefi::escrow_tests {
         // Verify receipt fields
         assert!(escrow::receipt_buyer(&receipt) == BUYER);
         assert!(escrow::receipt_seller(&receipt) == SELLER);
-        assert!(escrow::receipt_amount(&receipt) == 10_000);
-        assert!(escrow::receipt_fee_amount(&receipt) == 50); // 10000 * 50 / 10000 = 50
+        assert!(escrow::receipt_amount(&receipt) == 1_000_000);
+        assert!(escrow::receipt_fee_amount(&receipt) == 5_000); // 1_000_000 * 50bps / 10000 = 5_000
         assert!(escrow::receipt_released_by(&receipt) == BUYER);
 
         transfer::public_transfer(receipt, BUYER);
 
-        // Verify seller received funds (10000 - 50 fee = 9950)
+        // Verify seller received funds (1_000_000 - 5_000 fee = 995_000)
         scenario.next_tx(SELLER);
         let seller_coin = scenario.take_from_address<coin::Coin<SUI>>(SELLER);
-        assert!(seller_coin.value() == 9_950);
+        assert!(seller_coin.value() == 995_000); // 1_000_000 - 5_000 fee (50 bps)
         ts::return_to_address(SELLER, seller_coin);
 
         // Verify fee recipient got fee
         scenario.next_tx(FEE_RECIPIENT);
         let fee_coin = scenario.take_from_address<coin::Coin<SUI>>(FEE_RECIPIENT);
-        assert!(fee_coin.value() == 50);
+        assert!(fee_coin.value() == 5_000); // 1_000_000 * 50 bps
         ts::return_to_address(FEE_RECIPIENT, fee_coin);
 
         admin::destroy_cap_for_testing(_cap);
@@ -214,7 +214,7 @@ module sweefi::escrow_tests {
         let mut scenario = ts::begin(BUYER);
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
-        let deposit = coin::mint_for_testing<SUI>(5_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
             deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
@@ -225,14 +225,14 @@ module sweefi::escrow_tests {
         let receipt = escrow::release<SUI>(e, &clock, scenario.ctx());
 
         assert!(escrow::receipt_fee_amount(&receipt) == 0);
-        assert!(escrow::receipt_amount(&receipt) == 5_000);
+        assert!(escrow::receipt_amount(&receipt) == 1_000_000);
 
         transfer::public_transfer(receipt, BUYER);
 
         // Seller gets full amount
         scenario.next_tx(SELLER);
         let seller_coin = scenario.take_from_address<coin::Coin<SUI>>(SELLER);
-        assert!(seller_coin.value() == 5_000);
+        assert!(seller_coin.value() == 1_000_000); // zero fee — seller gets full deposit
         ts::return_to_address(SELLER, seller_coin);
 
         admin::destroy_cap_for_testing(_cap);
@@ -246,7 +246,7 @@ module sweefi::escrow_tests {
         let mut scenario = ts::begin(BUYER);
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
-        let deposit = coin::mint_for_testing<SUI>(1_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
             deposit, SELLER, ARBITER, DEADLINE_MS, 10_000, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
@@ -257,13 +257,13 @@ module sweefi::escrow_tests {
         let receipt = escrow::release<SUI>(e, &clock, scenario.ctx());
 
         // 100% fee — all goes to fee recipient, nothing to seller
-        assert!(escrow::receipt_fee_amount(&receipt) == 1_000);
+        assert!(escrow::receipt_fee_amount(&receipt) == 1_000_000);
         transfer::public_transfer(receipt, BUYER);
 
         // Fee recipient gets everything
         scenario.next_tx(FEE_RECIPIENT);
         let fee_coin = scenario.take_from_address<coin::Coin<SUI>>(FEE_RECIPIENT);
-        assert!(fee_coin.value() == 1_000);
+        assert!(fee_coin.value() == 1_000_000); // 100% fee on 1_000_000 deposit
         ts::return_to_address(FEE_RECIPIENT, fee_coin);
 
         admin::destroy_cap_for_testing(_cap);
@@ -277,7 +277,7 @@ module sweefi::escrow_tests {
         let mut scenario = ts::begin(BUYER);
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
-        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
             deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
@@ -296,14 +296,14 @@ module sweefi::escrow_tests {
         let receipt = escrow::release<SUI>(e, &clock, scenario.ctx());
 
         assert!(escrow::receipt_released_by(&receipt) == ARBITER);
-        assert!(escrow::receipt_amount(&receipt) == 10_000);
+        assert!(escrow::receipt_amount(&receipt) == 1_000_000);
 
         transfer::public_transfer(receipt, BUYER);
 
         // Seller gets funds
         scenario.next_tx(SELLER);
         let seller_coin = scenario.take_from_address<coin::Coin<SUI>>(SELLER);
-        assert!(seller_coin.value() == 10_000);
+        assert!(seller_coin.value() == 1_000_000);
         ts::return_to_address(SELLER, seller_coin);
 
         admin::destroy_cap_for_testing(_cap);
@@ -318,7 +318,7 @@ module sweefi::escrow_tests {
         let mut scenario = ts::begin(BUYER);
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
-        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
             deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
@@ -342,7 +342,7 @@ module sweefi::escrow_tests {
         let mut scenario = ts::begin(BUYER);
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
-        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
             deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
@@ -375,7 +375,7 @@ module sweefi::escrow_tests {
         let mut scenario = ts::begin(BUYER);
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
-        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
             deposit, SELLER, ARBITER, DEADLINE_MS, 50, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
@@ -392,7 +392,50 @@ module sweefi::escrow_tests {
         // No fee on refund — buyer gets full amount back
         scenario.next_tx(BUYER);
         let refund = scenario.take_from_address<coin::Coin<SUI>>(BUYER);
-        assert!(refund.value() == 10_000);
+        assert!(refund.value() == 1_000_000);
+        ts::return_to_address(BUYER, refund);
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    fun test_seller_triggers_permissionless_refund_buyer_gets_funds() {
+        // T-7: refund() after deadline is permissionless — caller is irrelevant to destination.
+        //
+        // SELLER calls refund() after the deadline. Key invariants to verify:
+        //   1. Refund SUCCEEDS even though SELLER is the caller (truly permissionless)
+        //   2. Funds go to BUYER (not SELLER — destination is hardcoded to escrow.buyer)
+        //   3. No fee is deducted on refund (fee_bps only applies to release)
+        //
+        // This test differs from test_refund_after_deadline (which uses STRANGER) by
+        // explicitly verifying that an economically adversarial caller (SELLER) cannot
+        // redirect refund funds to themselves. "Caller triggers" ≠ "caller receives."
+        let mut scenario = ts::begin(BUYER);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        // Create escrow with 2% fee (but fee does NOT apply to refunds)
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, DEADLINE_MS, 200, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
+        );
+
+        // Advance past deadline
+        clock.set_for_testing(DEADLINE_MS + 1);
+
+        // SELLER triggers the permissionless refund — this works because refund()
+        // has no caller restriction after the deadline
+        scenario.next_tx(SELLER);
+        let e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::refund<SUI>(e, &clock, scenario.ctx());
+
+        // BUYER receives the full deposit — no fee on refunds, regardless of caller
+        scenario.next_tx(BUYER);
+        let refund = scenario.take_from_address<coin::Coin<SUI>>(BUYER);
+        assert!(refund.value() == 1_000_000); // full 1M — fee_bps=200 does NOT apply to refunds
         ts::return_to_address(BUYER, refund);
 
         admin::destroy_cap_for_testing(_cap);
@@ -407,7 +450,7 @@ module sweefi::escrow_tests {
         let mut scenario = ts::begin(BUYER);
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
-        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
             deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
@@ -429,7 +472,7 @@ module sweefi::escrow_tests {
         let mut scenario = ts::begin(BUYER);
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
-        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
             deposit, SELLER, ARBITER, DEADLINE_MS, 50, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
@@ -449,7 +492,7 @@ module sweefi::escrow_tests {
         // No fee on refund
         scenario.next_tx(BUYER);
         let refund = scenario.take_from_address<coin::Coin<SUI>>(BUYER);
-        assert!(refund.value() == 10_000);
+        assert!(refund.value() == 1_000_000);
         ts::return_to_address(BUYER, refund);
 
         admin::destroy_cap_for_testing(_cap);
@@ -464,7 +507,7 @@ module sweefi::escrow_tests {
         let mut scenario = ts::begin(BUYER);
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
-        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
             deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
@@ -493,7 +536,7 @@ module sweefi::escrow_tests {
         let mut scenario = ts::begin(BUYER);
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
-        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
             deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
@@ -515,7 +558,7 @@ module sweefi::escrow_tests {
         // Buyer gets full refund
         scenario.next_tx(BUYER);
         let refund = scenario.take_from_address<coin::Coin<SUI>>(BUYER);
-        assert!(refund.value() == 10_000);
+        assert!(refund.value() == 1_000_000);
         ts::return_to_address(BUYER, refund);
 
         admin::destroy_cap_for_testing(_cap);
@@ -533,7 +576,7 @@ module sweefi::escrow_tests {
         let mut scenario = ts::begin(BUYER);
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
-        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
             deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
@@ -556,7 +599,7 @@ module sweefi::escrow_tests {
         let mut scenario = ts::begin(BUYER);
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
-        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
             deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
@@ -581,7 +624,7 @@ module sweefi::escrow_tests {
         let mut scenario = ts::begin(BUYER);
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
-        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
             deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
@@ -608,7 +651,7 @@ module sweefi::escrow_tests {
         let mut scenario = ts::begin(BUYER);
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
-        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
             deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
@@ -636,7 +679,7 @@ module sweefi::escrow_tests {
         let mut scenario = ts::begin(BUYER);
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
-        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
             deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
@@ -695,7 +738,7 @@ module sweefi::escrow_tests {
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
         clock.set_for_testing(1707700000000); // specific timestamp
 
-        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
         escrow::create<SUI>(
             deposit, SELLER, ARBITER, 1707700000000 + DEADLINE_MS, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
         );
@@ -719,7 +762,7 @@ module sweefi::escrow_tests {
         let mut scenario = ts::begin(BUYER);
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
-        let deposit = coin::mint_for_testing<SUI>(50_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
             deposit, SELLER, ARBITER, DEADLINE_MS, 200, FEE_RECIPIENT, b"digital art", &state, &clock, scenario.ctx(),
@@ -737,8 +780,8 @@ module sweefi::escrow_tests {
         let receipt = escrow::release<SUI>(e, &clock, scenario.ctx());
 
         // Verify receipt
-        assert!(escrow::receipt_amount(&receipt) == 50_000);
-        assert!(escrow::receipt_fee_amount(&receipt) == 1_000); // 50000 * 200 / 10000
+        assert!(escrow::receipt_amount(&receipt) == 1_000_000);
+        assert!(escrow::receipt_fee_amount(&receipt) == 20_000); // 1_000_000 * 200 bps / 10_000
         assert!(escrow::receipt_released_by(&receipt) == ARBITER);
 
         transfer::public_transfer(receipt, BUYER);
@@ -746,13 +789,13 @@ module sweefi::escrow_tests {
         // Seller: 50000 - 1000 = 49000
         scenario.next_tx(SELLER);
         let seller_coin = scenario.take_from_address<coin::Coin<SUI>>(SELLER);
-        assert!(seller_coin.value() == 49_000);
+        assert!(seller_coin.value() == 980_000); // 1_000_000 - 20_000 fee (200 bps)
         ts::return_to_address(SELLER, seller_coin);
 
         // Fee: 1000
         scenario.next_tx(FEE_RECIPIENT);
         let fee_coin = scenario.take_from_address<coin::Coin<SUI>>(FEE_RECIPIENT);
-        assert!(fee_coin.value() == 1_000);
+        assert!(fee_coin.value() == 20_000); // 1_000_000 * 200 bps / 10_000
         ts::return_to_address(FEE_RECIPIENT, fee_coin);
 
         admin::destroy_cap_for_testing(_cap);
@@ -767,7 +810,7 @@ module sweefi::escrow_tests {
         let mut scenario = ts::begin(BUYER);
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
-        let deposit = coin::mint_for_testing<SUI>(50_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
 
         escrow::create<SUI>(
             deposit, SELLER, ARBITER, DEADLINE_MS, 200, FEE_RECIPIENT, b"digital art", &state, &clock, scenario.ctx(),
@@ -787,7 +830,7 @@ module sweefi::escrow_tests {
         // No fee on refund — buyer gets full amount
         scenario.next_tx(BUYER);
         let refund = scenario.take_from_address<coin::Coin<SUI>>(BUYER);
-        assert!(refund.value() == 50_000);
+        assert!(refund.value() == 1_000_000);
         ts::return_to_address(BUYER, refund);
 
         admin::destroy_cap_for_testing(_cap);
@@ -811,7 +854,7 @@ module sweefi::escrow_tests {
         admin::pause(&cap, &mut state, scenario.ctx());
 
         // Try to create an escrow — should fail
-        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
         escrow::create<SUI>(
             deposit, SELLER, ARBITER, DEADLINE_MS, 50, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
         );
@@ -829,7 +872,7 @@ module sweefi::escrow_tests {
         let clock = clock::create_for_testing(scenario.ctx());
         let (cap, mut state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
         escrow::create<SUI>(
             deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
         );
@@ -856,7 +899,7 @@ module sweefi::escrow_tests {
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (cap, mut state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
         escrow::create<SUI>(
             deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
         );
@@ -885,7 +928,7 @@ module sweefi::escrow_tests {
         let clock = clock::create_for_testing(scenario.ctx());
         let (cap, mut state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
         escrow::create<SUI>(
             deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
         );

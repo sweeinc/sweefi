@@ -13,12 +13,14 @@ module sweefi::seal_policy_tests {
     const ARBITER: address = @0xDAD;
     const FEE_RECIPIENT: address = @0xFEE;
     const ATTACKER: address = @0xBAD;
+    const BOB: address = @0xB0B;          // secondary buyer for bearer transfer tests
+    const AGENT_ADDR: address = @0xA6E4;  // AI agent for delegation tests
 
     /// Helper: create escrow and release it, producing an EscrowReceipt for BUYER.
     /// Returns the escrow_id for key ID construction.
     fun setup_released_escrow(scenario: &mut ts::Scenario, clock: &clock::Clock) {
         // Buyer creates escrow
-        let deposit = coin::mint_for_testing<SUI>(50_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
         escrow::create<SUI>(
             deposit,
@@ -99,22 +101,29 @@ module sweefi::seal_policy_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = seal_policy::ENoAccess)]
-    fun test_seal_approve_wrong_caller() {
-        // Attacker with no receipt tries to decrypt → denied
+    fun test_seal_approve_bearer_model_any_holder_can_decrypt() {
+        // BEARER MODEL (H-1 fix): whoever holds the EscrowReceipt object can decrypt.
+        // Pre-fix: check_policy checked ctx.sender() == receipt.buyer, locking decryption
+        //   to the original buyer's address forever — breaking agent delegation (ADR-005).
+        // Post-fix: only the key_id prefix is checked. Sui's object ownership model IS
+        //   the authorization — only the address that owns the receipt can include it in
+        //   a transaction (no additional identity check needed or correct).
+        //
+        // This test uses test_scenario's take_from_address to simulate a scenario where
+        // a non-buyer address holds the receipt. With the bearer model, this now succeeds.
         let mut scenario = ts::begin(BUYER);
         let clock = clock::create_for_testing(scenario.ctx());
 
         setup_released_escrow(&mut scenario, &clock);
 
-        // Attacker tries to use buyer's receipt
+        // Simulate non-buyer holding receipt (e.g., after a transfer)
         scenario.next_tx(ATTACKER);
         let receipt = scenario.take_from_address<escrow::EscrowReceipt>(BUYER);
 
         let mut key_id = escrow::receipt_escrow_id(&receipt).to_bytes();
         key_id.push_back(1);
 
-        // Should abort — ATTACKER is not the buyer
+        // Bearer model: holder of the receipt CAN decrypt — no sender identity check
         seal_policy::seal_approve(key_id, &receipt, scenario.ctx());
 
         ts::return_to_address(BUYER, receipt);
@@ -161,6 +170,74 @@ module sweefi::seal_policy_tests {
         seal_policy::seal_approve(b"", &receipt, scenario.ctx());
 
         ts::return_to_address(BUYER, receipt);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // Bearer transfer tests (T-1, T-2) — H-1 fix validation
+    // ══════════════════════════════════════════════════════════════
+
+    #[test]
+    fun test_seal_approve_bearer_transfer_new_holder_succeeds() {
+        // T-1: Bearer transfer test. BUYER receives EscrowReceipt → transfers to BOB
+        // → BOB calls seal_approve successfully.
+        //
+        // BOB was never involved in the original escrow, but holding the receipt IS the
+        // authorization (ADR-005 bearer model). This is the digital concert ticket model:
+        // transferring the receipt transfers the decryption right.
+        let mut scenario = ts::begin(BUYER);
+        let clock = clock::create_for_testing(scenario.ctx());
+
+        setup_released_escrow(&mut scenario, &clock);
+
+        // BUYER explicitly transfers receipt to BOB (e.g., secondary sale or gift)
+        scenario.next_tx(BUYER);
+        let receipt = scenario.take_from_address<escrow::EscrowReceipt>(BUYER);
+        transfer::public_transfer(receipt, BOB);
+
+        // BOB now owns the receipt and presents it to the SEAL key server → MUST succeed
+        scenario.next_tx(BOB);
+        let receipt = scenario.take_from_address<escrow::EscrowReceipt>(BOB);
+        let mut key_id = escrow::receipt_escrow_id(&receipt).to_bytes();
+        key_id.push_back(99); // arbitrary nonce — receipt unlocks any content under this escrow
+        seal_policy::seal_approve(key_id, &receipt, scenario.ctx());
+
+        ts::return_to_address(BOB, receipt);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    fun test_seal_approve_agent_delegation_succeeds() {
+        // T-2: AI agent delegation (core SweeFi use case, ADR-005 §3).
+        // Human wallet pays → escrow released → BUYER delegates receipt to AI AGENT.
+        // AGENT calls seal_approve to decrypt content (e.g., model weights, API key).
+        //
+        // The agent never touches funds — it only holds the receipt (proof of payment).
+        // Human authorizes payment; agent exercises the access right. Clean separation.
+        //
+        //   Human wallet ──pays──> Seller (gets funds)
+        //        │
+        //        └──transfers receipt──> AI Agent ──seal_approve──> decrypted content
+        let mut scenario = ts::begin(BUYER);
+        let clock = clock::create_for_testing(scenario.ctx());
+
+        setup_released_escrow(&mut scenario, &clock);
+
+        // BUYER delegates decryption rights to AGENT by transferring the receipt
+        scenario.next_tx(BUYER);
+        let receipt = scenario.take_from_address<escrow::EscrowReceipt>(BUYER);
+        transfer::public_transfer(receipt, AGENT_ADDR);
+
+        // AGENT presents receipt to SEAL key server → MUST succeed (bearer model)
+        scenario.next_tx(AGENT_ADDR);
+        let receipt = scenario.take_from_address<escrow::EscrowReceipt>(AGENT_ADDR);
+        let mut key_id = escrow::receipt_escrow_id(&receipt).to_bytes();
+        key_id.push_back(1);
+        seal_policy::seal_approve(key_id, &receipt, scenario.ctx());
+
+        ts::return_to_address(AGENT_ADDR, receipt);
         clock.destroy_for_testing();
         scenario.end();
     }

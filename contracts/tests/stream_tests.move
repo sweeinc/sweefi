@@ -179,11 +179,12 @@ module sweefi::stream_tests {
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        // Budget cap = 1500, rate = 300/sec → exhausted after 5 seconds
-        let deposit = coin::mint_for_testing<SUI>(10_000, scenario.ctx());
+        // Budget cap = deposit = 1500, rate = 300/sec → exhausted after 5 seconds
+        // (create() enforces deposit <= budget_cap; set them equal to test cap exhaustion)
+        let deposit = coin::mint_for_testing<SUI>(1_500, scenario.ctx());
         stream::create<SUI>(deposit, PROVIDER, RATE, 1_500, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
-        // Advance 10 seconds (double the budget)
+        // Advance 10 seconds (double the budget — accrual capped at 1500 by budget_cap)
         clock.increment_for_testing(10_000);
 
         scenario.next_tx(PROVIDER);
@@ -196,7 +197,7 @@ module sweefi::stream_tests {
 
         assert!(stream::meter_total_claimed(&meter) == 1_500);
         assert!(stream::meter_active(&meter) == false); // auto-deactivated
-        assert!(stream::meter_balance(&meter) == 8_500); // 10k - 1.5k
+        assert!(stream::meter_balance(&meter) == 0); // all claimed (deposit == budget_cap)
 
         ts::return_shared(meter);
 
@@ -1089,6 +1090,52 @@ module sweefi::stream_tests {
         let meter = scenario.take_shared<stream::StreamingMeter<SUI>>();
         stream::close(meter, &clock, scenario.ctx());
 
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // Budget exhaustion guard on top_up (T-3) — M-2 fix validation
+    // ══════════════════════════════════════════════════════════════
+
+    #[test]
+    #[expected_failure(abort_code = stream::EBudgetCapExceeded)]
+    fun test_top_up_on_budget_exhausted_stream_fails() {
+        // T-3: top_up blocked when stream's lifetime budget is fully claimed (M-2 fix).
+        //
+        // Before the fix: payer could deposit into a stream where total_claimed == budget_cap.
+        // Those funds would be permanently trapped — recipient can never claim beyond budget_cap
+        // (it's immutable), and the only recovery is payer calling close() on a dead stream.
+        //
+        // The fix adds: assert!(meter.total_claimed < meter.budget_cap, EBudgetCapExceeded)
+        // to top_up(), preventing accidental deposits into an exhausted stream.
+        let mut scenario = ts::begin(PAYER);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        // Budget cap = deposit = 1500, rate = 300/sec → budget exhausted after 5 seconds
+        let deposit = coin::mint_for_testing<SUI>(1_500, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 1_500, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+
+        // Advance 10 seconds (double the budget) → accrued 3000, capped at 1500
+        clock.increment_for_testing(10_000);
+
+        // Provider claims entire budget — stream auto-deactivates
+        scenario.next_tx(PROVIDER);
+        let mut meter = scenario.take_shared<stream::StreamingMeter<SUI>>();
+        stream::claim(&mut meter, &clock, scenario.ctx());
+        assert!(stream::meter_total_claimed(&meter) == 1_500);
+        assert!(stream::meter_active(&meter) == false);
+
+        // Payer tries to top up the exhausted stream → EBudgetCapExceeded
+        // (funds would be permanently trapped: recipient can't claim, cap is immutable)
+        scenario.next_tx(PAYER);
+        let extra = coin::mint_for_testing<SUI>(500, scenario.ctx());
+        stream::top_up(&mut meter, extra, &state, &clock, scenario.ctx());
+
+        ts::return_shared(meter);
         admin::destroy_cap_for_testing(_cap);
         admin::destroy_state_for_testing(state);
         clock.destroy_for_testing();

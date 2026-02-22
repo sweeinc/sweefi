@@ -40,6 +40,7 @@ module sweefi::stream {
     const EBudgetCapExceeded: u64 = 108;
     const ETimeoutNotReached: u64 = 109;
     const ETimeoutTooShort: u64 = 110;
+    const ETimeoutTooLong: u64 = 111;
 
     /// Default recipient close timeout: 7 days in ms (7 * 24 * 60 * 60 * 1000).
     /// Used when create() is called without explicit timeout.
@@ -235,7 +236,7 @@ module sweefi::stream {
         // only refundable via close(), making the stream appear overfunded.
         assert!(deposit_value <= budget_cap, EBudgetCapExceeded);
         assert!(recipient_close_timeout_ms >= MIN_RECIPIENT_CLOSE_TIMEOUT_MS, ETimeoutTooShort);
-        assert!(recipient_close_timeout_ms <= MAX_RECIPIENT_CLOSE_TIMEOUT_MS, ETimeoutTooShort);
+        assert!(recipient_close_timeout_ms <= MAX_RECIPIENT_CLOSE_TIMEOUT_MS, ETimeoutTooLong);
 
         let now_ms = clock.timestamp_ms();
         let payer = ctx.sender();
@@ -704,6 +705,10 @@ module sweefi::stream {
 
         let amount = deposit.value();
         assert!(amount > 0, EZeroDeposit);
+        // Guard: topping up an exhausted stream (total_claimed >= budget_cap) deposits
+        // funds the recipient cannot claim (budget is immutable, resume() also blocks).
+        // Payer recovers via close(), but this prevents silent trapping for automated agents.
+        assert!(meter.total_claimed < meter.budget_cap, EBudgetCapExceeded);
 
         meter.balance.join(coin::into_balance(deposit));
 

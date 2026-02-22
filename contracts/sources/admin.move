@@ -121,10 +121,15 @@ module sweefi::admin {
 
     /// Irrevocably burn the AdminCap — protocol becomes fully trustless.
     /// After burn, no one can pause/unpause. This is a one-way door.
+    ///
+    /// Requires ProtocolState to ensure the protocol is unpaused before burning.
+    /// Burning while paused would freeze new operations permanently with no recovery.
     public entry fun burn_admin_cap(
         cap: AdminCap,
+        state: &ProtocolState,
         ctx: &TxContext,
     ) {
+        assert!(!state.paused, EAlreadyPaused);
         let AdminCap { id } = cap;
         event::emit(AdminCapBurned { burned_by: ctx.sender() });
         object::delete(id);

@@ -236,7 +236,12 @@ module sweefi::agent_mandate {
         clock: &Clock,
         ctx: &TxContext,
     ) {
-        // 1. Check revocation first (reuse mandate module's registry + helper)
+        // 1. Check revocation first — verify registry belongs to the delegator,
+        //    then check the mandate ID is not present in it.
+        //    H-1 (Revocation bypass): mandate::is_id_revoked() is a low-level helper
+        //    that does NOT check registry ownership. Without the owner check, a rogue
+        //    delegate could pass an empty registry they control, bypassing revocation.
+        assert!(mandate::registry_owner(registry) == mandate.delegator, ENotDelegator);
         assert!(!mandate::is_id_revoked(registry, object::id(mandate)), ERevoked);
 
         let now = clock.timestamp_ms();

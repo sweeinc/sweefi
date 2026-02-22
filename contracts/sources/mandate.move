@@ -198,6 +198,18 @@ module sweefi::mandate {
         object::delete(id);
     }
 
+    /// Destroy a mandate held by any address, regardless of delegate field.
+    /// Mandate holds no funds — any holder can destroy it.
+    ///
+    /// Use when a mandate was accidentally transferred to a non-delegate address and
+    /// became a zombie (the holder cannot use destroy() because the delegate check fails).
+    /// Security: spending remains delegate-only (validate_and_spend checks mandate.delegate).
+    /// Destroying a held mandate does not transfer any spending rights.
+    public fun destroy_held<T>(mandate: Mandate<T>) {
+        let Mandate { id, delegator: _, delegate: _, max_per_tx: _, max_total: _, total_spent: _, expires_at_ms: _ } = mandate;
+        object::delete(id);
+    }
+
     /// Remove a revocation entry from the registry.
     /// Only the registry owner (delegator) can clean up.
     /// Call after the mandate object has been destroyed to free storage.
@@ -223,7 +235,11 @@ module sweefi::mandate {
     public fun max_total<T>(m: &Mandate<T>): u64 { m.max_total }
     public fun total_spent<T>(m: &Mandate<T>): u64 { m.total_spent }
     public fun expires_at_ms<T>(m: &Mandate<T>): u64 { m.expires_at_ms }
-    public fun remaining<T>(m: &Mandate<T>): u64 { m.max_total - m.total_spent }
+    /// Returns remaining spend capacity. Saturates to 0 if max_total was lowered below
+    /// total_spent (e.g., via update_caps) — prevents abort in composing modules.
+    public fun remaining<T>(m: &Mandate<T>): u64 {
+        if (m.total_spent >= m.max_total) { 0 } else { m.max_total - m.total_spent }
+    }
 
     /// Check if a mandate is expired (view only, no abort)
     public fun is_expired<T>(m: &Mandate<T>, clock: &Clock): bool {
@@ -238,6 +254,11 @@ module sweefi::mandate {
 
     /// Check if an arbitrary object ID is revoked in a registry.
     /// Used by agent_mandate module for cross-module revocation checks.
+    /// Return the owner (delegator) of a RevocationRegistry.
+    /// Used by composing modules (e.g. agent_mandate) to verify registry ownership
+    /// before calling is_id_revoked() — the low-level helper does not check ownership.
+    public fun registry_owner(registry: &RevocationRegistry): address { registry.owner }
+
     public fun is_id_revoked(registry: &RevocationRegistry, mandate_id: ID): bool {
         let key = RevokedKey { mandate_id };
         df::exists_(&registry.id, key)
