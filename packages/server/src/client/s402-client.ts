@@ -6,7 +6,7 @@
  *
  * @example
  * ```typescript
- * import { createS402Client } from '@sweefi/sdk/client';
+ * import { createS402Client } from '@sweefi/sui';
  * import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
  *
  * const wallet = Ed25519Keypair.generate();
