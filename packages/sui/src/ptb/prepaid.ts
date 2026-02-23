@@ -10,6 +10,7 @@ import type {
   PrepaidDisputeClaimParams,
   PrepaidWithdrawDisputedParams,
 } from "./types";
+import type { Ed25519Verifier } from "../receipts";
 import { SUI_CLOCK } from "./deployments";
 import { assertFeeBps, assertPositive } from "./assert";
 
@@ -374,4 +375,62 @@ export function buildWithdrawDisputedTx(
   });
 
   return tx;
+}
+
+// ══════════════════════════════════════════════════════════════
+// Utility helpers
+// ══════════════════════════════════════════════════════════════
+
+/** Convert a Uint8Array to a hex string (no 0x prefix). Inverse of hexToBytes. */
+export function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// ══════════════════════════════════════════════════════════════
+// Provider key verification (L2 mitigation)
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * Verify that a provider controls the Ed25519 key they advertise.
+ *
+ * Mitigates L2 (no on-chain pubkey ownership proof): before depositing with
+ * `buildDepositWithReceiptsTx`, the agent sends a random nonce to the provider
+ * and verifies the signed response against the advertised public key.
+ *
+ * Protocol:
+ *   1. Agent generates a 32-byte random nonce
+ *   2. POST nonce to `${providerUrl}/.well-known/s402-key-proof`
+ *   3. Provider signs the nonce with their Ed25519 key and returns the signature
+ *   4. Agent verifies signature against the advertised pubkey
+ *
+ * @param providerUrl - Base URL of the provider (e.g. "https://api.example.com")
+ * @param advertisedPubkey - The Ed25519 public key the provider claims to own (32 bytes)
+ * @param verify - Pluggable Ed25519 verifier (same type as receipts.ts)
+ * @returns true if the provider proved key ownership
+ */
+export async function verifyProviderKey(
+  providerUrl: string,
+  advertisedPubkey: Uint8Array,
+  verify: Ed25519Verifier,
+): Promise<boolean> {
+  // Challenge = nonce || pubkey — binding the key into the challenge prevents
+  // a provider from proving key A while the agent deposits with key B.
+  const nonce = crypto.getRandomValues(new Uint8Array(32));
+  const challenge = new Uint8Array(nonce.length + advertisedPubkey.length);
+  challenge.set(nonce, 0);
+  challenge.set(advertisedPubkey, nonce.length);
+
+  const url = `${providerUrl.replace(/\/+$/, "")}/.well-known/s402-key-proof`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/octet-stream" },
+    body: challenge,
+  });
+
+  if (!res.ok) return false;
+
+  const signature = new Uint8Array(await res.arrayBuffer());
+  if (signature.length !== 64) return false;
+
+  return verify(challenge, signature);
 }

@@ -121,6 +121,10 @@ export {
   buildFinalizeClaimTx as buildPrepaidFinalizeClaimTx,
   buildDisputeClaimTx,
   buildWithdrawDisputedTx,
+  // Utility helpers
+  bytesToHex,
+  // L2 mitigation: provider key ownership verification
+  verifyProviderKey,
 } from "./prepaid";
 
 // Receipt utilities (v0.2 signed usage receipts — BCS message construction + pluggable Ed25519)

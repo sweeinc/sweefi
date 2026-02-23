@@ -1735,4 +1735,310 @@ module sweefi::prepaid_tests {
         clock.destroy_for_testing();
         scenario.end();
     }
+
+    // ══════════════════════════════════════════════════════════════
+    // v0.2 Security Fix Verification Tests
+    // ══════════════════════════════════════════════════════════════
+
+    // F1 verification: Receipt from a settled (finalized) batch MUST NOT be usable
+    // to dispute a future pending claim. Without the lower bound check at line 609,
+    // an agent could reuse old receipt #50 after claimed_calls has moved past 50.
+    #[test]
+    #[expected_failure(abort_code = prepaid::EInvalidFraudProof)]
+    fun test_v2_dispute_with_settled_batch_receipt_fails() {
+        let mut scenario = ts::begin(AGENT);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        setup_v2_balance(&mut scenario, &clock, &state);
+
+        // Provider claims 50 calls → pending
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::claim(&mut bal, 50, &clock, scenario.ctx());
+        ts::return_shared(bal);
+
+        // Finalize → claimed_calls = 50 (batch settled)
+        clock.increment_for_testing(DISPUTE_WINDOW_MS + 1);
+        scenario.next_tx(@0xCA11);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::finalize_claim(&mut bal, &clock, scenario.ctx());
+        assert!(prepaid::balance_claimed_calls(&bal) == 50);
+        ts::return_shared(bal);
+
+        // Provider claims more → pending_claim_count = 100
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::claim(&mut bal, 100, &clock, scenario.ctx());
+        assert!(prepaid::balance_pending_claim_count(&bal) == 100);
+        ts::return_shared(bal);
+
+        // Agent tries to dispute with receipt #50 from the SETTLED batch.
+        // F1 check: 50 > claimed_calls(50) → FALSE → EInvalidFraudProof
+        // (The bounds check aborts before signature verification is reached.)
+        scenario.next_tx(AGENT);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::dispute_claim(
+            &mut bal,
+            @0x06d553b842f768751ef60436013fd9a563de7986dc8991a2b3a8edb7037fc8ed,
+            50,                    // receipt from settled batch (call #50 <= claimed_calls 50)
+            1700000000000,
+            TEST_RESPONSE_HASH,
+            TEST_SIG_CALL_50,
+            &clock,
+            scenario.ctx(),
+        );
+
+        ts::return_shared(bal);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // F4 verification: withdrawal_delay_ms MUST be >= dispute_window_ms.
+    // Without this, a provider can submit a claim that can't be disputed before
+    // the agent's withdrawal delay expires — a griefing/safety foot-gun.
+    #[test]
+    #[expected_failure(abort_code = prepaid::EWithdrawalDelayTooShort)]
+    fun test_deposit_with_receipts_delay_less_than_window_fails() {
+        let mut scenario = ts::begin(AGENT);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+        prepaid::deposit_with_receipts<SUI>(
+            deposit,
+            PROVIDER,
+            RATE,
+            UNLIMITED,
+            120_000,        // withdrawal_delay: 2 minutes (>= 60s min ✓)
+            0,
+            FEE_RECIPIENT,
+            TEST_PUBKEY,
+            300_000,        // dispute_window: 5 minutes (within 1min–24h ✓)
+            &state,         // BUT: 120_000 < 300_000 → F4 triggers
+            &clock,
+            scenario.ctx(),
+        );
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // v0.2 Extended Dispute Path Tests
+    // ══════════════════════════════════════════════════════════════
+
+    // Valid receipt after partial settlement: provider settled calls 1-50,
+    // then claims cumulative 150. Agent's receipt #99 proves fraud:
+    //   99 > claimed_calls(50) ✓  AND  99 < pending_claim_count(150) ✓
+    // Uses existing TEST_SIG_CALL_99 (signed for this balance ID).
+    #[test]
+    fun test_v2_dispute_with_valid_receipt_after_settlement() {
+        let mut scenario = ts::begin(AGENT);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        setup_v2_balance(&mut scenario, &clock, &state);
+
+        // Round 1: Provider claims 50 calls, finalize → claimed_calls=50
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::claim(&mut bal, 50, &clock, scenario.ctx());
+        ts::return_shared(bal);
+
+        clock.increment_for_testing(DISPUTE_WINDOW_MS + 1);
+        scenario.next_tx(@0xCA11);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::finalize_claim(&mut bal, &clock, scenario.ctx());
+        assert!(prepaid::balance_claimed_calls(&bal) == 50);
+        ts::return_shared(bal);
+
+        // Round 2: Provider claims 150 cumulative → pending_claim_count=150
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::claim(&mut bal, 150, &clock, scenario.ctx());
+        assert!(prepaid::balance_pending_claim_count(&bal) == 150);
+        ts::return_shared(bal);
+
+        // Agent disputes with receipt #99: 99 > 50 ✓ AND 99 < 150 ✓
+        scenario.next_tx(AGENT);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::dispute_claim(
+            &mut bal,
+            @0x06d553b842f768751ef60436013fd9a563de7986dc8991a2b3a8edb7037fc8ed,
+            99,
+            1700000000000,
+            TEST_RESPONSE_HASH,
+            TEST_SIG_CALL_99,
+            &clock,
+            scenario.ctx(),
+        );
+
+        // Fraud proven — balance frozen
+        assert!(prepaid::balance_disputed(&bal) == true);
+        assert!(prepaid::balance_pending_claim_count(&bal) == 0);
+        // 50 calls were settled (50 * 1000 = 50K gross, minus 0.5% fee = 250)
+        // Remaining = 10M - 50K + 250 fee (no, fee is taken from gross)
+        // Actually: 50 * 1000 = 50,000 gross. 0.5% fee = 250. Provider got 49,750. Fee recipient got 250.
+        // Balance remaining = 10M - 50,000 = 9,950,000
+        assert!(prepaid::balance_remaining(&bal) == 9_950_000);
+
+        ts::return_shared(bal);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // Multiple claim-finalize cycles: two rounds of claim → finalize.
+    // Verifies claimed_calls increments correctly through both cycles.
+    #[test]
+    fun test_v2_multiple_claim_finalize_cycles() {
+        let mut scenario = ts::begin(AGENT);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        setup_v2_balance(&mut scenario, &clock, &state);
+
+        // ── Cycle 1: claims 200 calls ──
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::claim(&mut bal, 200, &clock, scenario.ctx());
+        assert!(prepaid::balance_pending_claim_count(&bal) == 200);
+        ts::return_shared(bal);
+
+        clock.increment_for_testing(DISPUTE_WINDOW_MS + 1);
+        scenario.next_tx(@0xCA11);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::finalize_claim(&mut bal, &clock, scenario.ctx());
+        assert!(prepaid::balance_claimed_calls(&bal) == 200);
+        assert!(prepaid::balance_pending_claim_count(&bal) == 0);
+        // 200 * 1000 = 200,000 gross; 0.5% fee = 1,000
+        assert!(prepaid::balance_remaining(&bal) == 10_000_000 - 200_000);
+        ts::return_shared(bal);
+
+        // ── Cycle 2: claims 400 cumulative (200 new) ──
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::claim(&mut bal, 400, &clock, scenario.ctx());
+        assert!(prepaid::balance_pending_claim_count(&bal) == 400);
+        ts::return_shared(bal);
+
+        clock.increment_for_testing(DISPUTE_WINDOW_MS + 1);
+        scenario.next_tx(@0xCA11);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::finalize_claim(&mut bal, &clock, scenario.ctx());
+        assert!(prepaid::balance_claimed_calls(&bal) == 400);
+        assert!(prepaid::balance_pending_claim_count(&bal) == 0);
+        // 400 total * 1000 = 400,000 gross total
+        assert!(prepaid::balance_remaining(&bal) == 10_000_000 - 400_000);
+
+        ts::return_shared(bal);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // Dispute after window expires: provider claims, clock advances past
+    // dispute_window_ms, agent tries to dispute → EDisputeWindowExpired.
+    #[test]
+    #[expected_failure(abort_code = prepaid::EDisputeWindowExpired)]
+    fun test_v2_dispute_window_expired() {
+        let mut scenario = ts::begin(AGENT);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        setup_v2_balance(&mut scenario, &clock, &state);
+
+        // Provider claims 100
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::claim(&mut bal, 100, &clock, scenario.ctx());
+        ts::return_shared(bal);
+
+        // Advance past dispute window
+        clock.increment_for_testing(DISPUTE_WINDOW_MS + 1);
+
+        // Agent tries to dispute — too late
+        scenario.next_tx(AGENT);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::dispute_claim(
+            &mut bal,
+            @0x06d553b842f768751ef60436013fd9a563de7986dc8991a2b3a8edb7037fc8ed,
+            50,
+            1700000000000,
+            TEST_RESPONSE_HASH,
+            TEST_SIG_CALL_50,
+            &clock,
+            scenario.ctx(),
+        );
+
+        ts::return_shared(bal);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // Withdraw disputed after requesting normal withdrawal: verifies that
+    // withdraw_disputed works even if the agent previously called
+    // request_withdrawal (the normal path). Trust is broken — agent should
+    // always be able to recover via the fraud-proof path.
+    #[test]
+    fun test_v2_withdraw_disputed_after_normal_withdrawal_request() {
+        let mut scenario = ts::begin(AGENT);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        setup_v2_balance(&mut scenario, &clock, &state);
+
+        // Agent requests normal withdrawal first
+        scenario.next_tx(AGENT);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::request_withdrawal(&mut bal, &clock, scenario.ctx());
+        ts::return_shared(bal);
+
+        // Provider claims 100 → pending
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::claim(&mut bal, 100, &clock, scenario.ctx());
+        ts::return_shared(bal);
+
+        // Agent disputes with receipt #50
+        scenario.next_tx(AGENT);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::dispute_claim(
+            &mut bal,
+            @0x06d553b842f768751ef60436013fd9a563de7986dc8991a2b3a8edb7037fc8ed,
+            50,
+            1700000000000,
+            TEST_RESPONSE_HASH,
+            TEST_SIG_CALL_50,
+            &clock,
+            scenario.ctx(),
+        );
+        assert!(prepaid::balance_disputed(&bal) == true);
+        ts::return_shared(bal);
+
+        // Agent uses withdraw_disputed — works despite pending normal withdrawal
+        scenario.next_tx(AGENT);
+        let bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::withdraw_disputed(bal, &clock, scenario.ctx());
+
+        // Verify agent got full refund
+        scenario.next_tx(AGENT);
+        let refund = scenario.take_from_address<coin::Coin<SUI>>(AGENT);
+        assert!(refund.value() == 10_000_000);
+        ts::return_to_address(AGENT, refund);
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
 }

@@ -39,6 +39,25 @@
 ///   - Funds at risk = current PrepaidBalance.balance at time of key loss
 ///   - Mitigation: use small deposits + frequent refill cycles
 ///   - Future: governance-gated emergency drain after long dormancy period
+///
+/// KNOWN LIMITATIONS (v0.2):
+///
+///   L1 — Semantically incomplete fraud proof.
+///     The agent must submit their HIGHEST receipt to maximize dispute impact,
+///     but this is not enforced on-chain — a careless agent could submit a low
+///     receipt and still "win" the dispute (getting all funds back) even though
+///     a higher receipt exists. Mitigation: economic (agent reputation, SDK
+///     guidance). Fix planned for v0.3 (cumulative receipt scheme).
+///     See ADR-007 §Trust-Model for details.
+///
+///   L2 — No on-chain public key ownership proof.
+///     The provider_pubkey is supplied by the AGENT at deposit time. Nothing on
+///     chain proves the provider actually controls that key. A rogue agent could
+///     supply their own key, sign fake receipts, and self-dispute. Mitigation:
+///     client-side challenge-response via verifyProviderKey() in the TypeScript
+///     SDK (packages/sui/src/ptb/prepaid.ts). Fix for v0.3: provider self-
+///     registers pubkey in a shared registry object.
+///     See ADR-007 §L2-Pubkey-Ownership for details.
 module sweefi::prepaid {
     use sui::coin::{Self, Coin};
     use sui::balance::Balance;
