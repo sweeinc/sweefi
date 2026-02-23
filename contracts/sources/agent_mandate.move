@@ -372,6 +372,25 @@ module sweefi::agent_mandate {
         object::delete(id);
     }
 
+    /// Destroy an agent mandate held by any address, regardless of delegate field.
+    /// AgentMandate holds no funds — any holder can destroy it.
+    ///
+    /// Use when an AgentMandate was accidentally transferred to a non-delegate
+    /// address and became a zombie (the holder cannot use destroy() because the
+    /// delegate check fails). Security: spending remains delegate-only
+    /// (validate_and_spend checks mandate.delegate). Destroying a held mandate
+    /// does not transfer any spending rights.
+    public fun destroy_held<T>(mandate: AgentMandate<T>) {
+        let AgentMandate {
+            id, delegator: _, delegate: _, level: _,
+            max_per_tx: _, daily_limit: _, daily_spent: _,
+            last_daily_reset_ms: _, weekly_limit: _, weekly_spent: _,
+            last_weekly_reset_ms: _, max_total: _, total_spent: _,
+            expires_at_ms: _,
+        } = mandate;
+        object::delete(id);
+    }
+
     // ══════════════════════════════════════════════════════════════
     // View functions
     // ══════════════════════════════════════════════════════════════

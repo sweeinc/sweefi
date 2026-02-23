@@ -757,6 +757,69 @@ module sweefi::agent_mandate_tests {
     }
 
     // ══════════════════════════════════════════════════════════════
+    // Zombie mandate prevention — destroy_held
+    // ══════════════════════════════════════════════════════════════
+
+    const THIRD_PARTY: address = @0xC;
+
+    #[test]
+    #[expected_failure(abort_code = agent_mandate::ENotDelegate)]
+    fun test_destroy_zombie_agent_mandate_by_non_delegate_fails() {
+        // AgentMandate accidentally transferred to a non-delegate address becomes
+        // a zombie. destroy() checks sender == delegate, so THIRD_PARTY can't
+        // clean it up. This confirms the guard remains intact.
+        let mut scenario = ts::begin(DELEGATOR);
+        let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            1_000_000_000, 5_000_000_000, 20_000_000_000, 100_000_000_000,
+            option::some(1_000_000), &clock, ctx,
+        );
+
+        // Transfer to THIRD_PARTY (non-delegate) — simulates erroneous transfer
+        transfer::public_transfer(m, THIRD_PARTY);
+
+        ts::next_tx(&mut scenario, THIRD_PARTY);
+        let m = scenario.take_from_sender<agent_mandate::AgentMandate<SUI>>();
+        let ctx = ts::ctx(&mut scenario);
+
+        // destroy() checks sender == delegate → THIRD_PARTY != DELEGATE → ENotDelegate
+        agent_mandate::destroy(m, ctx);
+
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    #[test]
+    fun test_destroy_held_cleans_zombie_agent_mandate() {
+        // destroy_held() enables any current holder to clean up a zombie AgentMandate.
+        // No auth check — AgentMandate holds NO funds (only metadata), so destroying
+        // it cannot steal or unlock any value. Cleanup is safe for any holder.
+        let mut scenario = ts::begin(DELEGATOR);
+        let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            1_000_000_000, 5_000_000_000, 20_000_000_000, 100_000_000_000,
+            option::some(1_000_000), &clock, ctx,
+        );
+
+        // Transfer to THIRD_PARTY (non-delegate)
+        transfer::public_transfer(m, THIRD_PARTY);
+
+        // THIRD_PARTY uses destroy_held() — no auth check, zombie cleaned up
+        ts::next_tx(&mut scenario, THIRD_PARTY);
+        let m = scenario.take_from_sender<agent_mandate::AgentMandate<SUI>>();
+        agent_mandate::destroy_held(m);
+
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    // ══════════════════════════════════════════════════════════════
     // No-expiry agent mandate tests (Option<u64> = None)
     // ══════════════════════════════════════════════════════════════
 
