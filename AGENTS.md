@@ -463,8 +463,30 @@ decision log. New endpoints and middleware added:
 
 ---
 
+## Safety Invariants
+
+SweeFi has **10 formally proven invariants** in `INVARIANTS.md`. Read these before modifying Move contracts or payment flows:
+
+| ID | Property | Type | What it protects |
+|----|----------|------|------------------|
+| P1 | Prepaid solvency | Safety | Agent never loses more than deposited |
+| P2 | Dispute bounds | Safety | Fraud proofs must reference current batch only (F1 fix verified) |
+| P3 | Mandate spending | Safety | Structural enforcement at Move consensus, not LLM behavior |
+| P4 | No double settlement | Safety | Each payment produces at most one on-chain receipt |
+| P5 | Escrow termination | Liveness | Every escrow eventually resolves (no permanent fund lock) |
+| P6 | Stream budget cap | Safety | Stream never exceeds max_amount regardless of tick timing |
+| P7 | PTB atomicity | Safety | No orphaned verify-without-settle states |
+| P8 | SEAL content gating | Safety | Content inaccessible until payment receipt exists on-chain |
+| P9 | Facilitator non-custodial | Safety | Facilitator is a relay, cannot forge or redirect payments |
+| P10 | Withdrawal delay | Safety | Safe but has UX gap when dispute_window > withdrawal_delay |
+
+**If you modify `prepaid.move`, `stream.move`, `escrow.move`, or `mandate.move`, re-verify the relevant invariant.**
+
+---
+
 ## Related Files
 
+- **INVARIANTS.md** — Formal safety proofs (Lamport-style, 10 properties)
 - **SPEC.md** — Full specification, vision, timeline
 - **BATTLE-PLAN.md** — Competitive strategy vs BEEP
 - **GRANT-APPLICATION.md** — Sui DeFi Moonshots grant application
