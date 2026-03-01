@@ -1241,4 +1241,91 @@ module sweefi::escrow_tests {
         clock.destroy_for_testing();
         scenario.end();
     }
+
+    // ══════════════════════════════════════════════════════════════
+    // M-01: Post-deadline dispute blocked (pre-publication audit 2026-02-28)
+    // ══════════════════════════════════════════════════════════════
+
+    #[test]
+    #[expected_failure(abort_code = escrow::EDeadlineReached)]
+    fun test_dispute_after_deadline_by_seller_fails() {
+        // M-01: Seller cannot dispute after deadline.
+        // After deadline, permissionless refund is the buyer's unconditional guarantee.
+        let mut scenario = ts::begin(BUYER);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
+        );
+
+        // Advance past deadline
+        clock.set_for_testing(DEADLINE_MS + 1);
+
+        scenario.next_tx(SELLER);
+        let mut e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::dispute(&mut e, &clock, scenario.ctx()); // should abort
+
+        ts::return_shared(e);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    #[expected_failure(abort_code = escrow::EDeadlineReached)]
+    fun test_dispute_after_deadline_by_buyer_fails() {
+        // M-01: Buyer also cannot dispute after deadline.
+        // Consistent enforcement — deadline is absolute for all parties.
+        let mut scenario = ts::begin(BUYER);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
+        );
+
+        // Advance past deadline
+        clock.set_for_testing(DEADLINE_MS + 1);
+
+        scenario.next_tx(BUYER);
+        let mut e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::dispute(&mut e, &clock, scenario.ctx()); // should abort
+
+        ts::return_shared(e);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    fun test_dispute_just_before_deadline_succeeds() {
+        // Sanity check: dispute at deadline - 1ms still works.
+        let mut scenario = ts::begin(BUYER);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
+        );
+
+        // 1ms before deadline — dispute should succeed
+        clock.set_for_testing(DEADLINE_MS - 1);
+
+        scenario.next_tx(SELLER);
+        let mut e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::dispute(&mut e, &clock, scenario.ctx());
+        assert!(escrow::escrow_state(&e) == 1); // STATE_DISPUTED
+
+        ts::return_shared(e);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
 }

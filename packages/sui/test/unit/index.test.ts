@@ -17,6 +17,8 @@ import {
   ExactSuiFacilitatorScheme,
   PrepaidSuiClientScheme,
   PrepaidSuiFacilitatorScheme,
+  toClientSuiSigner,
+  adaptWallet,
 } from "../../src/index";
 
 describe("@sweefi/sui", () => {
@@ -25,6 +27,12 @@ describe("@sweefi/sui", () => {
     expect(ExactSuiFacilitatorScheme).toBeDefined();
     expect(PrepaidSuiClientScheme).toBeDefined();
     expect(PrepaidSuiFacilitatorScheme).toBeDefined();
+  });
+
+  it("should export adaptWallet as alias for toClientSuiSigner", () => {
+    expect(adaptWallet).toBeDefined();
+    expect(typeof adaptWallet).toBe("function");
+    expect(adaptWallet).toBe(toClientSuiSigner);
   });
 
   // ─────────────────────────────────────────────

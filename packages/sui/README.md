@@ -297,9 +297,10 @@ convertToTokenAmount("1.5", 9);              // "1500000000" (1.5 SUI in MIST)
 
 ## Peer Dependencies
 
-| Package | Version |
-|---------|---------|
-| `@mysten/sui` | `^2.0.0` |
+| Package | Version | Notes |
+|---------|---------|-------|
+| `@mysten/sui` | `^2.0.0` | Sui TypeScript SDK |
+| `@sweefi/server` | `>=0.1.0` | s402 fetch wrapper (used by `createS402Client`) |
 
 ## License
 

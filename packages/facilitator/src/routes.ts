@@ -49,9 +49,9 @@ function validateSettlementBody(body: unknown): string | null {
     return `paymentRequirements.amount must be a non-negative integer string, got "${reqs.amount}"`;
   }
   if (typeof reqs.payTo !== "string" || reqs.payTo.length === 0) return "paymentRequirements.payTo is required";
-  // D-07: Basic payTo address format validation (Sui hex addresses)
-  if (typeof reqs.payTo === "string" && !reqs.payTo.startsWith("0x")) {
-    return `paymentRequirements.payTo must be a hex address starting with "0x", got "${reqs.payTo}"`;
+  // D-07: Full payTo address format validation (Sui hex addresses — 0x + 64 hex chars)
+  if (typeof reqs.payTo === "string" && !/^0x[a-fA-F0-9]{64}$/.test(reqs.payTo)) {
+    return `paymentRequirements.payTo must be a valid Sui address (0x + 64 hex chars), got "${reqs.payTo}"`;
   }
 
   return null;

@@ -9,6 +9,13 @@
 export { toClientSuiSigner, toFacilitatorSuiSigner } from "./signer";
 export type { ClientSuiSigner, FacilitatorSuiSigner, FacilitatorSuiSignerConfig } from "./signer";
 
+/**
+ * Convenience alias for toClientSuiSigner.
+ * Adapts any Sui keypair into a ClientSuiSigner for s402 payments.
+ * Moved here from @sweefi/server/client to break circular dependency.
+ */
+export { toClientSuiSigner as adaptWallet } from "./signer";
+
 // Export constants
 export * from "./constants";
 

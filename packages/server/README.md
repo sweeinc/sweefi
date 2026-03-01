@@ -15,7 +15,7 @@ Chain-agnostic s402 HTTP middleware and fetch wrapper.
 | Running an API that should charge per call | Gate routes with 402 | `@sweefi/server` or `@sweefi/server/server` |
 | Building an AI agent or client app | Wrap fetch to auto-pay 402s | `@sweefi/server/client` |
 
-> **Note:** For a complete Sui client with wallet signing, use [`@sweefi/sui`](https://www.npmjs.com/package/@sweefi/sui) which builds on this package and adds `createS402Client`.
+> **Note:** For a complete Sui client with wallet signing, use [`@sweefi/sui`](https://www.npmjs.com/package/@sweefi/sui) which builds on this package and adds `createS402Client` and `adaptWallet`.
 
 ---
 
@@ -161,19 +161,22 @@ const response = await paidFetch('https://api.example.com/premium/data');
 
 ## Subpath imports
 
-The package ships two entry points so you only bundle what you use:
+The package ships three entry points so you only bundle what you use:
 
 ```typescript
-// Root — server middleware + client fetch wrapper
+// Root — server middleware + client fetch wrapper (no blockchain deps)
 import { s402Gate, wrapFetchWithS402 } from '@sweefi/server';
 
-// Client only — fetch wrapper (browser / agent / edge safe)
+// Client only — fetch wrapper (browser / agent / edge safe, no blockchain deps)
 import { wrapFetchWithS402 } from '@sweefi/server/client';
 import type { s402FetchOptions } from '@sweefi/server/client';
 
 // Server only — Hono middleware (Node.js and edge runtimes)
 import { s402Gate } from '@sweefi/server/server';
 import type { s402GateConfig } from '@sweefi/server/server';
+
+// Wallet adapting is in @sweefi/sui (not here — keeps this package chain-agnostic)
+import { adaptWallet } from '@sweefi/sui';
 ```
 
 ---

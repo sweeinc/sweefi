@@ -43,6 +43,8 @@ SweeFi is the payment layer of the **Swee ecosystem**: **SweeFi** (payments) + *
 | **Build an AI agent that auto-pays APIs** | `@sweefi/sui` | [`createS402Client`](packages/sui#quick-start) |
 | **Give my AI agent payment tools** (Claude, Cursor) | `@sweefi/mcp` | [MCP quickstart](packages/mcp#quickstart) |
 | **Pay from a CLI / script** | `@sweefi/cli` | [`sweefi pay`](packages/cli#quick-start) |
+| **Pay from a Solana wallet** | `@sweefi/solana` | [Solana adapter](packages/solana#quick-start) |
+| **Bridge AP2 mandates to SweeFi** | `@sweefi/ap2-adapter` | [AP2 adapter](packages/ap2-adapter#quick-start) |
 | **Add a pay button to React** | `@sweefi/react` + `@sweefi/sui` + `@sweefi/ui-core` | [`useSweefiPayment()`](packages/react#provider-mode-recommended-for-apps) |
 | **Add a pay button to Vue** | `@sweefi/vue` + `@sweefi/sui` + `@sweefi/ui-core` | [`useSweefiPayment()`](packages/vue#plugin-mode-recommended-for-apps) |
 | **Build Move transactions directly** | `@sweefi/sui` | [`@sweefi/sui/ptb` builders](packages/sui#ptb-builder-reference) |
@@ -153,6 +155,8 @@ AI Agent (Claude, GPT, Cursor, etc.)
 | [`@sweefi/facilitator`](packages/facilitator) | Self-hostable payment verification — Docker/Fly.io (not on npm) | 37 |
 | [`@sweefi/mcp`](packages/mcp) | MCP server with 35 AI agent tools | 79 |
 | [`@sweefi/cli`](packages/cli) | CLI tool — wallet, pay, prepaid, mandates | 42 |
+| [`@sweefi/solana`](packages/solana) | Solana s402 payment adapter | 40 |
+| [`@sweefi/ap2-adapter`](packages/ap2-adapter) | Google AP2 ↔ SweeFi mandate bridge | 52 |
 | [`sweefi-contracts`](contracts) | 10 Move modules on Sui testnet (v7) | 185 |
 
 **Total: 567 tests (382 TypeScript + 185 Move)**
@@ -422,6 +426,8 @@ SweeFi is fully open source. Every developer-facing package is published under *
 | `@sweefi/react` | Apache 2.0 | npm (public) |
 | `@sweefi/mcp` | Apache 2.0 | npm (public) |
 | `@sweefi/cli` | Apache 2.0 | npm (public) |
+| `@sweefi/solana` | Apache 2.0 | npm (public) |
+| `@sweefi/ap2-adapter` | Apache 2.0 | npm (public) |
 | `@sweefi/facilitator` | Apache 2.0 | Self-hostable (not on npm) |
 | `sweefi-contracts` | Apache 2.0 | Deployed on Sui |
 

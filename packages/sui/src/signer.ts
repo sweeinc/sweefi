@@ -204,7 +204,7 @@ export function toFacilitatorSuiSigner(
  * Convert any Sui keypair to a ClientSuiSigner.
  * Works with Ed25519Keypair, Secp256k1Keypair, etc.
  *
- * @param keypair - Any Sui cryptographic keypair
+ * @param keypair - Any Sui cryptographic keypair (Ed25519, Secp256k1, etc.)
  * @param client - SuiJsonRpcClient for building transactions
  * @returns A ClientSuiSigner instance
  */

@@ -20,6 +20,7 @@
 ///   - NOT on the hot payment path — shared object contention is acceptable
 ///   - No partial release (V2 if market demands)
 ///   - No deadline extension on ACTIVE escrows (griefing vector)
+///   - No dispute after deadline (M-01: arbiter-seller collusion vector)
 ///   - DISPUTED escrows get bounded proportional grace period (prevents refund race condition)
 ///     Grace = clamp(original_duration × 50%, 7 days, 30 days)
 ///   - No fee on refund (buyer shouldn't pay for failed delivery)
@@ -54,6 +55,7 @@ module sweefi::escrow {
     const EArbiterIsSeller: u64 = 212;
     const EArbiterIsBuyer: u64 = 213;
     const EBuyerIsSeller: u64 = 214;
+    const EDeadlineReached: u64 = 215;
 
     // ══════════════════════════════════════════════════════════════
     // State constants
@@ -452,15 +454,25 @@ module sweefi::escrow {
     /// Both buyer and seller can dispute:
     ///   - Buyer disputes if delivery not as expected
     ///   - Seller disputes if buyer won't release despite delivery
+    ///
+    /// SECURITY (M-01): Dispute must be raised BEFORE the deadline.
+    /// After deadline, permissionless refund is the buyer's unconditional guarantee.
+    /// Without this check, a seller could dispute post-deadline and extend the lockup
+    /// via grace period, enabling arbiter-seller collusion to steal funds.
+    /// See: pre-publication audit (2026-02-28).
     public fun dispute<T>(
         escrow: &mut Escrow<T>,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
         let sender = ctx.sender();
+        let now_ms = clock.timestamp_ms();
 
         assert!(escrow.state == STATE_ACTIVE, EAlreadyDisputed);
         assert!(sender == escrow.buyer || sender == escrow.seller, ENotAuthorized);
+        // M-01: Deadline is the buyer's unconditional safety net.
+        // After deadline, only permissionless refund is available — no disputes.
+        assert!(now_ms < escrow.deadline_ms, EDeadlineReached);
 
         escrow.state = STATE_DISPUTED;
 

@@ -4,6 +4,10 @@ CLI for AI agent payments on Sui — pay, stream, escrow, and manage mandates fr
 
 **Apache 2.0 open source.** Part of the [SweeFi](https://github.com/sweeinc/sweefi) ecosystem — open-source agentic payment infrastructure for Sui.
 
+## Prerequisites
+
+- **Node.js >= 22** (required — uses modern JS features)
+
 ## Installation
 
 ```bash
