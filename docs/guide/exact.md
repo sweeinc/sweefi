@@ -8,7 +8,7 @@ The simplest scheme. One payment per request. Pay, get a receipt, done.
 - x402 compatibility (exact is the only scheme x402 supports)
 - Low-frequency access where per-call gas is acceptable
 
-For high-frequency access (100+ calls/day), use [Prepaid](/guide/prepaid) instead — 500x gas savings.
+For high-frequency access (100+ calls/day), use [Prepaid](/guide/prepaid) instead — ~70x gas savings.
 
 ## How It Works
 
@@ -121,10 +121,9 @@ import { buildCreateInvoiceTx, buildPayInvoiceTx } from '@sweefi/sui/ptb';
 
 // Server creates invoice
 const invoiceTx = buildCreateInvoiceTx(testnetConfig, {
-  coinType: '0x2::sui::SUI',
   sender: serverAddress,
   recipient: serverAddress,
-  amount: 1_000_000n,
+  expectedAmount: 1_000_000n,
   feeMicroPercent: 5000,
   feeRecipient: feeAddress,
 });
@@ -134,6 +133,7 @@ const payTx = buildPayInvoiceTx(testnetConfig, {
   coinType: '0x2::sui::SUI',
   sender: clientAddress,
   invoiceId: '0xINVOICE_ID',
+  amount: 1_000_000n,           // must be >= invoice.expected_amount
 });
 ```
 
@@ -141,13 +141,13 @@ const payTx = buildPayInvoiceTx(testnetConfig, {
 
 | Code | Name | Meaning |
 |------|------|---------|
-| 0 | `EInsufficientPayment` | Coin value < amount + fee |
+| 0 | `EInsufficientPayment` | Coin value < amount |
 | 1 | `EZeroAmount` | Payment amount is 0 |
 | 2 | `EInvalidFeeMicroPct` | Fee > 1,000,000 (100%) |
 
 ## Next Steps
 
-- [Prepaid](/guide/prepaid) — For high-frequency access (500x gas savings)
+- [Prepaid](/guide/prepaid) — For high-frequency access (~70x gas savings)
 - [Streaming](/guide/streaming) — Per-second micropayments
 - [SEAL](/guide/seal) — Use receipts for pay-to-decrypt
 - [Fee & Trust Model](/guide/fee-ownership) — How micro-percent fees work

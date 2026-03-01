@@ -13,9 +13,11 @@ pnpm add @sweefi/sui @mysten/sui
 ```typescript
 import { createS402Client } from '@sweefi/sui';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 
 // 1. Load your Sui keypair (testnet — get SUI at https://faucet.sui.io)
-const wallet = Ed25519Keypair.fromSecretKey(process.env.SUI_PRIVATE_KEY!);
+const { secretKey } = decodeSuiPrivateKey(process.env.SUI_PRIVATE_KEY!);
+const wallet = Ed25519Keypair.fromSecretKey(secretKey);
 
 // 2. Create an s402-aware fetch client
 const client = createS402Client({ wallet, network: 'sui:testnet' });
@@ -55,7 +57,7 @@ Cost: ~6,000 MIST (0.000006 SUI) + gas on testnet.
 ## Next Steps
 
 - [Quick Start — Server](/guide/quickstart-server) — Gate your own endpoints with 402
-- [MCP + Claude Desktop](/guide/mcp-setup) — Give Claude 35 payment tools
+- [MCP + Claude Desktop](/guide/mcp-setup) — Give Claude 30+ payment tools
 - [Exact Payments](/guide/exact) — How one-shot payments work
-- [Prepaid Budgets](/guide/prepaid) — 500x gas savings for high-frequency APIs
+- [Prepaid Budgets](/guide/prepaid) — ~70x gas savings for high-frequency APIs
 - [@sweefi/sui Reference](/guide/sui) — Full PTB builder reference

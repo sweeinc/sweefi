@@ -49,11 +49,11 @@ const tx = buildCreateEscrowTx(testnetConfig, {
   sender: buyerAddress,
   seller: '0xSELLER',
   arbiter: '0xARBITER',      // trusted dispute resolver
-  amount: 1_000_000_000n,     // 1 SUI
+  depositAmount: 1_000_000_000n, // 1 SUI
   deadlineMs: BigInt(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
   feeMicroPercent: 5000,       // 0.5%
   feeRecipient: '0xFEE_ADDR',
-  description: new TextEncoder().encode('Website redesign - milestone 1'),
+  memo: 'Website redesign - milestone 1',
 });
 ```
 
@@ -101,7 +101,7 @@ const tx = buildDisputeEscrowTx(testnetConfig, {
 ```
 ACTIVE (0)
   │
-  ├── release() → RELEASED (2)   [buyer or arbiter]
+  ├── release() → RELEASED (2)   [buyer only]
   ├── dispute() → DISPUTED (1)   [buyer or seller]
   │       │
   │       ├── release() → RELEASED (2)  [arbiter only]
@@ -115,13 +115,11 @@ Every escrow eventually resolves. No funds can be locked forever.
 
 ## Grace Period
 
-After the deadline, there's a grace period before permissionless refund is available. This prevents front-running:
+When a dispute is raised, the deadline is extended by a grace period to give the arbiter time to resolve. This prevents deadline-racing:
 
 ```
-Grace period = max(
-  min(50% of duration, 30 days),
-  7 days
-)
+Grace period = clamp(50% of duration, 7 days, 30 days)
+             = min(max(50% of duration, 7 days), 30 days)
 ```
 
 For a 7-day escrow: grace period = 7 days (floor).

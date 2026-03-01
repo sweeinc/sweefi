@@ -45,10 +45,10 @@ Key insight: the SEAL key servers call `seal_approve()` in a **dry-run** — the
 The entry point for SEAL key servers:
 
 ```move
-public entry fun seal_approve(
+entry fun seal_approve(
     id: vector<u8>,
     receipt: &escrow::EscrowReceipt,
-    ctx: &TxContext
+    ctx: &TxContext,
 )
 ```
 
@@ -62,16 +62,23 @@ This was a deliberate security decision (ADR-005, H-1 fix). A sender check would
 
 ### Access Condition
 
-The check is simple: does the receipt's `escrow_id` match the content identifier?
+The check uses a **prefix match** — the receipt's `escrow_id` must be a prefix of the content `id`. This enables the nonce pattern (appending a random suffix for per-file keys within one escrow):
 
 ```move
 fun check_policy(
     id: vector<u8>,
     receipt: &escrow::EscrowReceipt,
-    _ctx: &TxContext
+    _ctx: &TxContext,
 ): bool {
-    let receipt_id = escrow::receipt_escrow_id(receipt);
-    object::id_to_bytes(&receipt_id) == id
+    let prefix = escrow::receipt_escrow_id(receipt).to_bytes();
+    let prefix_len = prefix.length();
+    if (prefix_len > id.length()) { return false };
+    let mut i = 0;
+    while (i < prefix_len) {
+        if (prefix[i] != id[i]) { return false };
+        i = i + 1;
+    };
+    true
 }
 ```
 
@@ -97,11 +104,11 @@ const escrowTx = buildCreateEscrowTx(testnetConfig, {
   sender: buyerAddress,
   seller: contentProviderAddress,
   arbiter: arbiterAddress,
-  amount: 5_000_000_000n,  // 5 SUI for premium dataset
+  depositAmount: 5_000_000_000n,  // 5 SUI for premium dataset
   deadlineMs: BigInt(Date.now() + 7 * 24 * 60 * 60 * 1000),
   feeMicroPercent: 0,
   feeRecipient: buyerAddress,
-  description: new TextEncoder().encode('encrypted-dataset-v2'),
+  memo: 'encrypted-dataset-v2',
 });
 
 // 2. Seller releases escrow → EscrowReceipt created

@@ -16,7 +16,10 @@ pnpm add @sweefi/sui @mysten/sui
 import { createS402Client } from '@sweefi/sui';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
-const wallet = Ed25519Keypair.fromSecretKey(process.env.SUI_PRIVATE_KEY!);
+import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
+
+const { secretKey } = decodeSuiPrivateKey(process.env.SUI_PRIVATE_KEY!);
+const wallet = Ed25519Keypair.fromSecretKey(secretKey);
 const client = createS402Client({ wallet, network: 'sui:testnet' });
 
 // Auto-pays any 402 response
@@ -208,10 +211,15 @@ Implements the `PaymentAdapter` interface from `@sweefi/ui-core` for Sui:
 
 ```typescript
 import { SuiPaymentAdapter } from '@sweefi/sui';
-import { SuiClient } from '@mysten/sui/client';
+import { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
+import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+
+const wallet = Ed25519Keypair.fromSecretKey(secretKey);
+const client = new SuiJsonRpcClient({ url: 'https://fullnode.testnet.sui.io:443' });
 
 const adapter = new SuiPaymentAdapter({
-  signer: toClientSuiSigner(keypair, suiClient),
+  wallet,              // Signer (Ed25519Keypair, Secp256k1Keypair, etc.)
+  client,              // SuiJsonRpcClient (pre-configured)
   network: 'sui:testnet',
 });
 
@@ -235,6 +243,9 @@ Protocol-level scheme implementations used by the facilitator and client:
 | `EscrowSuiFacilitatorScheme` | Facilitator | Escrow |
 | `PrepaidSuiClientScheme` | Client | Prepaid |
 | `PrepaidSuiFacilitatorScheme` | Facilitator | Prepaid |
+| `PrepaidSuiServerScheme` | Server | Prepaid |
+| `StreamSuiServerScheme` | Server | Stream |
+| `EscrowSuiServerScheme` | Server | Escrow |
 | `UnlockSuiClientScheme` | Client | SEAL Unlock |
 | `DirectSuiSettlement` | — | Direct (no facilitator) |
 
@@ -245,10 +256,14 @@ import {
   SUI_COIN_TYPE,       // '0x2::sui::SUI'
   USDC_MAINNET,        // mainnet USDC type
   USDC_TESTNET,        // testnet USDC type
-  SUI_MAINNET_CAIP2,   // 'sui:35834a8a'
-  SUI_TESTNET_CAIP2,   // 'sui:4c78adac'
+  SUI_MAINNET_CAIP2,   // 'sui:mainnet'
+  SUI_TESTNET_CAIP2,   // 'sui:testnet'
+  SUI_DEVNET_CAIP2,    // 'sui:devnet'
   MAINNET_RPC_URL,
   TESTNET_RPC_URL,
+  DEVNET_RPC_URL,
+  SUI_DECIMALS,        // 9
+  USDC_DECIMALS,       // 6
 } from '@sweefi/sui';
 ```
 
@@ -256,7 +271,7 @@ import {
 
 | Function | Description |
 |----------|-------------|
-| `createSuiClient(network)` | Create `SuiClient` from CAIP-2 network string |
+| `createSuiClient(network)` | Create `SuiJsonRpcClient` from CAIP-2 network string |
 | `getUsdcCoinType(network)` | Get canonical USDC coin type for a network |
 | `validateSuiAddress(addr)` | Validate `0x` + 64 hex format |
 | `convertToTokenAmount(decimal, decimals)` | String arithmetic (no floats in money paths) |

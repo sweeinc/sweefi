@@ -59,6 +59,7 @@ const registryTx = buildCreateRegistryTx(testnetConfig, {
 
 // Revoke mandate (instant, on-chain)
 const revokeTx = buildRevokeMandateTx(testnetConfig, {
+  coinType: '0x2::sui::SUI',
   sender: humanAddress,
   mandateId: '0xMANDATE_ID',
   registryId: '0xREGISTRY_ID',
@@ -137,10 +138,10 @@ const tx = buildUpdateMandateCapsTx(testnetConfig, {
   coinType: '0x2::sui::SUI',
   sender: humanAddress,
   mandateId: '0xAGENT_MANDATE_ID',
-  newMaxPerTx: 5_000_000n,
-  newDailyLimit: 50_000_000n,
-  newWeeklyLimit: 200_000_000n,
-  newMaxTotal: 1_000_000_000n,
+  maxPerTx: 5_000_000n,
+  dailyLimit: 50_000_000n,
+  weeklyLimit: 200_000_000n,
+  maxTotal: 1_000_000_000n,
 });
 ```
 
@@ -214,10 +215,14 @@ Fields:
 |------|------|---------|
 | 500 | `ENotDelegate` | Caller is not the delegate |
 | 501 | `EExpired` | Mandate has expired |
+| 502 | `EPerTxLimitExceeded` | Amount exceeds max_per_tx |
+| 503 | `ETotalLimitExceeded` | Would exceed lifetime cap |
+| 504 | `ENotDelegator` | Caller is not the delegator (or registry owner mismatch) |
+| 505 | `ERevoked` | Mandate has been revoked |
 | 506 | `EDailyLimitExceeded` | Would exceed daily cap |
 | 507 | `EWeeklyLimitExceeded` | Would exceed weekly cap |
 | 508 | `EInvalidLevel` | Level not in 0–3 |
-| 509 | `ELevelNotAuthorized` | Level too low for operation |
+| 509 | `ELevelNotAuthorized` | Level too low for operation (requires L2+) |
 | 510 | `ECannotDowngrade` | Level can only increase |
 
 ## Next Steps

@@ -5,7 +5,7 @@ hero:
   text: Your AI agent needs to pay for things.
   tagline: >-
     Open-source payment infrastructure for Sui. Five payment schemes.
-    40 PTB builders. From one-shot payments to prepaid agent budgets —
+    42 PTB builders. From one-shot payments to prepaid agent budgets —
     built for agents that spend money autonomously.
   actions:
     - theme: brand
@@ -28,8 +28,8 @@ features:
     title: Atomic PTB settlement
     details: No temporal gap between verify and settle. Sui's Programmable Transaction Blocks make payment + receipt creation a single atomic operation.
   - icon: 💰
-    title: 500x gas savings
-    details: Prepaid deposits let agents make thousands of API calls off-chain. One deposit transaction replaces 500+ individual payments.
+    title: ~70x gas savings
+    details: Prepaid deposits let agents make thousands of API calls off-chain. One deposit transaction replaces hundreds of individual payments (~70x gas savings).
   - icon: 🔌
     title: x402-compatible
     details: Wire-compatible with Coinbase's x402. Existing x402 clients talk to SweeFi servers with zero code changes.
@@ -58,4 +58,4 @@ SweeFi handles the s402 negotiation, PTB construction, signing, and settlement. 
 
 ---
 
-**v0.1.0** · 10 packages · 666+ tests · 10 Move modules · Apache 2.0 · Built on [s402](https://www.npmjs.com/package/s402) and [Sui](https://sui.io)
+**v0.1.0** · 10 packages · 800+ tests · 10 Move modules · Apache 2.0 · Built on [s402](https://www.npmjs.com/package/s402) and [Sui](https://sui.io)

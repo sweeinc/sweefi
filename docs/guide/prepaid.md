@@ -1,6 +1,6 @@
 # Prepaid (Agent Budgets)
 
-Deposit-based agent budgets for high-frequency API access. One deposit transaction replaces hundreds of per-call payments — 500x gas savings.
+Deposit-based agent budgets for high-frequency API access. One deposit transaction replaces hundreds of per-call payments — ~70x gas savings.
 
 ## When to Use
 
@@ -70,7 +70,7 @@ const tx = buildPrepaidClaimTx(testnetConfig, {
 });
 ```
 
-Claims are **cumulative and idempotent** — submitting `claim(500)` twice is safe. The contract checks `new_count > balance.total_calls` and rejects duplicates.
+Claims are **cumulative and idempotent** — submitting `claim(500)` twice is safe. The contract checks `new_count >= balance.claimed_calls`. If `new_count == claimed_calls` (zero delta), the call is a no-op — safe for idempotent retries.
 
 ### Agent: Withdraw Remaining Funds
 
@@ -194,7 +194,7 @@ Fields:
 |------|------|---------|
 | 600 | `ENotAgent` | Caller is not the agent |
 | 601 | `ENotProvider` | Caller is not the provider |
-| 602 | `EZeroDeposit` | Deposit amount is 0 |
+| 602 | `EZeroDeposit` | Deposit below MIN_DEPOSIT (1,000,000 MIST) |
 | 604 | `EWithdrawalLocked` | Withdrawal delay not elapsed |
 | 605 | `ECallCountRegression` | New count ≤ current (idempotent safety) |
 | 606 | `EMaxCallsExceeded` | Claim exceeds max_calls |

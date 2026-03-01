@@ -1,6 +1,6 @@
 # MCP + Claude Desktop Setup
 
-Give Claude (or any MCP-compatible AI) 35 payment tools via `@sweefi/mcp`.
+Give Claude (or any MCP-compatible AI) 30+ payment tools via `@sweefi/mcp`.
 
 ## What Is MCP?
 
@@ -68,7 +68,7 @@ sui keytool export --key-identity <address>
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `SUI_PRIVATE_KEY` | Yes | — | Base64 or bech32 Ed25519 key |
+| `SUI_PRIVATE_KEY` | No | — | Bech32 (`suiprivkey1...`) or base64 Ed25519 key. Required for transaction tools; omit for read-only mode. |
 | `SUI_NETWORK` | No | `testnet` | `testnet`, `mainnet`, or `devnet` |
 | `SUI_RPC_URL` | No | — | Custom RPC endpoint |
 | `SUI_PACKAGE_ID` | No | — | Override contract package ID |

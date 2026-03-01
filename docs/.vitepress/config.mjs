@@ -2,7 +2,7 @@ import { defineConfig } from 'vitepress'
 
 export default defineConfig({
   title: 'SweeFi',
-  description: 'Open-source agentic payment infrastructure for Sui. Five payment schemes. 40 PTB builders. Built for AI agents that spend money autonomously.',
+  description: 'Open-source agentic payment infrastructure for Sui. Five payment schemes. 42 PTB builders. Built for AI agents that spend money autonomously.',
   cleanUrls: true,
   srcExclude: [
     'adr/**',
@@ -19,7 +19,7 @@ export default defineConfig({
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
     ['meta', { property: 'og:title', content: 'SweeFi — Agentic payments for Sui' }],
-    ['meta', { property: 'og:description', content: 'Open-source agentic payment infrastructure for Sui. Five payment schemes. 40 PTB builders. Built for AI agents that spend money autonomously.' }],
+    ['meta', { property: 'og:description', content: 'Open-source agentic payment infrastructure for Sui. Five payment schemes. 42 PTB builders. Built for AI agents that spend money autonomously.' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:image', content: '/images/og.png' }],
   ],

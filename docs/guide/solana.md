@@ -22,14 +22,15 @@ Sui has full scheme coverage because the Move smart contracts live on Sui. Solan
 ## Quick Example
 
 ```typescript
-import { SolanaPaymentAdapter, SolanaKeypairSigner } from '@sweefi/solana';
+import { SolanaPaymentAdapter, SolanaKeypairSigner, createSolanaConnection } from '@sweefi/solana';
 import { Keypair } from '@solana/web3.js';
 
 const keypair = Keypair.fromSecretKey(mySecretKey);
 const signer = new SolanaKeypairSigner(keypair);
 
 const adapter = new SolanaPaymentAdapter({
-  signer,
+  wallet: signer,
+  connection: createSolanaConnection('solana:devnet'),
   network: 'solana:devnet',
 });
 
@@ -67,10 +68,12 @@ const signer = new SolanaWalletSigner(walletAdapter);
 Implements `PaymentAdapter` from `@sweefi/ui-core`:
 
 ```typescript
+import { Connection, clusterApiUrl } from '@solana/web3.js';
+
 const adapter = new SolanaPaymentAdapter({
-  signer,
+  wallet: signer,
+  connection: new Connection(clusterApiUrl('devnet'), 'confirmed'),
   network: 'solana:devnet',    // or 'solana:mainnet-beta'
-  rpcUrl: 'https://...',       // optional custom RPC
 });
 
 adapter.getAddress();                // base58 address

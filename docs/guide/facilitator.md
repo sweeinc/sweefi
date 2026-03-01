@@ -41,24 +41,32 @@ curl http://localhost:4022/health
 # {"status":"ok"}
 
 curl http://localhost:4022/.well-known/s402-facilitator
-# {"name":"sweefi-facilitator","version":"0.1.0","networks":["sui:testnet"],...}
+# {"version":"1","feeMicroPercent":5000,"feeRecipient":null,"minFeeUsd":"0.001","supportedSchemes":["exact","stream","escrow","unlock","prepaid"],"supportedNetworks":["sui:testnet"],"validUntil":"..."}
 ```
 
 ## Docker Deployment
 
 ```dockerfile
-FROM node:20-alpine AS builder
-WORKDIR /app
-COPY . .
-RUN pnpm install --frozen-lockfile
-RUN pnpm --filter @sweefi/facilitator build
+FROM node:22-slim AS base
+RUN corepack enable pnpm
 
-FROM node:20-alpine
+FROM base AS build
 WORKDIR /app
-COPY --from=builder /app/packages/facilitator/dist ./dist
-COPY --from=builder /app/packages/facilitator/package.json .
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY packages/ ./packages/
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @sweefi/facilitator... build
+RUN pnpm --filter @sweefi/facilitator deploy /deploy --prod
+
+FROM node:22-slim AS runtime
+WORKDIR /app
+COPY --from=build /deploy ./
+ENV NODE_ENV=production
+EXPOSE 4022
 CMD ["node", "dist/index.mjs"]
 ```
+
+**Note**: Build from the monorepo root, not from `packages/facilitator/`.
 
 ```bash
 docker build -t sweefi-facilitator .
@@ -85,8 +93,8 @@ fly deploy
 ```
 
 The `fly.toml` is configured for:
-- `shared-cpu-1x` with 256 MB RAM
-- Auto-stop when idle, auto-start on request
+- `shared-cpu-1x` with 512 MB RAM
+- Auto-stop excess machines when idle (1 machine minimum), auto-start on request
 - Port 4022 internal, 443 external (TLS termination by Fly)
 
 ## Environment Variables
@@ -95,7 +103,7 @@ The `fly.toml` is configured for:
 |----------|----------|---------|-------------|
 | `API_KEYS` | Yes | — | Comma-separated bearer tokens (each ≥16 chars) |
 | `PORT` | No | `4022` | HTTP port |
-| `FEE_MICRO_PERCENT` | No | `5000` | Fee rate (5000 = 0.5%) |
+| `FEE_MICRO_PERCENT` | No | `5000` | Fee rate in micro-percent (5000 = 0.5%, where 1,000,000 = 100%) |
 | `FEE_RECIPIENT` | No | — | Fee recipient address |
 | `FACILITATOR_KEYPAIR` | No | — | Base64 Ed25519 (reserved for gas sponsorship) |
 | `SUI_MAINNET_RPC` | No | — | Custom mainnet RPC URL |
@@ -130,7 +138,7 @@ The `fly.toml` is configured for:
 
 ## Supported Schemes
 
-The facilitator supports four schemes:
+The facilitator supports five schemes:
 
 | Scheme | Description |
 |--------|-------------|
@@ -138,6 +146,7 @@ The facilitator supports four schemes:
 | `prepaid` | Deposit-based agent budgets |
 | `stream` | Per-second streaming micropayments |
 | `escrow` | Time-locked escrow with dispute resolution |
+| `unlock` | Pay-to-decrypt encrypted content (Walrus + SEAL) |
 
 ## Next Steps
 

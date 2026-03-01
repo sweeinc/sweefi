@@ -24,7 +24,7 @@ app.use('/api/forecast', s402Gate({
   price: '1000000',          // 1,000,000 MIST = 0.001 SUI
   network: 'sui:testnet',
   payTo: '0xYOUR_SUI_ADDRESS',
-  schemes: ['exact'],        // Also: 'prepaid', 'stream', 'escrow'
+  schemes: ['exact'],        // Also: 'prepaid', 'stream', 'escrow', 'unlock'
 }));
 
 app.get('/api/forecast', (c) => c.json({
@@ -35,14 +35,24 @@ app.get('/api/forecast', (c) => c.json({
 export default app;
 ```
 
+::: warning Payment Settlement Required
+The examples above advertise payment requirements but don't settle payments. To actually accept payments, you need either:
+
+- **`facilitatorUrl`** — point to a [self-hosted facilitator](/guide/facilitator) that verifies and broadcasts
+- **`processPayment`** — a custom handler that verifies the payment proof yourself
+
+Without one of these, `s402Gate` returns 402 "Payment settlement not configured" on every payment attempt. This is secure by default — payments fail closed.
+:::
+
 ## What `s402Gate` Does
 
 1. If no payment header → responds with **402** and requirements JSON
 2. If `X-PAYMENT` header present → validates the payment proof
-3. If valid → calls `next()` and your handler runs
-4. If invalid → responds with **402** and error details
+3. If `processPayment` or `facilitatorUrl` configured → settles the payment
+4. If valid → calls `next()` and your handler runs
+5. If invalid or no settlement configured → responds with **402** and error details
 
-The 402 response includes everything the client needs to pay:
+The 402 response includes a `payment-required` header containing base64-encoded JSON with everything the client needs to pay:
 
 ```json
 {
@@ -68,11 +78,11 @@ app.use('/api/premium', s402Gate({
 }));
 ```
 
-With prepaid, an agent deposits once and calls your API hundreds of times off-chain — 500x gas savings versus per-call exact payments.
+With prepaid, an agent deposits once and calls your API hundreds of times off-chain — ~70x gas savings versus per-call exact payments.
 
-## With a Facilitator
+## With a Facilitator (Production)
 
-For production, use a [facilitator](/guide/facilitator) to verify and settle payments:
+For production, add a [facilitator](/guide/facilitator) to verify and settle payments. This is the simplest path to accepting real payments:
 
 ```typescript
 app.use('/api/premium', s402Gate({

@@ -53,12 +53,11 @@ buildPayTx(config, {
   // ...
 });
 
-// Convenience for callers who think in basis points
-import { bpsToMicroPercent } from '@sweefi/sui';
-const microPct = bpsToMicroPercent(50); // 50 bps → 5000 micro-percent
+// Convert basis points to micro-percent: multiply by 100
+const microPct = 50 * 100; // 50 bps → 5000 micro-percent
 ```
 
-`bpsToMicroPercent()` is a public convenience — the SDK and contracts use micro-percent natively.
+Basis points → micro-percent is a simple `× 100` conversion. The SDK and contracts use micro-percent natively.
 
 ## Fee Ownership
 

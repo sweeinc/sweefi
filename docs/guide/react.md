@@ -15,11 +15,13 @@ pnpm add @sweefi/react @sweefi/ui-core @sweefi/sui @mysten/sui
 ```tsx
 import { SweefiProvider, useSweefiPayment } from '@sweefi/react';
 import { createPaymentController } from '@sweefi/ui-core';
-import { SuiPaymentAdapter, toClientSuiSigner } from '@sweefi/sui';
+import { SuiPaymentAdapter } from '@sweefi/sui';
+import { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 
 // Create controller once (outside component)
 const adapter = new SuiPaymentAdapter({
-  signer: toClientSuiSigner(keypair, suiClient),
+  wallet: keypair,       // Ed25519Keypair or any Signer
+  client: new SuiJsonRpcClient({ url: 'https://fullnode.testnet.sui.io:443' }),
   network: 'sui:testnet',
 });
 const controller = createPaymentController(adapter);
@@ -87,7 +89,7 @@ const {
 Access the raw `PaymentController` from context:
 
 ```typescript
-const controller = useSweefiController(); // PaymentController | null
+const controller = useSweefiController(); // PaymentController (throws if no SweefiProvider)
 ```
 
 ## Implementation Notes

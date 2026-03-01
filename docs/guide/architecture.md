@@ -21,7 +21,7 @@ Decision: keep `@sweefi` — it's cleaner, already owned on npm, and avoids any 
 s402                       ← open protocol (unscoped, Apache 2.0, standalone)
   ├── @sweefi/server        ← chain-agnostic HTTP: s402Gate, wrapFetchWithS402
   └── @sweefi/ui-core       ← UI state machine + PaymentAdapter interface
-        ├── @sweefi/sui     ← Sui adapter (40 PTB builders, SuiPaymentAdapter)
+        ├── @sweefi/sui     ← Sui adapter (42 PTB builders, SuiPaymentAdapter)
         │     ├── @sweefi/mcp ← MCP tools for AI agents (30+5 opt-in)
         │     └── @sweefi/cli ← CLI (wallet, pay, prepaid, mandates)
         ├── @sweefi/vue     ← Vue 3 plugin + useSweefiPayment()

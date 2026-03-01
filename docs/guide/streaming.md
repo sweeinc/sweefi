@@ -135,7 +135,7 @@ const tx = buildTopUpTx(testnetConfig, {
   coinType: '0x2::sui::SUI',
   sender: payerAddress,
   meterId: '0xMETER_ID',
-  amount: 500_000_000n,  // Add 0.5 SUI
+  depositAmount: 500_000_000n,  // Add 0.5 SUI
 });
 ```
 
@@ -149,7 +149,7 @@ rate = 0.001 SUI/sec
 Maximum stream duration = 5,000 seconds (~83 minutes)
 ```
 
-After the cap is reached, `claim()` returns 0 and the stream should be closed.
+After the cap is reached, `claim()` will abort with `ENothingToClaim` (error 106). Close the stream to return any remaining balance to the payer.
 
 ## On-Chain: `stream.move`
 
@@ -187,7 +187,7 @@ Fields:
 | 100 | `ENotPayer` | Caller is not the payer |
 | 101 | `ENotRecipient` | Caller is not the recipient |
 | 102 | `EStreamInactive` | Stream is paused or closed |
-| 105 | `EZeroDeposit` | Deposit amount is 0 |
+| 105 | `EZeroDeposit` | Deposit below MIN_DEPOSIT (1,000,000) |
 | 108 | `EBudgetCapExceeded` | Top-up would exceed budget cap |
 | 109 | `ETimeoutNotReached` | Too early for recipient close |
 | 110 | `ETimeoutTooShort` | Custom timeout below minimum |

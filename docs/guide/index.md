@@ -69,7 +69,7 @@ Agent                    Server                  Sui Testnet
 |--------|----------|-------------|--------|
 | **Exact** | One-shot API calls | Sign transfer, execute, done | **Deployed, facilitator complete** |
 | **Prepaid** | AI agent API budgets, high-frequency access | Deposit funds → off-chain API calls → provider batch-claims | **Deployed, facilitator complete** |
-| **Escrow** | Digital goods, freelance work | Lock funds, release on delivery, refund on deadline | **Deployed, 11 PTB builders** |
+| **Escrow** | Digital goods, freelance work | Lock funds, release on delivery, refund on deadline | **Deployed, 5 PTB builders** |
 | **Stream** | Continuous access (AI inference, video) | Create stream on first 402, use stream-id for ongoing access | **Deployed, 9 PTB builders** |
 | **Seal** | Pay-to-decrypt (trustless content gating) | Pay → receipt → SEAL key servers release decryption key | **Token-gated deployed** |
 
@@ -95,7 +95,7 @@ AI Agent (Claude, GPT, Cursor, etc.)
     |                                   |
     +-- MCP tool discovery -------> @sweefi/mcp (30+5 opt-in tools)
     |                                   |
-    +-- Direct PTB --------------> @sweefi/sui (40 PTB builders)
+    +-- Direct PTB --------------> @sweefi/sui (42 PTB builders)
     |                                   |
     +-- CLI ----------------------> @sweefi/cli
     |                                   |
@@ -133,16 +133,18 @@ AI Agent (Claude, GPT, Cursor, etc.)
 | Package | Description | Tests |
 |---------|-------------|-------|
 | [`@sweefi/ui-core`](/guide/ui-core) | Framework-agnostic state machine + PaymentAdapter interface | 13 |
-| [`@sweefi/server`](/guide/server) | Chain-agnostic HTTP: s402Gate, wrapFetchWithS402 | — |
-| [`@sweefi/sui`](/guide/sui) | 40 PTB builders + SuiPaymentAdapter + s402 schemes | 189 |
+| [`@sweefi/server`](/guide/server) | Chain-agnostic HTTP: s402Gate, wrapFetchWithS402 | 11 |
+| [`@sweefi/sui`](/guide/sui) | 42 PTB builders + SuiPaymentAdapter + s402 schemes | 202 |
 | [`@sweefi/vue`](/guide/vue) | Vue 3 plugin + useSweefiPayment() composable | 10 |
 | [`@sweefi/react`](/guide/react) | React context + useSweefiPayment() hook | 12 |
-| [`@sweefi/facilitator`](/guide/facilitator) | Self-hostable payment verification — Docker/Fly.io (not on npm) | 37 |
-| [`@sweefi/mcp`](/guide/mcp) | MCP server — 30 default + 5 opt-in AI agent tools | 79 |
+| [`@sweefi/facilitator`](/guide/facilitator) | Self-hostable payment verification — Docker/Fly.io (not on npm) | 55 |
+| [`@sweefi/mcp`](/guide/mcp) | MCP server — 30 default + 5 opt-in AI agent tools | 123 |
 | [`@sweefi/cli`](/guide/cli) | CLI tool — wallet, pay, prepaid, mandates | 42 |
-| [`sweefi-contracts`](/guide/contracts) | 10 Move modules on Sui testnet (v7) | 185 |
+| [`@sweefi/solana`](/guide/solana) | Solana s402 adapter (exact scheme, SPL tokens) | 40 |
+| [`@sweefi/ap2-adapter`](/guide/ap2-adapter) | AP2 mandate mapper + bridge | 52 |
+| [`sweefi-contracts`](/guide/contracts) | 10 Move modules on Sui testnet (v7) | 249 |
 
-**Total: 567 tests (382 TypeScript + 185 Move)**
+**Total: 809 tests (560 TypeScript + 249 Move)**
 
 **External**: [`s402`](https://www.npmjs.com/package/s402) (HTTP 402 protocol, v0.1.2), `@mysten/sui@2.4.0`, `@mysten/seal@1.0.1`
 
@@ -306,7 +308,7 @@ No admin keys control user funds.
 
 ## Smart Contracts
 
-Deployed on Sui testnet v7. 10 modules, 185 Move test functions (62 positive + 123 expected-failure), AdminCap + ProtocolState for governance.
+Deployed on Sui testnet v7. 10 modules, 249 Move test functions (146 positive + 103 expected-failure), AdminCap + ProtocolState for governance.
 
 | Module | Purpose |
 |--------|---------|
