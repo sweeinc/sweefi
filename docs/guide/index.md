@@ -21,7 +21,7 @@ SweeFi is the payment layer of the **Swee ecosystem**: **SweeFi** (payments) + *
 
 **s402** is a Sui-native HTTP 402 protocol that is wire-compatible with [x402](https://x402.org) but architecturally superior:
 
-![s402 vs x402](docs/x402-vs-s402.png)
+![s402 vs x402](../x402-vs-s402.svg)
 
 | Feature | x402 (EVM) | s402 (Sui) |
 |---------|-----------|-----------|
@@ -82,11 +82,11 @@ Agent                    Server                  Sui Testnet
 | **Unlock** | Receipt-gated SEAL decryption | Client scheme exists, facilitator handler planned |
 | **Split** | Multi-party settlement (royalties, affiliates) | Planned |
 
-**Together these enable autonomous digital commerce without platforms.** An AI agent can deposit a budget (prepaid), call APIs (exact), buy goods trustlessly from a stranger (escrow), stream micropayments for inference (stream), and access encrypted content (seal) — all without a human, an API key, or a platform taking 30%. See [SPEC.md](SPEC.md) for the full vision.
+**Together these enable autonomous digital commerce without platforms.** An AI agent can deposit a budget (prepaid), call APIs (exact), buy goods trustlessly from a stranger (escrow), stream micropayments for inference (stream), and access encrypted content (seal) — all without a human, an API key, or a platform taking 30%. See [SPEC.md](https://github.com/sweeinc/sweefi/blob/main/SPEC.md) for the full vision.
 
 ## Architecture
 
-![SweeFi Architecture](docs/architecture.png)
+![SweeFi Architecture](../architecture.svg)
 
 ```
 AI Agent (Claude, GPT, Cursor, etc.)
@@ -132,15 +132,15 @@ AI Agent (Claude, GPT, Cursor, etc.)
 
 | Package | Description | Tests |
 |---------|-------------|-------|
-| [`@sweefi/ui-core`](packages/ui-core) | Framework-agnostic state machine + PaymentAdapter interface | 13 |
-| [`@sweefi/server`](packages/server) | Chain-agnostic HTTP: s402Gate, wrapFetchWithS402 | — |
-| [`@sweefi/sui`](packages/sui) | 40 PTB builders + SuiPaymentAdapter + s402 schemes | 189 |
-| [`@sweefi/vue`](packages/vue) | Vue 3 plugin + useSweefiPayment() composable | 10 |
-| [`@sweefi/react`](packages/react) | React context + useSweefiPayment() hook | 12 |
-| [`@sweefi/facilitator`](packages/facilitator) | Self-hostable payment verification — Docker/Fly.io (not on npm) | 37 |
-| [`@sweefi/mcp`](packages/mcp) | MCP server — 30 default + 5 opt-in AI agent tools | 79 |
-| [`@sweefi/cli`](packages/cli) | CLI tool — wallet, pay, prepaid, mandates | 42 |
-| [`sweefi-contracts`](contracts) | 10 Move modules on Sui testnet (v7) | 185 |
+| [`@sweefi/ui-core`](/guide/ui-core) | Framework-agnostic state machine + PaymentAdapter interface | 13 |
+| [`@sweefi/server`](/guide/server) | Chain-agnostic HTTP: s402Gate, wrapFetchWithS402 | — |
+| [`@sweefi/sui`](/guide/sui) | 40 PTB builders + SuiPaymentAdapter + s402 schemes | 189 |
+| [`@sweefi/vue`](/guide/vue) | Vue 3 plugin + useSweefiPayment() composable | 10 |
+| [`@sweefi/react`](/guide/react) | React context + useSweefiPayment() hook | 12 |
+| [`@sweefi/facilitator`](/guide/facilitator) | Self-hostable payment verification — Docker/Fly.io (not on npm) | 37 |
+| [`@sweefi/mcp`](/guide/mcp) | MCP server — 30 default + 5 opt-in AI agent tools | 79 |
+| [`@sweefi/cli`](/guide/cli) | CLI tool — wallet, pay, prepaid, mandates | 42 |
+| [`sweefi-contracts`](/guide/contracts) | 10 Move modules on Sui testnet (v7) | 185 |
 
 **Total: 567 tests (382 TypeScript + 185 Move)**
 
@@ -373,7 +373,7 @@ SweeFi is the payment layer. The broader ecosystem includes:
 | **SweeWorld** | Agent marketplace — for-profit product built on SweeFi | Vision |
 | **SweeCard** | TradFi/crypto bridge card | Phase 3+, backburner |
 
-See [SPEC.md](SPEC.md) for the full vision and roadmap.
+See [SPEC.md](https://github.com/sweeinc/sweefi/blob/main/SPEC.md) for the full vision and roadmap.
 
 ## Open Source
 
@@ -392,8 +392,8 @@ SweeFi is fully open source. Every developer-facing package is published under *
 | `@sweefi/facilitator` | Apache 2.0 | Self-hostable (not on npm) |
 | `sweefi-contracts` | Apache 2.0 | Deployed on Sui |
 
-The facilitator source is open — you can read it, audit it, and self-host it. SweeFi also runs a **managed facilitator** as a hosted service. Self-hosting is always an option. See [`packages/facilitator`](packages/facilitator) for Docker and Fly.io deployment instructions.
+The facilitator source is open — you can read it, audit it, and self-host it. SweeFi also runs a **managed facilitator** as a hosted service. Self-hosting is always an option. See [`packages/facilitator`](/guide/facilitator) for Docker and Fly.io deployment instructions.
 
 ## License
 
-Apache 2.0 — see [LICENSE](LICENSE)
+Apache 2.0 — see [LICENSE](https://github.com/sweeinc/sweefi/blob/main/LICENSE)
