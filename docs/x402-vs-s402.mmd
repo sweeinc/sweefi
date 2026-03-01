@@ -6,7 +6,7 @@ graph TB
         X1["1. Client signs TX"] --> X2["2. Facilitator holds signed TX<br/>⚠️ Trust bottleneck"]
         X2 --> X3["3. Facilitator broadcasts<br/>~2-12s finality"]
         X3 --> X4["4. Server trusts facilitator<br/>⚠️ No delivery guarantee"]
-        X4 --> X5["$7.00 gas / 1K calls<br/>⚠️ Micropayments broken"]
+        X4 --> X5["~$1 gas / 1K calls (Base)<br/>⚠️ Per-call settlement"]
     end
 
     subgraph S402["✅ s402 · Sui"]

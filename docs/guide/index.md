@@ -27,7 +27,7 @@ SweeFi is the payment layer of the **Swee ecosystem**: **SweeFi** (payments) + *
 |---------|-----------|-----------|
 | Settlement | Verify first, settle later (temporal gap) | Atomic PTBs (no gap) |
 | Payment modes | Exact only | Exact, Prepaid, Escrow, Stream, Seal |
-| Micro-payments | $7.00 gas per 1K API calls (broken) | $0.014 gas per 1K calls via prepaid |
+| Micro-payments | ~$1 gas per 1K calls (Base L2, per-call settlement) | $0.014 gas per 1K calls via prepaid batching |
 | Agent authorization | None | AP2 Mandates (spending limits) |
 | Content gating | Server-trust (server controls access) | Trustless (SEAL threshold encryption) |
 | Finality | ~12s (Ethereum L1), ~2s (Base L2) | ~400ms (Sui) |

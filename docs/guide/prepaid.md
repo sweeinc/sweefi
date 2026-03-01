@@ -33,9 +33,9 @@ The agent deposits once. The provider serves API calls off-chain. Periodically, 
 
 | Approach | 1,000 API calls | Cost |
 |----------|-----------------|------|
-| Per-call exact payments | 1,000 transactions | ~$7.00 gas |
+| Per-call exact payments (Base L2) | 1,000 transactions | ~$1.00 gas |
 | Prepaid deposit + claim | 2 transactions | ~$0.014 gas |
-| **Savings** | | **500x** |
+| **Savings** | | **~70x** |
 
 ## Code Example
 

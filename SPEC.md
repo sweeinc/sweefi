@@ -131,12 +131,12 @@ Phase 3 (claim):
 
 **Why this changes everything:**
 
-Without prepaid, per-call settlement is economically impossible:
-- 1,000 API calls × $0.007 gas = **$7.00 gas** for $1.00 of API usage
+Without prepaid, per-call settlement on Base L2 eats into margins:
+- 1,000 API calls × ~$0.001 gas (Base L2) = **~$1.00 gas** for $1.00 of API usage
 
-With prepaid + batch claim:
+With prepaid + batch claim on Sui:
 - 2 transactions × $0.007 gas = **$0.014 gas** for $1.00 of API usage
-- Per-call effective gas: **$0.000014**
+- Per-call effective gas: **$0.000014** (~70x cheaper)
 
 **Trust model:** The Balance shared object is trustless collateral. The agent can't rug (funds locked in the object). The provider can't overclaim (Move module enforces rate caps). Neither party trusts the other.
 
@@ -619,7 +619,7 @@ x402 proved the concept. s402 takes it further with Sui-native capabilities:
 | Payment modes | Exact only | 6 core schemes (v0.1-v0.2), extensible architecture |
 | Settlement | Two-step verify/settle | Atomic PTBs |
 | Finality | 12s+ (L1), 2s (L2) | ~400ms |
-| Micro-payments | Economically broken ($7 gas/1K calls) | Economically viable ($0.014 gas/1K calls via prepaid) |
+| Micro-payments | ~$1 gas/1K calls (Base, per-call settlement) | $0.014 gas/1K calls (prepaid batching, ~100x cheaper) |
 | Agent auth | None | AP2 Mandates (spending limits, expiry, revocation) |
 | Content gating | Server trust | SEAL threshold encryption |
 | Stablecoins | USDC (Circle) | USDC + USDT + USDe + SUI-native stables |
