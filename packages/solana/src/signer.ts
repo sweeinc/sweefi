@@ -298,13 +298,26 @@ export function toFacilitatorSolanaSigner(
 
       const result = await conn.simulateTransaction(tx);
 
+      // Cast to access balance fields — present at runtime but not in @solana/web3.js types
+      const simValue = result.value as Record<string, unknown>;
+      const preBalances = (simValue.preBalances as number[] | undefined) ?? [];
+      const postBalances = (simValue.postBalances as number[] | undefined) ?? [];
+      const preTokenBalances = simValue.preTokenBalances as Array<{
+        accountIndex: number; mint: string; owner: string;
+        uiTokenAmount: { amount: string; decimals: number };
+      }> | undefined;
+      const postTokenBalances = simValue.postTokenBalances as Array<{
+        accountIndex: number; mint: string; owner: string;
+        uiTokenAmount: { amount: string; decimals: number };
+      }> | undefined;
+
       return {
         success: result.value.err === null,
         err: result.value.err ?? undefined,
         accountKeys,
-        preBalances: result.value.preBalances ?? [],
-        postBalances: result.value.postBalances ?? [],
-        preTokenBalances: result.value.preTokenBalances?.map((b) => ({
+        preBalances,
+        postBalances,
+        preTokenBalances: preTokenBalances?.map((b) => ({
           accountIndex: b.accountIndex,
           mint: b.mint,
           owner: b.owner,
@@ -313,7 +326,7 @@ export function toFacilitatorSolanaSigner(
             decimals: b.uiTokenAmount.decimals,
           },
         })),
-        postTokenBalances: result.value.postTokenBalances?.map((b) => ({
+        postTokenBalances: postTokenBalances?.map((b) => ({
           accountIndex: b.accountIndex,
           mint: b.mint,
           owner: b.owner,

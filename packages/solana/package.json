@@ -41,13 +41,15 @@
   },
   "dependencies": {
     "s402": "^0.1.0",
-    "@sweefi/ui-core": "workspace:*"
+    "@sweefi/ui-core": "workspace:^"
   },
   "peerDependencies": {
     "@solana/web3.js": "^1.95.0",
     "@solana/spl-token": "^0.4.0"
   },
   "devDependencies": {
+    "@solana/spl-token": "^0.4.0",
+    "@solana/web3.js": "^1.95.0",
     "tsdown": "^0.20.3",
     "typescript": "^5.7.3",
     "vitest": "^3.0.5"

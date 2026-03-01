@@ -41,9 +41,9 @@ export function createFacilitator(config: Config): s402Facilitator {
 
   for (const network of networks) {
     facilitator.register(network, new ExactSuiFacilitatorScheme(signer));
-    facilitator.register(network, new PrepaidSuiFacilitatorScheme(signer, packageId));
-    facilitator.register(network, new StreamSuiFacilitatorScheme(signer, packageId));
-    facilitator.register(network, new EscrowSuiFacilitatorScheme(signer, packageId));
+    facilitator.register(network, new PrepaidSuiFacilitatorScheme(signer, packageId, network));
+    facilitator.register(network, new StreamSuiFacilitatorScheme(signer, packageId, network));
+    facilitator.register(network, new EscrowSuiFacilitatorScheme(signer, packageId, network));
   }
 
   return facilitator;

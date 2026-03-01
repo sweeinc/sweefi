@@ -299,8 +299,10 @@ pnpm --filter @sweefi/react publish --dry-run --access public
 pnpm --filter @sweefi/vue publish --dry-run --access public
 pnpm --filter @sweefi/mcp publish --dry-run --access public
 pnpm --filter @sweefi/cli publish --dry-run --access public
-pnpm --filter @sweefi/facilitator publish --dry-run --access public
 ```
+
+> **Note**: `@sweefi/facilitator` is `private: true` — it is NOT published to npm.
+> It is deployed via Docker/Fly.io. See the Fly.io section below.
 
 Check each dry-run output. You want to see the list of files that would be uploaded and no errors. `workspace:*` deps should appear as `^0.1.0` (resolved).
 
@@ -362,15 +364,14 @@ cd packages/cli
 pnpm publish --access public
 cd ../..
 
-cd packages/facilitator
-pnpm publish --access public
-cd ../..
 ```
+
+> **Note**: `@sweefi/facilitator` is NOT published — deployed via Docker/Fly.io.
 
 ### Verify all packages landed
 
 ```bash
-for pkg in @sweefi/ui-core @sweefi/server @sweefi/sui @sweefi/react @sweefi/vue @sweefi/solana @sweefi/mcp @sweefi/cli @sweefi/facilitator; do
+for pkg in @sweefi/ui-core @sweefi/server @sweefi/sui @sweefi/react @sweefi/vue @sweefi/solana @sweefi/mcp @sweefi/cli; do
   echo -n "$pkg: "
   npm view $pkg version 2>/dev/null || echo "NOT FOUND"
 done
@@ -513,7 +514,6 @@ npm Publish (in order)
 [ ] @sweefi/solana published + verified
 [ ] @sweefi/mcp published + verified
 [ ] @sweefi/cli published + verified
-[ ] @sweefi/facilitator published + verified
 
 Post-Deploy
 [ ] Fresh npm install smoke test passes

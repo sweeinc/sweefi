@@ -60,7 +60,7 @@ module sweefi::mandate_tests {
     // ══════════════════════════════════════════════════════════════
 
     #[test]
-    #[expected_failure]
+    #[expected_failure(abort_code = mandate::EPerTxLimitExceeded)]
     fun test_per_tx_limit() {
         let mut scenario = ts::begin(DELEGATOR);
         let clock = clock::create_for_testing(ts::ctx(&mut scenario));
@@ -93,7 +93,7 @@ module sweefi::mandate_tests {
     // ══════════════════════════════════════════════════════════════
 
     #[test]
-    #[expected_failure]
+    #[expected_failure(abort_code = mandate::ETotalLimitExceeded)]
     fun test_total_limit() {
         let mut scenario = ts::begin(DELEGATOR);
         let clock = clock::create_for_testing(ts::ctx(&mut scenario));
@@ -129,7 +129,7 @@ module sweefi::mandate_tests {
     // ══════════════════════════════════════════════════════════════
 
     #[test]
-    #[expected_failure]
+    #[expected_failure(abort_code = mandate::EExpired)]
     fun test_expired_mandate() {
         let mut scenario = ts::begin(DELEGATOR);
         let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
@@ -165,7 +165,7 @@ module sweefi::mandate_tests {
     // ══════════════════════════════════════════════════════════════
 
     #[test]
-    #[expected_failure]
+    #[expected_failure(abort_code = mandate::ENotDelegate)]
     fun test_wrong_caller() {
         let mut scenario = ts::begin(DELEGATOR);
         let clock = clock::create_for_testing(ts::ctx(&mut scenario));

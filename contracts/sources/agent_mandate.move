@@ -275,8 +275,10 @@ module sweefi::agent_mandate {
             assert!(mandate.weekly_spent + amount <= mandate.weekly_limit, EWeeklyLimitExceeded);
         };
 
-        // 10. Lifetime cap
-        assert!(mandate.total_spent + amount <= mandate.max_total, ETotalLimitExceeded);
+        // 10. Lifetime cap (0 = no lifetime limit)
+        if (mandate.max_total > 0) {
+            assert!(mandate.total_spent + amount <= mandate.max_total, ETotalLimitExceeded);
+        };
 
         // Debit all counters
         mandate.daily_spent = mandate.daily_spent + amount;
@@ -338,6 +340,7 @@ module sweefi::agent_mandate {
         // (0 = no limit, so bypass the check when the new limit means "unlimited")
         assert!(new_daily_limit == 0 || new_daily_limit >= mandate.daily_spent, EDailyLimitExceeded);
         assert!(new_weekly_limit == 0 || new_weekly_limit >= mandate.weekly_spent, EWeeklyLimitExceeded);
+        assert!(new_max_total == 0 || new_max_total >= mandate.total_spent, ETotalLimitExceeded);
         mandate.max_per_tx = new_max_per_tx;
         mandate.daily_limit = new_daily_limit;
         mandate.weekly_limit = new_weekly_limit;
@@ -406,15 +409,17 @@ module sweefi::agent_mandate {
     public fun max_total<T>(m: &AgentMandate<T>): u64 { m.max_total }
     public fun total_spent<T>(m: &AgentMandate<T>): u64 { m.total_spent }
     public fun expires_at_ms<T>(m: &AgentMandate<T>): Option<u64> { m.expires_at_ms }
-    /// Remaining lifetime budget. Saturates to 0 if caps were lowered
-    /// below total_spent via update_caps (prevents underflow abort).
+    /// Remaining lifetime budget. Returns u64::MAX when max_total=0 (unlimited).
+    /// Saturates to 0 if caps were lowered below total_spent via update_caps.
     public fun remaining<T>(m: &AgentMandate<T>): u64 {
+        if (m.max_total == 0) return 0xFFFFFFFFFFFFFFFF;
         if (m.total_spent >= m.max_total) 0
         else m.max_total - m.total_spent
     }
 
     public fun daily_remaining<T>(m: &AgentMandate<T>): u64 {
         if (m.daily_limit == 0) {
+            if (m.max_total == 0) return 0xFFFFFFFFFFFFFFFF;
             if (m.total_spent >= m.max_total) return 0;
             return m.max_total - m.total_spent
         };
@@ -424,6 +429,7 @@ module sweefi::agent_mandate {
 
     public fun weekly_remaining<T>(m: &AgentMandate<T>): u64 {
         if (m.weekly_limit == 0) {
+            if (m.max_total == 0) return 0xFFFFFFFFFFFFFFFF;
             if (m.total_spent >= m.max_total) return 0;
             return m.max_total - m.total_spent
         };

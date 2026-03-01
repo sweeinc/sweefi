@@ -2,7 +2,7 @@
   "name": "@sweefi/server",
   "version": "0.1.0",
   "type": "module",
-  "description": "Chain-agnostic s402 server middleware and fetch wrapper for Hono and Node.js",
+  "description": "s402 server middleware (chain-agnostic) and Sui client fetch wrapper for Hono and Node.js",
   "keywords": ["s402", "http-402", "payment", "web3", "ai-agent", "micropayments", "hono"],
   "homepage": "https://github.com/sweeinc/sweefi#readme",
   "license": "Apache-2.0",
@@ -26,12 +26,20 @@
         "types": "./dist/client/index.d.mts",
         "default": "./dist/client/index.mjs"
       },
+      "require": {
+        "types": "./dist/client/index.d.cts",
+        "default": "./dist/client/index.cjs"
+      },
       "default": "./dist/client/index.mjs"
     },
     "./server": {
       "import": {
         "types": "./dist/server/index.d.mts",
         "default": "./dist/server/index.mjs"
+      },
+      "require": {
+        "types": "./dist/server/index.d.cts",
+        "default": "./dist/server/index.cjs"
       },
       "default": "./dist/server/index.mjs"
     }

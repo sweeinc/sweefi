@@ -249,8 +249,16 @@ module sweefi::identity {
         assert!(!identity.recorded_receipts.contains(receipt_id), EReceiptAlreadyRecorded);
         identity.recorded_receipts.add(receipt_id, true);
 
-        identity.total_payments = identity.total_payments + 1;
-        identity.total_volume = identity.total_volume + payment::receipt_amount(receipt);
+        // Saturating add — prevents identity from bricking on high-decimal tokens
+        let amount = payment::receipt_amount(receipt);
+        if (identity.total_payments < 0xFFFFFFFFFFFFFFFF) {
+            identity.total_payments = identity.total_payments + 1;
+        };
+        if (identity.total_volume <= 0xFFFFFFFFFFFFFFFF - amount) {
+            identity.total_volume = identity.total_volume + amount;
+        } else {
+            identity.total_volume = 0xFFFFFFFFFFFFFFFF;
+        };
         identity.last_active_ms = clock.timestamp_ms();
 
         sui::event::emit(PaymentRecorded {

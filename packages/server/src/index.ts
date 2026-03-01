@@ -7,11 +7,11 @@
  *   import { s402Gate } from '@sweefi/server';
  *
  * Quick start (client / agent):
- *   import { wrapFetchWithS402 } from '@sweefi/server/client';
+ *   import { wrapFetchWithS402, adaptWallet } from '@sweefi/server/client';
  *
  * Subpath exports:
- *   @sweefi/server         — re-exports everything below
- *   @sweefi/server/client  — fetch wrapper only (browser / agent safe)
+ *   @sweefi/server         — server middleware + fetch wrapper (no Sui deps)
+ *   @sweefi/server/client  — fetch wrapper + adaptWallet (requires @sweefi/sui)
  *   @sweefi/server/server  — Hono middleware only (Node.js / edge)
  */
 
@@ -19,9 +19,14 @@
 export { s402Gate } from "./server/index";
 export type { s402GateConfig } from "./server/index";
 
-// Client-side fetch wrapper
-export { wrapFetchWithS402, adaptWallet, s402PaymentSentError } from "./client/index";
-export type { s402FetchOptions } from "./client/index";
+// Client-side fetch wrapper (browser / agent)
+// NOTE: adaptWallet is intentionally NOT re-exported here. It lives in
+// @sweefi/server/client because it has a runtime dependency on @sweefi/sui.
+// Import directly from s402-fetch (not client/index) to avoid pulling in
+// wallet-adapter.ts and its @sweefi/sui dependency into the root bundle.
+// See V8 audit F-02, post-fix audit NEW-01.
+export { wrapFetchWithS402, s402PaymentSentError } from "./client/s402-fetch";
+export type { s402FetchOptions } from "./client/s402-fetch";
 
 // Shared utilities
 export { DEFAULT_FACILITATOR_URL } from "./shared/constants";

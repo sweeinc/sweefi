@@ -37,7 +37,7 @@
     "prepublishOnly": "pnpm run build && pnpm run typecheck && pnpm run test"
   },
   "dependencies": {
-    "@sweefi/sui": "workspace:*",
+    "@sweefi/sui": "workspace:^",
     "s402": "^0.1.0",
     "@mysten/sui": "^2.0.0"
   },

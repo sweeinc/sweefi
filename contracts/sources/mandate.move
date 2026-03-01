@@ -151,10 +151,11 @@ module sweefi::mandate {
             assert!(clock.timestamp_ms() < *mandate.expires_at_ms.borrow(), EExpired);
         };
 
-        // Per-transaction limit
+        // Per-transaction limit (0 = not allowed — mandates always require a per-tx cap)
         assert!(amount <= mandate.max_per_tx, EPerTxLimitExceeded);
 
-        // Lifetime cap
+        // Lifetime cap (unconditional — 0 means zero budget, NOT unlimited.
+        // This differs from AgentMandate where 0 = unlimited. See V8 audit F-14.)
         assert!(mandate.total_spent + amount <= mandate.max_total, ETotalLimitExceeded);
 
         // Debit

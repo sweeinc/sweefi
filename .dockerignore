@@ -1,0 +1,12 @@
+# V8 audit F-16: Exclude large directories from Docker build context
+.git
+node_modules
+contracts
+docs
+*.md
+!README.md
+.env*
+.vscode
+.idea
+coverage
+*.tgz

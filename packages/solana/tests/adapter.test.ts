@@ -19,74 +19,107 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // @solana/web3.js and @solana/spl-token are peer deps — not installed here.
 // We mock them in full so tests run offline. Each mock class/function is the
 // minimal surface needed to exercise our code paths.
+//
+// vi.hoisted() ensures these are available when vi.mock() factories execute
+// (vi.mock is hoisted to the top of the file at compile time).
 
-const MOCK_PAYER_ADDRESS = 'HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH';
-const MOCK_RECIPIENT_ADDRESS = 'BobVAwj3ySXFHR2eq6bBg9rp1fTQEUGegCGpCvTCnDvL';
-const MOCK_USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
-const MOCK_TX_SIGNATURE = '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d1MV3ry2FaLDDpTWFwJiE3FGJbDTdqtSURHEKnPfScTD';
-const MOCK_BLOCKHASH = 'EkSnNWid2cvwEVnVx9aBqawnmiCNiDgp3gUdkDPTKN1N';
+const {
+  MOCK_PAYER_ADDRESS,
+  MOCK_RECIPIENT_ADDRESS,
+  MOCK_USDC_MINT,
+  MOCK_TX_SIGNATURE,
+  MOCK_BLOCKHASH,
+  mockTransaction,
+  MockTransaction,
+  MockPublicKey,
+  MockSystemProgram,
+  mockConnection,
+  MockConnection,
+  MOCK_SOURCE_ATA,
+  MOCK_DEST_ATA,
+} = vi.hoisted(() => {
+  const _MOCK_PAYER_ADDRESS = 'HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH';
+  const _MOCK_RECIPIENT_ADDRESS = 'BobVAwj3ySXFHR2eq6bBg9rp1fTQEUGegCGpCvTCnDvL';
+  const _MOCK_USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+  const _MOCK_TX_SIGNATURE = '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d1MV3ry2FaLDDpTWFwJiE3FGJbDTdqtSURHEKnPfScTD';
+  const _MOCK_BLOCKHASH = 'EkSnNWid2cvwEVnVx9aBqawnmiCNiDgp3gUdkDPTKN1N';
+
+  const _mockTransaction = {
+    add: vi.fn().mockReturnThis(),
+    sign: vi.fn(),
+    serialize: vi.fn().mockReturnValue(Buffer.from('mock-tx-bytes')),
+    serializeMessage: vi.fn().mockReturnValue(Buffer.from('mock-message')),
+    compileMessage: vi.fn().mockReturnValue({
+      accountKeys: [
+        { toBase58: () => _MOCK_PAYER_ADDRESS },
+        { toBase58: () => _MOCK_RECIPIENT_ADDRESS },
+      ],
+    }),
+    signatures: [
+      {
+        publicKey: { toBase58: () => _MOCK_PAYER_ADDRESS, toBytes: () => new Uint8Array(32).fill(1) },
+        signature: Buffer.from(new Uint8Array(64).fill(2)),
+      },
+    ],
+    feePayer: { toBase58: () => _MOCK_PAYER_ADDRESS },
+    recentBlockhash: _MOCK_BLOCKHASH,
+  };
+
+  const _MockTransaction = vi.fn().mockImplementation(() => ({ ..._mockTransaction }));
+  (_MockTransaction as unknown as Record<string, unknown>).from = vi.fn().mockReturnValue({ ..._mockTransaction });
+
+  const _MockPublicKey = vi.fn().mockImplementation((key: string) => ({
+    toBase58: () => key,
+    toBytes: () => new Uint8Array(32).fill(1),
+    equals: (other: { toBase58(): string }) => other.toBase58() === key,
+    toString: () => key,
+  }));
+
+  const _MockSystemProgram = {
+    transfer: vi.fn().mockReturnValue({ programId: 'system', keys: [], data: Buffer.alloc(12) }),
+  };
+
+  const _mockConnection = {
+    getLatestBlockhash: vi.fn().mockResolvedValue({
+      blockhash: _MOCK_BLOCKHASH,
+      lastValidBlockHeight: 1000,
+    }),
+    simulateTransaction: vi.fn().mockResolvedValue({
+      value: {
+        err: null,
+        logs: [],
+        unitsConsumed: 10_000,
+        preBalances: [1_000_000_000, 0],
+        postBalances: [998_995_000, 1_000_000],
+        preTokenBalances: [],
+        postTokenBalances: [],
+      },
+    }),
+    getAccountInfo: vi.fn().mockResolvedValue({ lamports: 2_039_280, data: Buffer.alloc(165) }),
+    sendRawTransaction: vi.fn().mockResolvedValue(_MOCK_TX_SIGNATURE),
+    confirmTransaction: vi.fn().mockResolvedValue({ value: { err: null } }),
+  };
+
+  const _MockConnection = vi.fn().mockImplementation(() => _mockConnection);
+
+  return {
+    MOCK_PAYER_ADDRESS: _MOCK_PAYER_ADDRESS,
+    MOCK_RECIPIENT_ADDRESS: _MOCK_RECIPIENT_ADDRESS,
+    MOCK_USDC_MINT: _MOCK_USDC_MINT,
+    MOCK_TX_SIGNATURE: _MOCK_TX_SIGNATURE,
+    MOCK_BLOCKHASH: _MOCK_BLOCKHASH,
+    mockTransaction: _mockTransaction,
+    MockTransaction: _MockTransaction,
+    MockPublicKey: _MockPublicKey,
+    MockSystemProgram: _MockSystemProgram,
+    mockConnection: _mockConnection,
+    MockConnection: _MockConnection,
+    MOCK_SOURCE_ATA: 'SourceATA111111111111111111111111111111111111',
+    MOCK_DEST_ATA: 'DestATA1111111111111111111111111111111111111',
+  };
+});
 
 // ── @solana/web3.js mock ──────────────────────────────────────────────────────
-
-const mockTransaction = {
-  add: vi.fn().mockReturnThis(),
-  sign: vi.fn(),
-  serialize: vi.fn().mockReturnValue(Buffer.from('mock-tx-bytes')),
-  serializeMessage: vi.fn().mockReturnValue(Buffer.from('mock-message')),
-  compileMessage: vi.fn().mockReturnValue({
-    accountKeys: [
-      { toBase58: () => MOCK_PAYER_ADDRESS },
-      { toBase58: () => MOCK_RECIPIENT_ADDRESS },
-    ],
-  }),
-  signatures: [
-    {
-      publicKey: { toBase58: () => MOCK_PAYER_ADDRESS, toBytes: () => new Uint8Array(32).fill(1) },
-      signature: Buffer.from(new Uint8Array(64).fill(2)),
-    },
-  ],
-  feePayer: { toBase58: () => MOCK_PAYER_ADDRESS },
-  recentBlockhash: MOCK_BLOCKHASH,
-};
-
-const MockTransaction = vi.fn().mockImplementation(() => ({ ...mockTransaction }));
-// Transaction.from() static method for deserialization
-(MockTransaction as unknown as Record<string, unknown>).from = vi.fn().mockReturnValue({ ...mockTransaction });
-
-const MockPublicKey = vi.fn().mockImplementation((key: string) => ({
-  toBase58: () => key,
-  toBytes: () => new Uint8Array(32).fill(1),
-  equals: (other: { toBase58(): string }) => other.toBase58() === key,
-  toString: () => key,
-}));
-
-const MockSystemProgram = {
-  transfer: vi.fn().mockReturnValue({ programId: 'system', keys: [], data: Buffer.alloc(12) }),
-};
-
-const mockConnection = {
-  getLatestBlockhash: vi.fn().mockResolvedValue({
-    blockhash: MOCK_BLOCKHASH,
-    lastValidBlockHeight: 1000,
-  }),
-  simulateTransaction: vi.fn().mockResolvedValue({
-    value: {
-      err: null,
-      logs: [],
-      unitsConsumed: 10_000,
-      preBalances: [1_000_000_000, 0],
-      postBalances: [998_995_000, 1_000_000],
-      preTokenBalances: [],
-      postTokenBalances: [],
-    },
-  }),
-  // Returns a non-null account by default (ATA exists). Override per-test with null to simulate a missing ATA.
-  getAccountInfo: vi.fn().mockResolvedValue({ lamports: 2_039_280, data: Buffer.alloc(165) }),
-  sendRawTransaction: vi.fn().mockResolvedValue(MOCK_TX_SIGNATURE),
-  confirmTransaction: vi.fn().mockResolvedValue({ value: { err: null } }),
-};
-
-const MockConnection = vi.fn().mockImplementation(() => mockConnection);
 
 vi.mock('@solana/web3.js', () => ({
   Transaction: MockTransaction,
@@ -97,9 +130,6 @@ vi.mock('@solana/web3.js', () => ({
 }));
 
 // ── @solana/spl-token mock ────────────────────────────────────────────────────
-
-const MOCK_SOURCE_ATA = 'SourceATA111111111111111111111111111111111111';
-const MOCK_DEST_ATA = 'DestATA1111111111111111111111111111111111111';
 
 vi.mock('@solana/spl-token', () => ({
   TOKEN_PROGRAM_ID: { toBase58: () => 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' },
@@ -194,11 +224,12 @@ describe('ExactSolanaServerScheme', () => {
 
   it('builds requirements with explicit asset', () => {
     const reqs = server.buildRequirements({
+      schemes: ['exact'],
       network: SOLANA_DEVNET_CAIP2,
       payTo: MOCK_RECIPIENT_ADDRESS,
-      amount: '1000000',
+      price: '1000000',
       asset: MOCK_USDC_MINT,
-    } as Parameters<typeof server.buildRequirements>[0]);
+    });
 
     expect(reqs.accepts).toContain('exact');
     expect(reqs.network).toBe(SOLANA_DEVNET_CAIP2);
@@ -209,42 +240,46 @@ describe('ExactSolanaServerScheme', () => {
 
   it('defaults to devnet USDC when no asset given', () => {
     const reqs = server.buildRequirements({
+      schemes: ['exact'],
       network: SOLANA_DEVNET_CAIP2,
       payTo: MOCK_RECIPIENT_ADDRESS,
-      amount: '500000',
-    } as Parameters<typeof server.buildRequirements>[0]);
+      price: '500000',
+    });
 
     expect(reqs.asset).toBe(USDC_DEVNET_MINT);
   });
 
   it('defaults to mainnet USDC on mainnet', () => {
     const reqs = server.buildRequirements({
+      schemes: ['exact'],
       network: SOLANA_MAINNET_CAIP2,
       payTo: MOCK_RECIPIENT_ADDRESS,
-      amount: '500000',
-    } as Parameters<typeof server.buildRequirements>[0]);
+      price: '500000',
+    });
 
     expect(reqs.asset).toBe('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
   });
 
   it('includes protocolFeeBps if provided', () => {
     const reqs = server.buildRequirements({
+      schemes: ['exact'],
       network: SOLANA_DEVNET_CAIP2,
       payTo: MOCK_RECIPIENT_ADDRESS,
-      amount: '1000000',
+      price: '1000000',
       protocolFeeBps: 50,
-    } as Parameters<typeof server.buildRequirements>[0]);
+    });
 
     expect(reqs.protocolFeeBps).toBe(50);
   });
 
-  it('throws if amount is missing', () => {
+  it('throws if price is missing', () => {
     expect(() =>
       server.buildRequirements({
+        schemes: ['exact'],
         network: SOLANA_DEVNET_CAIP2,
         payTo: MOCK_RECIPIENT_ADDRESS,
       } as Parameters<typeof server.buildRequirements>[0]),
-    ).toThrow('amount');
+    ).toThrow('price');
   });
 });
 
@@ -451,10 +486,10 @@ describe('SolanaPaymentAdapter — ATA creation', () => {
     await adapter.signAndBroadcast(makeReqs());
 
     expect(createAssociatedTokenAccountIdempotentInstruction).toHaveBeenCalledWith(
-      expect.objectContaining({ toBase58: expect.any(Function) }), // payer
-      expect.objectContaining({ toBase58: expect.any(Function) }), // destAta (pre-computed)
-      expect.objectContaining({ toBase58: expect.any(Function) }), // recipient
-      expect.objectContaining({ toBase58: expect.any(Function) }), // mint
+      expect.objectContaining({ toBase58: expect.any(Function) }), // payer (PublicKey)
+      MOCK_DEST_ATA,                                                // destAta (string from getAssociatedTokenAddress mock)
+      expect.objectContaining({ toBase58: expect.any(Function) }), // recipient (PublicKey)
+      expect.objectContaining({ toBase58: expect.any(Function) }), // mint (PublicKey)
     );
   });
 
@@ -550,7 +585,7 @@ describe('ExactSolanaFacilitatorScheme', () => {
   const scheme = new ExactSolanaFacilitatorScheme(mockFacilitatorSigner);
 
   const exactPayload = {
-    s402Version: '1',
+    s402Version: '1' as const,
     scheme: 'exact' as const,
     payload: { transaction: Buffer.from('tx').toString('base64'), signature: '' },
   };

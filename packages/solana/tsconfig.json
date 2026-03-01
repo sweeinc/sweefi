@@ -15,5 +15,5 @@
     "allowJs": false,
     "checkJs": false
   },
-  "include": ["src", "tests"]
+  "include": ["src"]
 }

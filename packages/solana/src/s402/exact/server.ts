@@ -34,9 +34,9 @@ export class ExactSolanaServerScheme implements s402ServerScheme {
    *   { ..., protocolFeeBps: 50, protocolFeeAddress: '<fee wallet base58>' }
    */
   buildRequirements(config: s402RouteConfig): s402PaymentRequirements {
-    if (!config.amount) {
+    if (!config.price) {
       throw new Error(
-        'ExactSolanaServerScheme: route config requires `amount` (smallest unit string)',
+        'ExactSolanaServerScheme: route config requires `price` (smallest unit string)',
       );
     }
 
@@ -46,10 +46,9 @@ export class ExactSolanaServerScheme implements s402ServerScheme {
       network: config.network,
       // Default to USDC for the detected network if no asset is specified
       asset: config.asset ?? getDefaultUsdcMint(config.network),
-      amount: String(config.amount),
+      amount: config.price,
       payTo: config.payTo,
       protocolFeeBps: config.protocolFeeBps,
-      protocolFeeAddress: config.protocolFeeAddress,
     };
   }
 }

@@ -12,6 +12,9 @@
     "test:live": "pnpm -r --if-present test:integration && pnpm --filter @sweefi/sui test:live",
     "typecheck": "pnpm -r typecheck",
     "clean": "pnpm -r exec rm -rf dist node_modules",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "pnpm build && changeset publish",
     "codex:load": "bash scripts/codex-load.sh",
     "codex:shutdown": "bash scripts/codex-shutdown.sh"
   },
@@ -21,6 +24,7 @@
   },
   "pnpm": {},
   "devDependencies": {
+    "@changesets/cli": "^2.29.8",
     "vitepress": "^1.6.4",
     "vue": "^3.5.28"
   }

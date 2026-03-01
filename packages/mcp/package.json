@@ -53,13 +53,14 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
-    "@sweefi/sui": "workspace:*",
+    "@sweefi/sui": "workspace:^",
     "zod": "^3.22.0"
   },
   "peerDependencies": {
     "@mysten/sui": "^2.0.0"
   },
   "devDependencies": {
+    "@mysten/sui": "^2.4.0",
     "@types/node": "^22.13.4",
     "tsdown": "^0.20.3",
     "tsx": "^4.0.0",

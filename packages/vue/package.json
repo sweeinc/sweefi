@@ -39,7 +39,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@sweefi/ui-core": "workspace:*",
+    "@sweefi/ui-core": "workspace:^",
     "s402": "^0.1.0"
   },
   "peerDependencies": {

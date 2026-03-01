@@ -1,6 +1,7 @@
 {
   "name": "@sweefi/facilitator",
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "description": "Self-hostable payment verification and settlement service for SweeFi",
   "keywords": ["sui", "s402", "http-402", "payment", "web3", "facilitator", "settlement"],
@@ -12,11 +13,7 @@
     "url": "https://github.com/sweeinc/sweefi.git",
     "directory": "packages/facilitator"
   },
-  "publishConfig": {
-    "access": "public"
-  },
   "main": "./dist/index.mjs",
-  "files": ["dist", "Dockerfile", "fly.toml", "README.md", "LICENSE"],
   "scripts": {
     "build": "tsdown",
     "prepublishOnly": "pnpm run build && pnpm run typecheck && pnpm run test",
@@ -31,7 +28,7 @@
     "@hono/node-server": "^1.8.0",
     "@mysten/sui": "^2.0.0",
     "s402": "^0.1.0",
-    "@sweefi/sui": "workspace:*",
+    "@sweefi/sui": "workspace:^",
     "hono": "^4.0.0",
     "zod": "^3.22.0"
   },

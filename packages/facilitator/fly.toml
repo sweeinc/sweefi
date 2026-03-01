@@ -2,14 +2,37 @@ app = "swee-facilitator"
 primary_region = "sjc"
 
 [build]
+  # Build from monorepo root:
+  # fly deploy --config packages/facilitator/fly.toml --dockerfile packages/facilitator/Dockerfile
 
 [http_service]
   internal_port = 4022
   force_https = true
   auto_stop_machines = "stop"
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 250
+    soft_limit = 200
+
+  # V8 audit F-06: Use /ready (readiness probe) instead of /health (liveness).
+  # /health returns 200 unconditionally; /ready checks scheme registration + Sui RPC.
+  # Increased grace_period to 15s since /ready makes outbound RPC calls on cold start.
+  [[http_service.checks]]
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "15s"
+    method = "GET"
+    path = "/ready"
+
+# V8 audit F-15: Fly.io defaults to SIGINT + 5s kill_timeout.
+# The facilitator's graceful shutdown drain is 10s (src/index.ts).
+# SIGTERM is the conventional shutdown signal; 15s gives the drain window room.
+kill_signal = "SIGTERM"
+kill_timeout = 15
 
 [[vm]]
   size = "shared-cpu-1x"
-  memory = "256mb"
+  memory = "512mb"
