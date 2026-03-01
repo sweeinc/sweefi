@@ -1,0 +1,69 @@
+{
+  "name": "@sweefi/ap2-adapter",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "AP2 (Agent Payments Protocol) adapter for SweeFi — maps AP2 mandates to SweeFi on-chain mandates on Sui",
+  "license": "Apache-2.0",
+  "author": "Danny Devs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sweeinc/sweefi.git",
+    "directory": "packages/ap2-adapter"
+  },
+  "keywords": [
+    "ap2",
+    "agent-payments",
+    "sui",
+    "s402",
+    "sweefi",
+    "mandates",
+    "a2a"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "sideEffects": false,
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "pnpm run build && pnpm run typecheck && pnpm run test"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@sweefi/sui": "workspace:^",
+    "s402": "^0.1.0",
+    "zod": "^3.22.0"
+  },
+  "peerDependencies": {
+    "@mysten/sui": "^2.0.0"
+  },
+  "devDependencies": {
+    "@mysten/sui": "^2.4.0",
+    "@types/node": "^22.13.4",
+    "tsdown": "^0.20.3",
+    "typescript": "^5.7.3",
+    "vite": "^6.2.6",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^3.0.5"
+  }
+}
