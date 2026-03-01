@@ -38,7 +38,7 @@ Test it:
 
 ```bash
 curl http://localhost:4022/health
-# {"status":"ok"}
+# {"status":"ok","timestamp":"2026-02-28T12:00:00.000Z"}
 
 curl http://localhost:4022/.well-known/s402-facilitator
 # {"version":"1","feeMicroPercent":5000,"feeRecipient":null,"minFeeUsd":"0.001","supportedSchemes":["exact","stream","escrow","unlock","prepaid"],"supportedNetworks":["sui:testnet"],"validUntil":"..."}
@@ -69,7 +69,8 @@ CMD ["node", "dist/index.mjs"]
 **Note**: Build from the monorepo root, not from `packages/facilitator/`.
 
 ```bash
-docker build -t sweefi-facilitator .
+# Build from monorepo root (needs -f to find the Dockerfile)
+docker build -f packages/facilitator/Dockerfile -t sweefi-facilitator .
 docker run -p 4022:4022 \
   -e API_KEYS="$(openssl rand -hex 32)" \
   sweefi-facilitator

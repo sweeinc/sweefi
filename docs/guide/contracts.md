@@ -1,6 +1,6 @@
 # Move Modules Overview
 
-SweeFi's smart contracts are 10 Move modules deployed on Sui testnet. 249 test functions. Core payment functions are `public` (composable in PTBs), with `entry` convenience wrappers for common flows.
+SweeFi's smart contracts are 10 Move modules deployed on Sui testnet. 244 test functions. Core payment functions are `public` (composable in PTBs), with `entry` convenience wrappers for common flows.
 
 ## Package Info
 
@@ -39,17 +39,19 @@ Shared (consensus path, ~2-3s):
 
 ### 1. Composable PTBs (ADR-001)
 
-All payment functions are `public` (not `entry`) so they can be composed in Programmable Transaction Blocks:
+Core payment, stream, escrow, and prepaid functions are `public` (composable in PTBs), with `entry` convenience wrappers:
 
 ```move
 // public — returns receipt, composable
 public fun pay<T>(...) → PaymentReceipt
 
 // entry — transfers receipt, convenience wrapper
-public entry fun pay_and_keep<T>(...)
+entry fun pay_and_keep<T>(...)
 ```
 
 This means you can chain operations: `pay() → transfer receipt → call SEAL` in a single atomic transaction.
+
+**Exception**: Mandate operations (`create_registry`, `revoke`, `upgrade_level`, `update_caps`) are `entry`-only with no `public` counterparts — they are standalone admin actions, not composable building blocks.
 
 ### 2. u128 Intermediate Math (ADR-003)
 
@@ -104,9 +106,11 @@ Receipts (`PaymentReceipt`, `EscrowReceipt`) are bearer credentials. Ownership =
 
 ## Move Test Summary
 
-249 test functions:
-- ~146 positive (happy path)
-- ~103 expected-failure (error condition coverage)
+244 test functions (core 10 modules):
+- ~144 positive (happy path)
+- ~100 expected-failure (error condition coverage)
+
+Token-gated SEAL (separate package): 5 additional tests.
 
 All deposits in tests use ≥ `MIN_DEPOSIT` (1,000,000 MIST).
 

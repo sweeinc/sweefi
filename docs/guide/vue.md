@@ -21,7 +21,7 @@ import { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 
 const adapter = new SuiPaymentAdapter({
   wallet: keypair,       // Ed25519Keypair or any Signer
-  client: new SuiJsonRpcClient({ url: 'https://fullnode.testnet.sui.io:443' }),
+  client: new SuiJsonRpcClient({ url: 'https://fullnode.testnet.sui.io:443', network: 'testnet' }),
   network: 'sui:testnet',
 });
 const controller = createPaymentController(adapter);

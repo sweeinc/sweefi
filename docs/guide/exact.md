@@ -23,7 +23,7 @@ Agent                    Server                   Sui
   |                        |                       |
   |── GET + X-PAYMENT ────>|                       |
   |                        |── execute signed TX ──>|
-  |                        |   payment::pay()      |
+  |                        |   payment::pay_and_keep()  |
   |                        |   → PaymentReceipt    |
   |                        |<── TX digest ─────────|
   |<── 200 + data ─────────|                       |
@@ -80,9 +80,9 @@ app.use('/premium', s402Gate({
 
 ## On-Chain: `payment.move`
 
-### `pay<T>()`
+### `pay<T>()` / `pay_and_keep<T>()`
 
-Creates a `PaymentReceipt` and transfers funds to the recipient.
+Two variants: `pay()` is `public` — it **returns** the receipt for composable PTBs. `pay_and_keep()` is `entry` — it auto-transfers the receipt to the sender. `buildPayTx` calls `pay_and_keep`.
 
 ```
 Parameters:
@@ -94,7 +94,8 @@ Parameters:
   memo: vector<u8>       — arbitrary data (e.g., API endpoint)
   clock: &Clock
 
-Returns: PaymentReceipt (owned by sender)
+pay() → returns PaymentReceipt (composable)
+pay_and_keep() → transfers PaymentReceipt to sender (convenience)
 ```
 
 ### PaymentReceipt

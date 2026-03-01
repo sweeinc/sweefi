@@ -142,9 +142,9 @@ AI Agent (Claude, GPT, Cursor, etc.)
 | [`@sweefi/cli`](/guide/cli) | CLI tool — wallet, pay, prepaid, mandates | 42 |
 | [`@sweefi/solana`](/guide/solana) | Solana s402 adapter (exact scheme, SPL tokens) | 40 |
 | [`@sweefi/ap2-adapter`](/guide/ap2-adapter) | AP2 mandate mapper + bridge | 52 |
-| [`sweefi-contracts`](/guide/contracts) | 10 Move modules on Sui testnet (v7) | 249 |
+| [`sweefi-contracts`](/guide/contracts) | 10 Move modules on Sui testnet (v7) | 244 |
 
-**Total: 809 tests (560 TypeScript + 249 Move)**
+**Total: 804 tests (560 TypeScript + 244 Move)**
 
 **External**: [`s402`](https://www.npmjs.com/package/s402) (HTTP 402 protocol, v0.1.2), `@mysten/sui@2.4.0`, `@mysten/seal@1.0.1`
 
@@ -258,6 +258,7 @@ const payTx = buildMandatedPayTx(config, {
   recipient: merchantAddress,
   amount: 500_000n,
   mandateId: '0xMANDATE_OBJECT_ID',
+  registryId: '0xREGISTRY_OBJECT_ID',
   feeMicroPercent: 0,
   feeRecipient: ZERO_ADDRESS,
 });
@@ -308,7 +309,7 @@ No admin keys control user funds.
 
 ## Smart Contracts
 
-Deployed on Sui testnet v7. 10 modules, 249 Move test functions (146 positive + 103 expected-failure), AdminCap + ProtocolState for governance.
+Deployed on Sui testnet v7. 10 modules, 244 Move test functions (144 positive + 100 expected-failure), AdminCap + ProtocolState for governance.
 
 | Module | Purpose |
 |--------|---------|

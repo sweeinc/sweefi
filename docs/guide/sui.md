@@ -203,7 +203,7 @@ import { toClientSuiSigner, toFacilitatorSuiSigner } from '@sweefi/sui';
 | Signer | Use Case |
 |--------|----------|
 | `toClientSuiSigner(keypair, client)` | Client-side signing (agents, CLI) |
-| `toFacilitatorSuiSigner(config?)` | Server-side verification + broadcast |
+| `toFacilitatorSuiSigner(config?, keypair?)` | Server-side verification + broadcast |
 
 ## SuiPaymentAdapter
 
@@ -215,7 +215,7 @@ import { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
 const wallet = Ed25519Keypair.fromSecretKey(secretKey);
-const client = new SuiJsonRpcClient({ url: 'https://fullnode.testnet.sui.io:443' });
+const client = new SuiJsonRpcClient({ url: 'https://fullnode.testnet.sui.io:443', network: 'testnet' });
 
 const adapter = new SuiPaymentAdapter({
   wallet,              // Signer (Ed25519Keypair, Secp256k1Keypair, etc.)

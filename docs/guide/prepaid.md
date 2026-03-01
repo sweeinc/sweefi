@@ -196,7 +196,7 @@ Fields:
 | 601 | `ENotProvider` | Caller is not the provider |
 | 602 | `EZeroDeposit` | Deposit below MIN_DEPOSIT (1,000,000 MIST) |
 | 604 | `EWithdrawalLocked` | Withdrawal delay not elapsed |
-| 605 | `ECallCountRegression` | New count ≤ current (idempotent safety) |
+| 605 | `ECallCountRegression` | New count < current (equal is a safe no-op) |
 | 606 | `EMaxCallsExceeded` | Claim exceeds max_calls |
 | 617 | `EInvalidFraudProof` | Fraud proof signature invalid (v0.2) |
 

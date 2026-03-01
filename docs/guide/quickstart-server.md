@@ -36,21 +36,20 @@ export default app;
 ```
 
 ::: warning Payment Settlement Required
-The examples above advertise payment requirements but don't settle payments. To actually accept payments, you need either:
+The examples above advertise payment requirements but don't settle payments on the server. To accept payments, you need a **`processPayment`** handler — a function that verifies and settles the payment proof.
 
-- **`facilitatorUrl`** — point to a [self-hosted facilitator](/guide/facilitator) that verifies and broadcasts
-- **`processPayment`** — a custom handler that verifies the payment proof yourself
+Without `processPayment`, `s402Gate` returns 402 "Payment settlement not configured" on every payment attempt. This is secure by default — payments fail closed.
 
-Without one of these, `s402Gate` returns 402 "Payment settlement not configured" on every payment attempt. This is secure by default — payments fail closed.
+The `facilitatorUrl` option is **metadata** — it's included in the 402 response so the *client* knows where to submit payments, but the server middleware itself does not call it. The [facilitator](/guide/facilitator) settles payments on behalf of the client, not the server.
 :::
 
 ## What `s402Gate` Does
 
 1. If no payment header → responds with **402** and requirements JSON
 2. If `X-PAYMENT` header present → validates the payment proof
-3. If `processPayment` or `facilitatorUrl` configured → settles the payment
+3. If `processPayment` configured → settles the payment
 4. If valid → calls `next()` and your handler runs
-5. If invalid or no settlement configured → responds with **402** and error details
+5. If invalid or no `processPayment` configured → responds with **402** and error details
 
 The 402 response includes a `payment-required` header containing base64-encoded JSON with everything the client needs to pay:
 

@@ -140,6 +140,7 @@ Fields:
   state: u8                — ACTIVE(0), DISPUTED(1), RELEASED(2), REFUNDED(3)
   fee_micro_pct: u64
   fee_recipient: address
+  created_at_ms: u64       — used for grace period calculation
   description: vector<u8>  — max 1024 bytes
 ```
 
