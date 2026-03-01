@@ -20,7 +20,7 @@ export function registerBalanceTool(server: McpServer, ctx: SweefiContext) {
       },
     },
     async ({ address, coinType }) => {
-      const resolvedType = resolveCoinType(coinType);
+      const resolvedType = resolveCoinType(coinType, ctx.network);
 
       const balance = await ctx.suiClient.getBalance({
         owner: address,

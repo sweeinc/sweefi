@@ -92,7 +92,7 @@ export function registerMandateTools(server: McpServer, ctx: SweefiContext) {
     },
     async ({ delegate, maxPerTx, maxTotal, expiresAtMs, coinType }) => {
       const signer = requireSigner(ctx);
-      const resolvedType = resolveCoinType(coinType);
+      const resolvedType = resolveCoinType(coinType, ctx.network);
 
       const tx = buildCreateMandateTx(ctx.config, {
         coinType: resolvedType,
@@ -171,7 +171,7 @@ export function registerMandateTools(server: McpServer, ctx: SweefiContext) {
     },
     async ({ delegate, level, maxPerTx, dailyLimit, weeklyLimit, maxTotal, expiresAtMs, coinType }) => {
       const signer = requireSigner(ctx);
-      const resolvedType = resolveCoinType(coinType);
+      const resolvedType = resolveCoinType(coinType, ctx.network);
 
       const tx = buildCreateAgentMandateTx(ctx.config, {
         coinType: resolvedType,
@@ -239,19 +239,19 @@ export function registerMandateTools(server: McpServer, ctx: SweefiContext) {
         amount: z.string().describe("Payment amount in base units"),
         coinType: z.string().optional().describe('Token type. Defaults to "SUI".'),
         memo: z.string().optional().describe("Optional payment memo"),
-        feeBps: z
+        feeMicroPercent: z
           .number()
           .int()
           .min(0)
-          .max(10000)
+          .max(1_000_000)
           .optional()
-          .describe("Fee in basis points (default 0)"),
+          .describe("Fee in micro-percent (0-1000000, where 1000000 = 100%). Default 0."),
         feeRecipient: optionalSuiAddress("Fee recipient"),
       },
     },
-    async ({ mandateId, registryId, recipient, amount, coinType, memo, feeBps, feeRecipient }) => {
+    async ({ mandateId, registryId, recipient, amount, coinType, memo, feeMicroPercent, feeRecipient }) => {
       const signer = requireSigner(ctx);
-      const resolvedType = resolveCoinType(coinType);
+      const resolvedType = resolveCoinType(coinType, ctx.network);
       const payAmount = parseAmount(amount);
 
       checkSpendingLimit(ctx, payAmount);
@@ -261,7 +261,7 @@ export function registerMandateTools(server: McpServer, ctx: SweefiContext) {
         sender: signer.toSuiAddress(),
         recipient,
         amount: payAmount,
-        feeBps: feeBps ?? 0,
+        feeMicroPercent: feeMicroPercent ?? 0,
         feeRecipient: feeRecipient ?? ZERO_ADDRESS,
         memo,
         mandateId,
@@ -320,19 +320,19 @@ export function registerMandateTools(server: McpServer, ctx: SweefiContext) {
         amount: z.string().describe("Payment amount in base units"),
         coinType: z.string().optional().describe('Token type. Defaults to "SUI".'),
         memo: z.string().optional().describe("Optional payment memo"),
-        feeBps: z
+        feeMicroPercent: z
           .number()
           .int()
           .min(0)
-          .max(10000)
+          .max(1_000_000)
           .optional()
-          .describe("Fee in basis points (default 0)"),
+          .describe("Fee in micro-percent (0-1000000, where 1000000 = 100%). Default 0."),
         feeRecipient: optionalSuiAddress("Fee recipient"),
       },
     },
-    async ({ mandateId, registryId, recipient, amount, coinType, memo, feeBps, feeRecipient }) => {
+    async ({ mandateId, registryId, recipient, amount, coinType, memo, feeMicroPercent, feeRecipient }) => {
       const signer = requireSigner(ctx);
-      const resolvedType = resolveCoinType(coinType);
+      const resolvedType = resolveCoinType(coinType, ctx.network);
       const payAmount = parseAmount(amount);
 
       checkSpendingLimit(ctx, payAmount);
@@ -342,7 +342,7 @@ export function registerMandateTools(server: McpServer, ctx: SweefiContext) {
         sender: signer.toSuiAddress(),
         recipient,
         amount: payAmount,
-        feeBps: feeBps ?? 0,
+        feeMicroPercent: feeMicroPercent ?? 0,
         feeRecipient: feeRecipient ?? ZERO_ADDRESS,
         memo,
         mandateId,
@@ -401,7 +401,7 @@ export function registerMandateTools(server: McpServer, ctx: SweefiContext) {
     },
     async ({ registryId, mandateId, coinType }) => {
       const signer = requireSigner(ctx);
-      const resolvedType = resolveCoinType(coinType);
+      const resolvedType = resolveCoinType(coinType, ctx.network);
 
       const tx = buildRevokeMandateTx(ctx.config, {
         sender: signer.toSuiAddress(),

@@ -35,7 +35,7 @@ export async function pay(ctx: CliContext, args: string[], flags: { coin?: strin
     sender: signer.toSuiAddress(),
     recipient,
     amount,
-    feeBps: 0,
+    feeMicroPercent: 0,
     feeRecipient: ZERO_ADDRESS,
     memo: flags.memo,
   };

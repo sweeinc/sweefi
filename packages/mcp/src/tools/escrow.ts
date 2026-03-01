@@ -37,19 +37,19 @@ export function registerEscrowTools(server: McpServer, ctx: SweefiContext) {
           ),
         coinType: z.string().optional().describe('Token type. Defaults to "SUI".'),
         memo: z.string().optional().describe("Description of what's being escrowed"),
-        feeBps: z
+        feeMicroPercent: z
           .number()
           .int()
           .min(0)
-          .max(10000)
+          .max(1_000_000)
           .optional()
-          .describe("Fee in basis points, charged on release only (default 0)"),
+          .describe("Fee in micro-percent (0-1000000, where 1000000 = 100%), charged on release only. Default 0."),
         feeRecipient: optionalSuiAddress("Fee recipient"),
       },
     },
-    async ({ seller, arbiter, amount, deadlineMs, coinType, memo, feeBps, feeRecipient }) => {
+    async ({ seller, arbiter, amount, deadlineMs, coinType, memo, feeMicroPercent, feeRecipient }) => {
       const signer = requireSigner(ctx);
-      const resolvedType = resolveCoinType(coinType);
+      const resolvedType = resolveCoinType(coinType, ctx.network);
       const depositAmount = parseAmount(amount);
       checkSpendingLimit(ctx, depositAmount);
 
@@ -60,7 +60,7 @@ export function registerEscrowTools(server: McpServer, ctx: SweefiContext) {
         arbiter,
         depositAmount,
         deadlineMs: parseAmount(deadlineMs, "deadlineMs"),
-        feeBps: feeBps ?? 0,
+        feeMicroPercent: feeMicroPercent ?? 0,
         feeRecipient: feeRecipient ?? ZERO_ADDRESS,
         memo,
       });
@@ -118,7 +118,7 @@ export function registerEscrowTools(server: McpServer, ctx: SweefiContext) {
     },
     async ({ escrowId, coinType }) => {
       const signer = requireSigner(ctx);
-      const resolvedType = resolveCoinType(coinType);
+      const resolvedType = resolveCoinType(coinType, ctx.network);
 
       const tx = buildReleaseEscrowTx(ctx.config, {
         coinType: resolvedType,
@@ -174,7 +174,7 @@ export function registerEscrowTools(server: McpServer, ctx: SweefiContext) {
     },
     async ({ escrowId, coinType }) => {
       const signer = requireSigner(ctx);
-      const resolvedType = resolveCoinType(coinType);
+      const resolvedType = resolveCoinType(coinType, ctx.network);
 
       const tx = buildRefundEscrowTx(ctx.config, {
         coinType: resolvedType,
@@ -223,7 +223,7 @@ export function registerEscrowTools(server: McpServer, ctx: SweefiContext) {
     },
     async ({ escrowId, coinType }) => {
       const signer = requireSigner(ctx);
-      const resolvedType = resolveCoinType(coinType);
+      const resolvedType = resolveCoinType(coinType, ctx.network);
 
       const tx = buildDisputeEscrowTx(ctx.config, {
         coinType: resolvedType,

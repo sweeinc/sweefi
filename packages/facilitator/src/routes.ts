@@ -60,20 +60,20 @@ function validateSettlementBody(body: unknown): string | null {
 /**
  * Create Hono routes for the facilitator endpoints.
  *
- * B-05/B-06 (Fee verification): The facilitator trusts that the scheme
- * implementation verifies fee correctness at the Move contract level.
- * The HTTP routes do NOT independently verify that protocolFeeBps in the
- * requirements matches what the Sui PTB actually collects. This is correct:
- * the facilitator's on-chain scheme implementation (ExactScheme.settle) builds
- * the PTB with the fee split, and Sui's execution verifies balance conservation.
- * A dishonest resource server cannot reduce fees because the facilitator
- * controls the PTB construction. Operators deploying custom scheme implementations
- * MUST ensure their Move contracts enforce fee collection.
+ * FEE VERIFICATION (V8 audit F-04):
+ * - **Exact scheme**: Fees are NOT enforced. The client builds the PTB (not
+ *   the facilitator), and `protocolFeeAddress` is not in requirements. Both
+ *   coin splits go to `payTo`. Exact is fee-free by design in v0.1.
+ * - **Escrow/stream/prepaid**: Fees ARE enforced on-chain by Move contracts.
+ *   The facilitator verifies fee_micro_pct via emitted events.
+ *
+ * Operators who need exact-scheme fees must add `protocolFeeAddress` to
+ * s402GateConfig and update the verify logic. See exact/client.ts header.
  */
 export function createRoutes(
   facilitator: s402Facilitator,
   usageTracker: UsageTracker,
-  feeBps: number,
+  feeMicroPercent: number,
   feeRecipient?: string,
   serverStartTime: Date = new Date(),
 ) {
@@ -148,7 +148,7 @@ export function createRoutes(
       if (result.success) {
         const apiKey = getApiKey(c);
         if (apiKey) {
-          recordSettlement(usageTracker, apiKey, body.paymentRequirements, result, feeBps);
+          recordSettlement(usageTracker, apiKey, body.paymentRequirements, result, feeMicroPercent);
         }
       }
 
@@ -188,7 +188,7 @@ export function createRoutes(
       if (result.success) {
         const apiKey = getApiKey(c);
         if (apiKey) {
-          recordSettlement(usageTracker, apiKey, body.paymentRequirements, result, feeBps);
+          recordSettlement(usageTracker, apiKey, body.paymentRequirements, result, feeMicroPercent);
         }
       }
 
@@ -229,7 +229,7 @@ export function createRoutes(
 
     return c.json({
       version: "1",
-      feeBps,
+      feeMicroPercent,
       feeRecipient: feeRecipient ?? null,
       minFeeUsd: "0.001",
       supportedSchemes: [...schemes],
@@ -258,7 +258,7 @@ export function createRoutes(
       assets: [],
       directSettlement: true,
       mandateSupport: false,
-      protocolFeeBps: feeBps,
+      protocolFeeMicroPercent: feeMicroPercent,
     });
   });
 

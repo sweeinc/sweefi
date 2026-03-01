@@ -91,7 +91,7 @@ docker build -t sweefi-facilitator .
 # Run it
 docker run -p 4022:4022 \
   -e API_KEYS="your-secret-key" \
-  -e FEE_BPS="50" \
+  -e FEE_MICRO_PERCENT="5000" \
   sweefi-facilitator
 ```
 
@@ -107,7 +107,7 @@ fly launch --no-deploy
 
 # Set secrets (never commit these)
 fly secrets set API_KEYS="your-secret-key-1,your-secret-key-2"
-fly secrets set FEE_BPS="50"
+fly secrets set FEE_MICRO_PERCENT="5000"
 
 # Optional: custom RPC
 fly secrets set SUI_MAINNET_RPC="https://your-rpc-provider.example.com"
@@ -128,7 +128,7 @@ Validated at startup with Zod. The server will refuse to start if required varia
 |----------|----------|---------|-------------|
 | `API_KEYS` | Yes | — | Comma-separated list of bearer token API keys. Clients must present one of these in the `Authorization` header. **Each key must be ≥ 16 characters** — shorter keys are rejected at startup. Generate with `openssl rand -hex 32`. |
 | `PORT` | No | `4022` | Port to listen on. |
-| `FEE_BPS` | No | `50` | Protocol fee in basis points (50 = 0.5%). Included in the `/.well-known/s402.json` discovery document and passed to scheme handlers for PTB construction. |
+| `FEE_MICRO_PERCENT` | No | `5000` | Protocol fee in micro-percent (5000 = 0.5%, 1000000 = 100%). Included in the `/.well-known/s402.json` discovery document and passed to scheme handlers for PTB construction. |
 | `FACILITATOR_KEYPAIR` | No | — | Base64-encoded Ed25519 keypair for gas sponsorship (reserved for future use). |
 | `SUI_MAINNET_RPC` | No | Mysten default | Custom RPC URL for `sui:mainnet`. Use this to point at a dedicated node or RPC provider. |
 | `SUI_TESTNET_RPC` | No | Mysten default | Custom RPC URL for `sui:testnet`. |
@@ -166,7 +166,7 @@ Facilitator identity document. Returns a signed fee schedule describing who this
 ```json
 {
   "version": "1",
-  "feeBps": 50,
+  "feeMicroPercent": 5000,
   "feeRecipient": "0xabc...",
   "minFeeUsd": "0.001",
   "supportedSchemes": ["exact", "prepaid", "stream", "escrow"],
@@ -197,7 +197,7 @@ Discovery document. Clients and resource servers can query this to learn what sc
   "assets": [],
   "directSettlement": true,
   "mandateSupport": false,
-  "protocolFeeBps": 50
+  "protocolFeeMicroPercent": 5000
 }
 ```
 
@@ -308,7 +308,7 @@ Unknown fields in `paymentRequirements` are stripped at the route layer (`pickRe
 
 ### Fee enforcement
 
-The facilitator does not independently verify that `protocolFeeBps` in the payment requirements matches what the Sui PTB actually collects. This is intentional: each scheme's `settle` handler builds the PTB with the fee split baked in, and Sui's execution enforces balance conservation. A dishonest resource server cannot reduce fees by lying about `protocolFeeBps` in the requirements, because the facilitator — not the resource server — controls PTB construction. Operators deploying custom scheme implementations must ensure their Move contracts enforce fee collection.
+The facilitator does not independently verify that `protocolFeeMicroPercent` in the payment requirements matches what the Sui PTB actually collects. This is intentional: each scheme's `settle` handler builds the PTB with the fee split baked in, and Sui's execution enforces balance conservation. A dishonest resource server cannot reduce fees by lying about `protocolFeeMicroPercent` in the requirements, because the facilitator — not the resource server — controls PTB construction. Operators deploying custom scheme implementations must ensure their Move contracts enforce fee collection.
 
 ---
 

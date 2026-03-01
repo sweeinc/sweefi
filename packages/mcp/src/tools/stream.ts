@@ -29,19 +29,19 @@ export function registerStreamTools(server: McpServer, ctx: SweefiContext) {
           .optional()
           .describe("Maximum total spend (gross). Defaults to depositAmount."),
         coinType: z.string().optional().describe('Token type. Defaults to "SUI".'),
-        feeBps: z
+        feeMicroPercent: z
           .number()
           .int()
           .min(0)
-          .max(10000)
+          .max(1_000_000)
           .optional()
-          .describe("Fee in basis points (default 0)"),
+          .describe("Fee in micro-percent (0-1000000, where 1000000 = 100%). Default 0."),
         feeRecipient: optionalSuiAddress("Fee recipient"),
       },
     },
-    async ({ recipient, depositAmount, ratePerSecond, budgetCap, coinType, feeBps, feeRecipient }) => {
+    async ({ recipient, depositAmount, ratePerSecond, budgetCap, coinType, feeMicroPercent, feeRecipient }) => {
       const signer = requireSigner(ctx);
-      const resolvedType = resolveCoinType(coinType);
+      const resolvedType = resolveCoinType(coinType, ctx.network);
       const deposit = parseAmount(depositAmount, "depositAmount");
       checkSpendingLimit(ctx, deposit);
       const rate = parseAmount(ratePerSecond, "ratePerSecond");
@@ -53,7 +53,7 @@ export function registerStreamTools(server: McpServer, ctx: SweefiContext) {
         depositAmount: deposit,
         ratePerSecond: rate,
         budgetCap: budgetCap ? parseAmount(budgetCap, "budgetCap") : deposit,
-        feeBps: feeBps ?? 0,
+        feeMicroPercent: feeMicroPercent ?? 0,
         feeRecipient: feeRecipient ?? ZERO_ADDRESS,
       });
 
@@ -105,19 +105,19 @@ export function registerStreamTools(server: McpServer, ctx: SweefiContext) {
           .optional()
           .describe("Maximum total spend (gross). Defaults to depositAmount."),
         coinType: z.string().optional().describe('Token type. Defaults to "SUI".'),
-        feeBps: z
+        feeMicroPercent: z
           .number()
           .int()
           .min(0)
-          .max(10000)
+          .max(1_000_000)
           .optional()
-          .describe("Fee in basis points (default 0)"),
+          .describe("Fee in micro-percent (0-1000000, where 1000000 = 100%). Default 0."),
         feeRecipient: optionalSuiAddress("Fee recipient"),
       },
     },
-    async ({ recipient, depositAmount, ratePerSecond, recipientCloseTimeoutMs, budgetCap, coinType, feeBps, feeRecipient }) => {
+    async ({ recipient, depositAmount, ratePerSecond, recipientCloseTimeoutMs, budgetCap, coinType, feeMicroPercent, feeRecipient }) => {
       const signer = requireSigner(ctx);
-      const resolvedType = resolveCoinType(coinType);
+      const resolvedType = resolveCoinType(coinType, ctx.network);
       const deposit = parseAmount(depositAmount, "depositAmount");
       checkSpendingLimit(ctx, deposit);
       const rate = parseAmount(ratePerSecond, "ratePerSecond");
@@ -130,7 +130,7 @@ export function registerStreamTools(server: McpServer, ctx: SweefiContext) {
         depositAmount: deposit,
         ratePerSecond: rate,
         budgetCap: budgetCap ? parseAmount(budgetCap, "budgetCap") : deposit,
-        feeBps: feeBps ?? 0,
+        feeMicroPercent: feeMicroPercent ?? 0,
         feeRecipient: feeRecipient ?? ZERO_ADDRESS,
         recipientCloseTimeoutMs: timeout,
       });
@@ -176,7 +176,7 @@ export function registerStreamTools(server: McpServer, ctx: SweefiContext) {
     },
     async ({ meterId, coinType }) => {
       const signer = requireSigner(ctx);
-      const resolvedType = resolveCoinType(coinType);
+      const resolvedType = resolveCoinType(coinType, ctx.network);
 
       const tx = buildCloseTx(ctx.config, {
         coinType: resolvedType,
@@ -219,7 +219,7 @@ export function registerStreamTools(server: McpServer, ctx: SweefiContext) {
     },
     async ({ meterId, coinType }) => {
       const signer = requireSigner(ctx);
-      const resolvedType = resolveCoinType(coinType);
+      const resolvedType = resolveCoinType(coinType, ctx.network);
 
       const tx = buildRecipientCloseTx(ctx.config, {
         coinType: resolvedType,

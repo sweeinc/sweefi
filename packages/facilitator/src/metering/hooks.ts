@@ -40,7 +40,7 @@ export function recordSettlement(
   apiKey: string,
   requirements: s402PaymentRequirements,
   result: s402SettleResponse,
-  feeBps: number,
+  feeMicroPercent: number,
 ): void {
   try {
     tracker.record(
@@ -50,7 +50,7 @@ export function recordSettlement(
       result.txDigest ?? "",
     );
 
-    const fee = calculateFee(requirements.amount, feeBps);
+    const fee = calculateFee(requirements.amount, feeMicroPercent);
 
     // Phase 1: structured log for manual invoicing
     // Phase 2: replace with on-chain fee splitting via Move contract
@@ -59,7 +59,7 @@ export function recordSettlement(
       apiKey: createHash("sha256").update(apiKey).digest("hex").slice(0, 8),
       amount: requirements.amount,
       fee: fee.toString(),
-      feeBps,
+      feeMicroPercent,
       network: requirements.network,
       txDigest: result.txDigest,
     }));

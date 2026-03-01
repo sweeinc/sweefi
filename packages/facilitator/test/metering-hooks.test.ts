@@ -38,7 +38,7 @@ describe("recordSettlement", () => {
   });
 
   it("records settlement in usage tracker", () => {
-    recordSettlement(tracker, "test-key-123", makeRequirements(), makeSettleResult(), 50);
+    recordSettlement(tracker, "test-key-123", makeRequirements(), makeSettleResult(), 5_000);
     expect(tracker.getTotalSettled("test-key-123")).toBe(1000000n);
   });
 
@@ -48,7 +48,7 @@ describe("recordSettlement", () => {
       "prod-key",
       makeRequirements({ amount: "5000000", network: "sui:mainnet" }),
       makeSettleResult({ txDigest: "mainnet-tx-abc" }),
-      50,
+      5_000,
     );
 
     const records = tracker.getAllRecords().get("prod-key");
@@ -68,7 +68,7 @@ describe("recordSettlement", () => {
       "log-key-abcdefgh",
       makeRequirements({ amount: "1000000" }),
       makeSettleResult(),
-      50,
+      5_000,
     );
 
     expect(consoleSpy).toHaveBeenCalledOnce();
@@ -76,8 +76,8 @@ describe("recordSettlement", () => {
     expect(logged).toMatchObject({
       event: "settlement_metered",
       amount: "1000000",
-      fee: "5000", // 1,000,000 * 50 / 10,000 = 5,000
-      feeBps: 50,
+      fee: "5000", // 1,000,000 * 5,000 / 1,000,000 = 5,000
+      feeMicroPercent: 5_000,
       network: "sui:testnet",
       txDigest: "ABCDtxdigest123",
     });
@@ -85,16 +85,16 @@ describe("recordSettlement", () => {
   });
 
   it("handles multiple settlements per API key", () => {
-    recordSettlement(tracker, "multi-key", makeRequirements({ amount: "1000000" }), makeSettleResult({ txDigest: "tx-1" }), 100);
-    recordSettlement(tracker, "multi-key", makeRequirements({ amount: "2000000" }), makeSettleResult({ txDigest: "tx-2" }), 100);
+    recordSettlement(tracker, "multi-key", makeRequirements({ amount: "1000000" }), makeSettleResult({ txDigest: "tx-1" }), 10_000);
+    recordSettlement(tracker, "multi-key", makeRequirements({ amount: "2000000" }), makeSettleResult({ txDigest: "tx-2" }), 10_000);
 
     expect(tracker.getTotalSettled("multi-key")).toBe(3000000n);
     expect(tracker.getAllRecords().get("multi-key")).toHaveLength(2);
   });
 
   it("isolates settlements across different API keys", () => {
-    recordSettlement(tracker, "key-a", makeRequirements({ amount: "1000000" }), makeSettleResult(), 50);
-    recordSettlement(tracker, "key-b", makeRequirements({ amount: "3000000" }), makeSettleResult(), 50);
+    recordSettlement(tracker, "key-a", makeRequirements({ amount: "1000000" }), makeSettleResult(), 5_000);
+    recordSettlement(tracker, "key-b", makeRequirements({ amount: "3000000" }), makeSettleResult(), 5_000);
 
     expect(tracker.getTotalSettled("key-a")).toBe(1000000n);
     expect(tracker.getTotalSettled("key-b")).toBe(3000000n);
@@ -110,7 +110,7 @@ describe("recordSettlement", () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     // Should not throw — catches and logs the error
-    recordSettlement(brokenTracker, "crash-key", makeRequirements(), makeSettleResult(), 50);
+    recordSettlement(brokenTracker, "crash-key", makeRequirements(), makeSettleResult(), 5_000);
 
     expect(errorSpy).toHaveBeenCalledOnce();
     expect(errorSpy.mock.calls[0][0]).toContain("[metering]");

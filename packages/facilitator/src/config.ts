@@ -10,8 +10,8 @@ const envSchema = z.object({
     { message: "Each API key must be at least 16 characters. Short keys are trivially brute-forceable." }
   ),
 
-  /** Fee in basis points (default: 50 = 0.5%) */
-  FEE_BPS: z.coerce.number().min(0).max(10000).default(50),
+  /** Fee in micro-percent (default: 5000 = 0.5%, where 1000000 = 100%) */
+  FEE_MICRO_PERCENT: z.coerce.number().min(0).max(1_000_000).default(5_000),
 
   /** Optional: Facilitator keypair for gas sponsorship (base64-encoded) */
   FACILITATOR_KEYPAIR: z.string().optional(),

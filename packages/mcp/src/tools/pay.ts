@@ -25,25 +25,25 @@ export function registerPayTool(server: McpServer, ctx: SweefiContext) {
           .optional()
           .describe('Token to pay with: "SUI", "USDC", "USDT", or full type. Defaults to SUI.'),
         memo: z.string().optional().describe("Optional payment memo (UTF-8 string)"),
-        feeBps: z
+        feeMicroPercent: z
           .number()
           .int()
           .min(0)
-          .max(10000)
+          .max(1_000_000)
           .optional()
-          .describe("Fee in basis points (0-10000). Defaults to 0 (no fee)."),
+          .describe("Fee in micro-percent (0-1000000, where 1000000 = 100%). Defaults to 0 (no fee)."),
         feeRecipient: optionalSuiAddress("Fee recipient"),
       },
     },
-    async ({ recipient, amount, coinType, memo, feeBps, feeRecipient }) => {
+    async ({ recipient, amount, coinType, memo, feeMicroPercent, feeRecipient }) => {
       const signer = requireSigner(ctx);
-      const resolvedType = resolveCoinType(coinType);
+      const resolvedType = resolveCoinType(coinType, ctx.network);
       const amountBigint = parseAmount(amount);
 
       // Enforce spending limits before signing
       checkSpendingLimit(ctx, amountBigint);
 
-      const fee = feeBps ?? 0;
+      const fee = feeMicroPercent ?? 0;
       const feeAddr = feeRecipient ?? ZERO_ADDRESS;
 
       const tx = buildPayTx(ctx.config, {
@@ -51,7 +51,7 @@ export function registerPayTool(server: McpServer, ctx: SweefiContext) {
         sender: signer.toSuiAddress(),
         recipient,
         amount: amountBigint,
-        feeBps: fee,
+        feeMicroPercent: fee,
         feeRecipient: feeAddr,
         memo,
       });

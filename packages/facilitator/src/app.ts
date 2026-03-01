@@ -73,8 +73,19 @@ export function createApp(config: Config) {
    *    to a lightweight JSON-RPC call within 3 seconds.
    *
    * Returns 200 when ready, 503 when any check fails.
+   *
+   * SECURITY (V8 audit F-03): Response is cached for 10 seconds to prevent
+   * unauthenticated callers from using /ready as an RPC amplification vector.
+   * Without caching, each request generates 2 outbound RPC calls to Sui fullnodes.
    */
+  let readyCache: { result: Record<string, unknown>; ready: boolean; expiresAt: number } | null = null;
+
   app.get("/ready", async (c) => {
+    const now = Date.now();
+    if (readyCache && readyCache.expiresAt > now) {
+      return c.json(readyCache.result, readyCache.ready ? 200 : 503);
+    }
+
     const rpcUrls: Record<string, string> = {
       "sui:testnet": config.SUI_TESTNET_RPC ?? DEFAULT_RPC_URLS["sui:testnet"],
       "sui:mainnet": config.SUI_MAINNET_RPC ?? DEFAULT_RPC_URLS["sui:mainnet"],
@@ -96,7 +107,10 @@ export function createApp(config: Config) {
     const rpcReady = Object.values(rpcResults).every((r) => r === "ok");
 
     const ready = schemesReady && rpcReady;
-    return c.json({ ready, checks: { schemes, rpc: rpcResults } }, ready ? 200 : 503);
+    const result = { ready, checks: { schemes, rpc: rpcResults } };
+
+    readyCache = { result, ready, expiresAt: now + 10_000 };
+    return c.json(result, ready ? 200 : 503);
   });
 
   // ── Protected routes ─────────────────────────────────────────────────────────
@@ -126,7 +140,7 @@ export function createApp(config: Config) {
   app.use("*", rateLimiter.middleware());
 
   // Mount facilitator routes (verify, settle, supported, s402/process, settlements)
-  const routes = createRoutes(facilitator, usageTracker, config.FEE_BPS, config.FEE_RECIPIENT, serverStartTime);
+  const routes = createRoutes(facilitator, usageTracker, config.FEE_MICRO_PERCENT, config.FEE_RECIPIENT, serverStartTime);
   app.route("/", routes);
 
   return { app, usageTracker };

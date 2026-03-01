@@ -18,25 +18,25 @@ export function registerInvoiceTools(server: McpServer, ctx: SweefiContext) {
       inputSchema: {
         recipient: suiAddress("Recipient"),
         amount: z.string().describe("Expected payment amount in base units"),
-        feeBps: z
+        feeMicroPercent: z
           .number()
           .int()
           .min(0)
-          .max(10000)
+          .max(1_000_000)
           .optional()
-          .describe("Fee in basis points (default 0)"),
+          .describe("Fee in micro-percent (0-1000000, where 1000000 = 100%). Default 0."),
         feeRecipient: optionalSuiAddress("Fee recipient"),
         sendTo: optionalSuiAddress("Invoice destination"),
       },
     },
-    async ({ recipient, amount, feeBps, feeRecipient, sendTo }) => {
+    async ({ recipient, amount, feeMicroPercent, feeRecipient, sendTo }) => {
       const signer = requireSigner(ctx);
 
       const tx = buildCreateInvoiceTx(ctx.config, {
         sender: signer.toSuiAddress(),
         recipient,
         expectedAmount: parseAmount(amount),
-        feeBps: feeBps ?? 0,
+        feeMicroPercent: feeMicroPercent ?? 0,
         feeRecipient: feeRecipient ?? ZERO_ADDRESS,
         sendTo,
       });
@@ -83,7 +83,7 @@ export function registerInvoiceTools(server: McpServer, ctx: SweefiContext) {
     },
     async ({ invoiceId, amount, coinType }) => {
       const signer = requireSigner(ctx);
-      const resolvedType = resolveCoinType(coinType);
+      const resolvedType = resolveCoinType(coinType, ctx.network);
       const amountBigint = parseAmount(amount);
       checkSpendingLimit(ctx, amountBigint);
 

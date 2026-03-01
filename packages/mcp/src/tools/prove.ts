@@ -30,19 +30,19 @@ export function registerProveTool(server: McpServer, ctx: SweefiContext) {
           .string()
           .optional()
           .describe("Optional memo — use 'seal:<content-id>' to link receipt to encrypted content"),
-        feeBps: z
+        feeMicroPercent: z
           .number()
           .int()
           .min(0)
-          .max(10000)
+          .max(1_000_000)
           .optional()
-          .describe("Fee in basis points (0-10000). Defaults to 0."),
+          .describe("Fee in micro-percent (0-1000000, where 1000000 = 100%). Defaults to 0."),
         feeRecipient: optionalSuiAddress("Fee recipient"),
       },
     },
-    async ({ recipient, amount, receiptDestination, coinType, memo, feeBps, feeRecipient }) => {
+    async ({ recipient, amount, receiptDestination, coinType, memo, feeMicroPercent, feeRecipient }) => {
       const signer = requireSigner(ctx);
-      const resolvedType = resolveCoinType(coinType);
+      const resolvedType = resolveCoinType(coinType, ctx.network);
       const amountBigint = parseAmount(amount);
       checkSpendingLimit(ctx, amountBigint);
       const senderAddr = signer.toSuiAddress();
@@ -52,7 +52,7 @@ export function registerProveTool(server: McpServer, ctx: SweefiContext) {
         sender: senderAddr,
         recipient,
         amount: amountBigint,
-        feeBps: feeBps ?? 0,
+        feeMicroPercent: feeMicroPercent ?? 0,
         feeRecipient: feeRecipient ?? ZERO_ADDRESS,
         receiptDestination: receiptDestination ?? senderAddr,
         memo,

@@ -1,4 +1,4 @@
-import { COIN_TYPES, COIN_DECIMALS } from "@sweefi/sui";
+import { COIN_TYPES, COIN_DECIMALS, TESTNET_COIN_TYPES } from "@sweefi/sui";
 import { z } from "zod";
 
 /** 64-char zero address — used as default feeRecipient when no fee is charged */
@@ -94,7 +94,7 @@ const ABORT_CODES: Record<number, { code: string; message: string; action: strin
   // ── payment.move (0-2) ──────────────────────────────────────
   0:   { code: "INSUFFICIENT_PAYMENT", message: "Payment amount is less than required", action: "Increase the amount and retry", retryable: false, humanRequired: false },
   1:   { code: "ZERO_AMOUNT", message: "Amount cannot be zero", action: "Provide a positive amount", retryable: false, humanRequired: false },
-  2:   { code: "INVALID_FEE_BPS", message: "Fee basis points value is invalid (must be 0-10000)", action: "Provide a valid feeBps between 0 and 10000", retryable: false, humanRequired: false },
+  2:   { code: "INVALID_FEE_MICRO_PCT", message: "Fee micro-percent value is invalid (must be 0-1000000)", action: "Provide a valid feeMicroPercent between 0 and 1000000", retryable: false, humanRequired: false },
 
   // ── stream.move (100-110) ───────────────────────────────────
   100: { code: "STREAM_NOT_PAYER", message: "Signer is not the stream payer", action: "Use the wallet that created the stream", retryable: false, humanRequired: false },
@@ -104,7 +104,7 @@ const ABORT_CODES: Record<number, { code: string; message: string; action: strin
   104: { code: "STREAM_ZERO_RATE", message: "Stream rate must be greater than zero", action: "Provide a positive rate_per_second value", retryable: false, humanRequired: false },
   105: { code: "STREAM_ZERO_DEPOSIT", message: "Stream deposit must be greater than zero", action: "Provide a positive deposit amount", retryable: false, humanRequired: false },
   106: { code: "STREAM_NOTHING_TO_CLAIM", message: "No funds available to claim from this stream", action: "Wait for more time to accrue before claiming again", retryable: true, humanRequired: false },
-  107: { code: "STREAM_INVALID_FEE_BPS", message: "Stream fee basis points is invalid", action: "Provide a valid feeBps between 0 and 10000", retryable: false, humanRequired: false },
+  107: { code: "STREAM_INVALID_FEE_MICRO_PCT", message: "Stream fee micro-percent is invalid", action: "Provide a valid feeMicroPercent between 0 and 1000000", retryable: false, humanRequired: false },
   108: { code: "STREAM_BUDGET_CAP_EXCEEDED", message: "Stream deposit exceeds budget cap", action: "Reduce the deposit amount or increase the budget cap", retryable: false, humanRequired: false },
   109: { code: "STREAM_TIMEOUT_NOT_REACHED", message: "Recipient close timeout has not been reached yet", action: "Wait for the timeout period to elapse before closing", retryable: true, humanRequired: false },
   110: { code: "STREAM_TIMEOUT_TOO_SHORT", message: "Recipient close timeout is too short", action: "Use a longer timeout value", retryable: false, humanRequired: false },
@@ -120,7 +120,7 @@ const ABORT_CODES: Record<number, { code: string; message: string; action: strin
   207: { code: "ESCROW_NOT_DISPUTED", message: "Escrow is not in disputed state", action: "The escrow must be disputed before an arbiter can resolve it", retryable: false, humanRequired: false },
   208: { code: "ESCROW_ALREADY_DISPUTED", message: "Escrow has already been disputed", action: "The dispute is already in progress — wait for arbiter resolution", retryable: false, humanRequired: false },
   209: { code: "ESCROW_ZERO_AMOUNT", message: "Escrow amount must be greater than zero", action: "Provide a positive escrow amount", retryable: false, humanRequired: false },
-  210: { code: "ESCROW_INVALID_FEE_BPS", message: "Escrow fee basis points is invalid", action: "Provide a valid feeBps between 0 and 10000", retryable: false, humanRequired: false },
+  210: { code: "ESCROW_INVALID_FEE_MICRO_PCT", message: "Escrow fee micro-percent is invalid", action: "Provide a valid feeMicroPercent between 0 and 1000000", retryable: false, humanRequired: false },
   211: { code: "ESCROW_DESCRIPTION_TOO_LONG", message: "Escrow description exceeds maximum length", action: "Shorten the description", retryable: false, humanRequired: false },
   212: { code: "ESCROW_ARBITER_IS_SELLER", message: "Arbiter cannot be the same address as the seller", action: "Use a different arbiter address", retryable: false, humanRequired: false },
   213: { code: "ESCROW_ARBITER_IS_BUYER", message: "Arbiter cannot be the same address as the buyer", action: "Use a different arbiter address", retryable: false, humanRequired: false },
@@ -160,7 +160,7 @@ const ABORT_CODES: Record<number, { code: string; message: string; action: strin
   605: { code: "PREPAID_CALL_COUNT_REGRESSION", message: "Cumulative call count is less than the last claimed count", action: "The cumulativeCallCount must be >= the previously claimed count. Use sweefi_prepaid_status to see the current claimed_calls value.", retryable: false, humanRequired: false },
   606: { code: "PREPAID_MAX_CALLS_EXCEEDED", message: "Maximum call count has been exceeded", action: "Create a new prepaid balance with a higher max-calls value", retryable: false, humanRequired: false },
   607: { code: "PREPAID_RATE_LIMIT_EXCEEDED", message: "Claim would exceed the remaining balance at the configured rate", action: "The delta * rate_per_call exceeds remaining funds. Top up the prepaid balance or create a new deposit.", retryable: false, humanRequired: false },
-  608: { code: "PREPAID_INVALID_FEE_BPS", message: "Fee basis points value is invalid (must be 0-10000)", action: "Provide a valid feeBps between 0 and 10000", retryable: false, humanRequired: false },
+  608: { code: "PREPAID_INVALID_FEE_MICRO_PCT", message: "Fee micro-percent value is invalid (must be 0-1000000)", action: "Provide a valid feeMicroPercent between 0 and 1000000", retryable: false, humanRequired: false },
   609: { code: "PREPAID_WITHDRAWAL_PENDING", message: "A withdrawal is already pending — top-ups and new deposits are blocked", action: "Cancel the pending withdrawal first with sweefi_prepaid_cancel_withdrawal, then retry", retryable: false, humanRequired: false },
   610: { code: "PREPAID_WITHDRAWAL_NOT_PENDING", message: "No withdrawal has been requested", action: "Call sweefi_prepaid_request_withdrawal first to initiate the withdrawal process", retryable: false, humanRequired: false },
   611: { code: "PREPAID_BALANCE_NOT_EXHAUSTED", message: "Cannot close PrepaidBalance — funds remain", action: "Use sweefi_prepaid_request_withdrawal to withdraw remaining funds, or wait for the provider to claim the remaining balance", retryable: false, humanRequired: false },
@@ -262,12 +262,19 @@ export function getSymbol(coinType: string): string {
 /**
  * Resolve a user-friendly coin name to its full type string.
  * Accepts: "SUI", "USDC", "USDT", or a full type string.
+ *
+ * @param input  - Coin name or full type string
+ * @param network - Sui network name (e.g., "testnet", "mainnet", "sui:testnet").
+ *                  Used to return the correct USDC address per network (V8 audit F-05).
  */
-export function resolveCoinType(input?: string): string {
+export function resolveCoinType(input?: string, network?: string): string {
   if (!input) return COIN_TYPES.SUI;
   const upper = input.toUpperCase();
   if (upper === "SUI") return COIN_TYPES.SUI;
-  if (upper === "USDC") return COIN_TYPES.USDC;
+  if (upper === "USDC") {
+    const isTestnet = network?.includes("testnet") ?? false;
+    return isTestnet ? TESTNET_COIN_TYPES.USDC : COIN_TYPES.USDC;
+  }
   if (upper === "USDT") return COIN_TYPES.USDT;
   return input; // assume it's a full type string
 }

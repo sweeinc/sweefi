@@ -19,7 +19,7 @@ describe("loadConfig", () => {
 
     expect(config.PORT).toBe(4022);
     expect(config.API_KEYS).toBe("test-api-key-alpha,test-api-key-beta");
-    expect(config.FEE_BPS).toBe(50);
+    expect(config.FEE_MICRO_PERCENT).toBe(5_000);
     expect(config.LOG_LEVEL).toBe("info");
   });
 
@@ -36,10 +36,10 @@ describe("loadConfig", () => {
     expect(loadConfig().PORT).toBe(8080);
   });
 
-  it("accepts custom FEE_BPS", async () => {
+  it("accepts custom FEE_MICRO_PERCENT", async () => {
     process.env.API_KEYS = "valid-test-api-key-1";
-    process.env.FEE_BPS = "100";
+    process.env.FEE_MICRO_PERCENT = "10000";
     const { loadConfig } = await import("../src/config");
-    expect(loadConfig().FEE_BPS).toBe(100);
+    expect(loadConfig().FEE_MICRO_PERCENT).toBe(10_000);
   });
 });

@@ -42,19 +42,19 @@ export function registerPrepaidTools(server: McpServer, ctx: SweefiContext) {
           .string()
           .describe("Grace period in ms before withdrawal completes. Min 60000 (1 min), max 604800000 (7 days)."),
         coinType: z.string().optional().describe('Token type. Defaults to "SUI".'),
-        feeBps: z
+        feeMicroPercent: z
           .number()
           .int()
           .min(0)
-          .max(10000)
+          .max(1_000_000)
           .optional()
-          .describe("Fee in basis points charged on claims (default 0)"),
+          .describe("Fee in micro-percent (0-1000000, where 1000000 = 100%) charged on claims. Default 0."),
         feeRecipient: optionalSuiAddress("Fee recipient"),
       },
     },
-    async ({ provider, amount, ratePerCall, maxCalls, withdrawalDelayMs, coinType, feeBps, feeRecipient }) => {
+    async ({ provider, amount, ratePerCall, maxCalls, withdrawalDelayMs, coinType, feeMicroPercent, feeRecipient }) => {
       const signer = requireSigner(ctx);
-      const resolvedType = resolveCoinType(coinType);
+      const resolvedType = resolveCoinType(coinType, ctx.network);
       const depositAmount = parseAmount(amount);
       const rate = parseAmount(ratePerCall, "ratePerCall");
       const delay = parseAmount(withdrawalDelayMs, "withdrawalDelayMs");
@@ -69,7 +69,7 @@ export function registerPrepaidTools(server: McpServer, ctx: SweefiContext) {
         ratePerCall: rate,
         maxCalls: maxCalls !== undefined ? parseAmount(maxCalls, "maxCalls") : UNLIMITED_CALLS,
         withdrawalDelayMs: delay,
-        feeBps: feeBps ?? 0,
+        feeMicroPercent: feeMicroPercent ?? 0,
         feeRecipient: feeRecipient ?? ZERO_ADDRESS,
       });
 
@@ -128,7 +128,7 @@ export function registerPrepaidTools(server: McpServer, ctx: SweefiContext) {
     },
     async ({ balanceId, coinType }) => {
       const signer = requireSigner(ctx);
-      const resolvedType = resolveCoinType(coinType);
+      const resolvedType = resolveCoinType(coinType, ctx.network);
 
       const tx = buildRequestWithdrawalTx(ctx.config, {
         coinType: resolvedType,
@@ -179,7 +179,7 @@ export function registerPrepaidTools(server: McpServer, ctx: SweefiContext) {
     },
     async ({ balanceId, coinType }) => {
       const signer = requireSigner(ctx);
-      const resolvedType = resolveCoinType(coinType);
+      const resolvedType = resolveCoinType(coinType, ctx.network);
 
       const tx = buildFinalizeWithdrawalTx(ctx.config, {
         coinType: resolvedType,
@@ -226,7 +226,7 @@ export function registerPrepaidTools(server: McpServer, ctx: SweefiContext) {
     },
     async ({ balanceId, coinType }) => {
       const signer = requireSigner(ctx);
-      const resolvedType = resolveCoinType(coinType);
+      const resolvedType = resolveCoinType(coinType, ctx.network);
 
       const tx = buildCancelWithdrawalTx(ctx.config, {
         coinType: resolvedType,
@@ -274,7 +274,7 @@ export function registerPrepaidTools(server: McpServer, ctx: SweefiContext) {
     },
     async ({ balanceId, amount, coinType }) => {
       const signer = requireSigner(ctx);
-      const resolvedType = resolveCoinType(coinType);
+      const resolvedType = resolveCoinType(coinType, ctx.network);
       const topUpAmount = parseAmount(amount);
 
       checkSpendingLimit(ctx, topUpAmount);
@@ -331,7 +331,7 @@ export function registerPrepaidTools(server: McpServer, ctx: SweefiContext) {
     },
     async ({ balanceId, coinType }) => {
       const signer = requireSigner(ctx);
-      const resolvedType = resolveCoinType(coinType);
+      const resolvedType = resolveCoinType(coinType, ctx.network);
 
       const tx = buildPrepaidAgentCloseTx(ctx.config, {
         coinType: resolvedType,
@@ -404,7 +404,7 @@ export function registerPrepaidTools(server: McpServer, ctx: SweefiContext) {
       const withdrawalDelayMs = fields.withdrawal_delay_ms ?? "unknown";
       const withdrawalRequestedMs = fields.withdrawal_requested_ms ?? "0";
       const lastClaimMs = fields.last_claim_ms ?? "0";
-      const feeBps = fields.fee_bps ?? "0";
+      const feeMicroPct = fields.fee_micro_pct ?? "0";
       const feeRecipient = fields.fee_recipient ?? "unknown";
 
       const isUnlimited = String(maxCalls) === UNLIMITED_CALLS;
@@ -437,7 +437,7 @@ export function registerPrepaidTools(server: McpServer, ctx: SweefiContext) {
               `${withdrawalInfo}\n` +
               `Withdrawal delay: ${Number(withdrawalDelayMs) / 60000} minutes\n` +
               `Last claim: ${lastClaimMs === "0" ? "never" : new Date(Number(lastClaimMs)).toISOString()}\n` +
-              `Fee: ${feeBps} bps\n` +
+              `Fee: ${feeMicroPct} micro-percent\n` +
               `Fee recipient: ${feeRecipient}\n` +
               `Network: ${ctx.network}`,
           },
@@ -476,7 +476,7 @@ export function registerPrepaidProviderTools(server: McpServer, ctx: SweefiConte
     },
     async ({ balanceId, cumulativeCallCount, coinType }) => {
       const signer = requireSigner(ctx);
-      const resolvedType = resolveCoinType(coinType);
+      const resolvedType = resolveCoinType(coinType, ctx.network);
       const callCount = parseAmountOrZero(cumulativeCallCount, "cumulativeCallCount");
 
       const tx = buildPrepaidClaimTx(ctx.config, {

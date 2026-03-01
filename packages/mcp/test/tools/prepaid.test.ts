@@ -48,7 +48,7 @@ describe("prepaid tools", () => {
               withdrawal_delay_ms: "300000",
               withdrawal_requested_ms: "0",
               last_claim_ms: "1708012800000",
-              fee_bps: "50",
+              fee_micro_pct: "5000",
               fee_recipient: "0x" + "c".repeat(64),
             },
           },
@@ -89,7 +89,7 @@ describe("prepaid tools", () => {
       expect(text).toContain("Claimed calls: 42");
       expect(text).toContain("Max calls: unlimited");
       expect(text).toContain("Withdrawal pending: false");
-      expect(text).toContain("Fee: 50 bps");
+      expect(text).toContain("Fee: 5000 micro-percent");
     });
 
     it("shows unlimited for u64::MAX max_calls", async () => {
@@ -137,7 +137,7 @@ describe("prepaid tools", () => {
               withdrawal_delay_ms: delayMs,
               withdrawal_requested_ms: requestedMs,
               last_claim_ms: "0",
-              fee_bps: "0",
+              fee_micro_pct: "0",
               fee_recipient: "0x" + "0".repeat(64),
             },
           },

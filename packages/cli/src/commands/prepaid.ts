@@ -41,7 +41,7 @@ export async function prepaidDeposit(
     ratePerCall,
     maxCalls,
     withdrawalDelayMs: DEFAULT_WITHDRAWAL_DELAY_MS,
-    feeBps: 0,
+    feeMicroPercent: 0,
     feeRecipient: ZERO_ADDRESS,
   });
 

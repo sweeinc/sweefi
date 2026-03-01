@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { formatBalance, getSymbol, resolveCoinType, parseAmount, parseAmountOrZero, assertTxSuccess } from "../src/utils/format.js";
-import { COIN_TYPES } from "@sweefi/sui";
+import { COIN_TYPES, TESTNET_COIN_TYPES } from "@sweefi/sui";
 
 describe("formatBalance", () => {
   it("formats SUI from MIST correctly", () => {
@@ -43,8 +43,17 @@ describe("resolveCoinType", () => {
     expect(resolveCoinType("SUI")).toBe(COIN_TYPES.SUI);
   });
 
-  it("resolves USDC string (case insensitive)", () => {
+  it("resolves USDC to mainnet address by default", () => {
     expect(resolveCoinType("usdc")).toBe(COIN_TYPES.USDC);
+  });
+
+  it("resolves USDC to mainnet address when network is mainnet", () => {
+    expect(resolveCoinType("usdc", "mainnet")).toBe(COIN_TYPES.USDC);
+  });
+
+  it("resolves USDC to testnet address when network includes testnet", () => {
+    expect(resolveCoinType("usdc", "testnet")).toBe(TESTNET_COIN_TYPES.USDC);
+    expect(resolveCoinType("USDC", "sui:testnet")).toBe(TESTNET_COIN_TYPES.USDC);
   });
 
   it("passes through full type strings", () => {
