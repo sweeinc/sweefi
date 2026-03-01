@@ -392,6 +392,7 @@ cd demos/agent-pays-api && SUI_PRIVATE_KEY=<key> pnpm demo
 
 ## Built On
 
+- [s402](https://github.com/s402-protocol/core) — Sui-native HTTP 402 protocol ([npm](https://www.npmjs.com/package/s402))
 - [Sui](https://sui.io) — High-performance L1 with PTBs and ~400ms finality
 - [SEAL](https://docs.sui.io/concepts/cryptography/seal) — Sui's threshold encryption for programmable access control
 - [x402](https://x402.org) — Coinbase's HTTP 402 payment protocol (wire-compatible)
