@@ -21,7 +21,7 @@ These must all be true before touching mainnet.
   Minimum: adversarial review by a qualified Move engineer not on the core team.
   Document the audit report path here: `docs/audits/_____.md`
 
-- [ ] **fee_bps denominator is 1_000_000 in math.move**
+- [ ] **fee_micro_pct denominator is 1_000_000 in math.move**
   Confirm `FEE_DENOMINATOR: u128 = 1_000_000` in `sources/math.move`.
   Reason: changing this post-launch is a breaking migration.
 

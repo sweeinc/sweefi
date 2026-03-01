@@ -6,10 +6,10 @@
 ## Project Overview
 
 **SweeFi** is open-source agentic payment infrastructure for Sui.
-- Monorepo with 9 TS packages + Move smart contracts
-- Built on top of `s402` (HTTP 402 protocol, published on npm as `s402@0.1.2`)
+- Monorepo with 10 TS packages + Move smart contracts
+- Built on top of `s402` (HTTP 402 protocol, published on npm as `s402@0.1.7`)
 - Competing with BEEP (justbeep.it) — proprietary alternative
-- 567 total tests (382 TypeScript + 185 Move)
+- 666+ total tests (481+ TypeScript + 185 Move)
 
 ## Repository Structure
 
@@ -25,7 +25,7 @@ sweefi-project/
 │       ├── agent_mandate.move    # L0-L3 progressive autonomy, lazy reset
 │       ├── prepaid.move          # Deposit-based agent budgets, batch-claim
 │       ├── identity.move         # Agent identity (did:sui profiles)
-│       ├── math.move             # Shared math utilities (safe division, BPS)
+│       ├── math.move             # Shared math utilities (safe division, micro-percent fees)
 │       └── admin.move            # Emergency pause, admin capabilities
 ├── packages/
 │   ├── ui-core/                  # Framework-agnostic state machine + PaymentAdapter interface (13 tests)
@@ -35,7 +35,9 @@ sweefi-project/
 │   ├── react/                    # React context + useSweefiPayment() hook (12 tests)
 │   ├── facilitator/              # Self-hostable payment verification — private, Docker only (51 tests)
 │   ├── mcp/                      # MCP server, 30+5 AI agent tools (79 tests)
-│   └── cli/                      # CLI tool — wallet, pay, prepaid, mandates (42 tests)
+│   ├── cli/                      # CLI tool — wallet, pay, prepaid, mandates (42 tests)
+│   ├── ap2-adapter/              # AP2 ↔ SweeFi mandate mapper + bridge (44 tests)
+│   └── solana/                   # Solana s402 exact scheme adapter
 ├── demos/
 │   ├── agent-pays-api/           # Working agent demo (server + client + e2e)
 │   └── seal-e2e/                 # SEAL pay-to-decrypt demo
@@ -69,6 +71,74 @@ cd contracts && sui move test
 pnpm -r --filter @sweefi/mcp test
 pnpm -r --filter @sweefi/sui build
 ```
+
+### Changesets (Versioning & Publishing)
+
+SweeFi uses [changesets](https://github.com/changesets/changesets) for versioning.
+When you make a user-visible change, add a changeset:
+
+```bash
+pnpm changeset                 # interactive — pick packages + semver bump
+pnpm changeset status          # see pending changesets
+pnpm version                   # consume changesets → bump package.json versions + write CHANGELOGs
+pnpm release                   # build all + publish to npm
+```
+
+Or create `.changeset/<name>.md` manually:
+
+```markdown
+---
+"@sweefi/sui": minor
+"@sweefi/mcp": patch
+---
+
+Description of the change.
+```
+
+**Rules**:
+- Breaking API changes (param renames, removed exports) → `minor` (pre-1.0) or `major` (post-1.0)
+- New features, additive changes → `minor`
+- Bug fixes, internal refactors → `patch`
+- `@sweefi/facilitator` is ignored (private, not published)
+- `updateInternalDependencies: "patch"` — downstream packages auto-get patch bumps when deps change
+
+### E2E Testing with Testcontainers (Future)
+
+When SweeFi needs E2E tests against a live Sui network (e.g., facilitator settlement tests, Move contract integration), use the **Testcontainers pattern** from MystenLabs/ts-sdks:
+
+```typescript
+// vitest globalSetup.ts
+import { GenericContainer, Network } from 'testcontainers';
+
+const SUI_TOOLS_TAG = 'latest-arm64'; // pin to specific commit hash for CI
+
+export default async function setup(project) {
+  const network = await new Network().start();
+
+  // Postgres for Sui indexer
+  const pg = await new GenericContainer('postgres')
+    .withEnvironment({ POSTGRES_USER: 'postgres', POSTGRES_PASSWORD: 'pw', POSTGRES_DB: 'sui_indexer_v2' })
+    .withExposedPorts(5432)
+    .withNetwork(network)
+    .start();
+
+  // Full Sui node with faucet + GraphQL + indexer
+  const sui = await new GenericContainer(`mysten/sui-tools:${SUI_TOOLS_TAG}`)
+    .withCommand(['sui', 'start', '--with-faucet', '--force-regenesis', '--with-graphql',
+      `--with-indexer=postgres://postgres:pw@${pg.getIpAddress(network.getName())}:5432/sui_indexer_v2`])
+    .withExposedPorts(9000, 9123, 9124, 9125)
+    .withNetwork(network)
+    .start();
+
+  // Ports: 9000=JSON-RPC, 9123=Faucet, 9124=gRPC, 9125=GraphQL
+  project.provide('localnetPort', sui.getMappedPort(9000));
+  project.provide('faucetPort', sui.getMappedPort(9123));
+}
+```
+
+**Why this pattern**: Random port mapping eliminates conflicts, `--force-regenesis` gives clean state every run, containers auto-cleanup on exit. Requires Docker Desktop running — nothing else.
+
+**Reference**: `external/ts-sdks-fork/packages/sui/test/e2e/utils/globalSetup.ts`
 
 ---
 
@@ -114,7 +184,7 @@ proposing a change that touches any of these areas, **read the relevant ADR firs
 |-----|-------|----------|
 | ADR-001 | Composable PTB Pattern | `public` functions return objects; `entry` functions transfer them. Never collapse these into one. |
 | ADR-002 | Batch Claims & Gas Economics | Gas break-even is ~17s claim intervals; recommend 5min+. |
-| ADR-003 | Fee Rounding & Financial Precision | Always use u128 intermediate. Always truncate (floor). Never use floating-point in money paths. |
+| ADR-003 | Fee Rounding & Financial Precision | Always use u128 intermediate. Always truncate (floor). Never use floating-point in money paths. Denominator is 1,000,000 (micro-percent), not 10,000 (bps). Both TS SDK and Move use micro-percent natively. `bpsToMicroPercent()` is a public convenience only. |
 | ADR-004 | AdminCap & Emergency Pause | Two-tier: pause blocks new deposits, NEVER blocks exits. AdminCap has no fund extraction rights. |
 | ADR-005 | Permissive Access & Receipt Transferability | Receipts are bearer credentials. Ownership = access. No sender checks. |
 | ADR-006 | Object Ownership Model | Owned = one-party mutations (fast path). Shared = multi-party mutations (consensus). |
@@ -138,22 +208,30 @@ Shared objects (consensus path, ~2-3s):
 **Rule**: An object is shared only when multiple distinct addresses mutate it.
 Read-only multi-party access does NOT require sharing.
 
-### 2. u128 Intermediate Math Everywhere (ADR-003)
+### 2. u128 Intermediate Math + Micro-Percent Fee Units (ADR-002 §4, ADR-003)
 
 The Cetus protocol lost $223M to a u64 overflow. SweeFi uses u128 for all
-fee and amount calculations involving multiplication:
+fee and amount calculations involving multiplication.
+
+**Fee denominator is 1,000,000 (micro-percent), not 10,000 (bps).**
+Both Move contracts and the TS SDK use micro-percent natively (`feeMicroPercent: number`,
+`fee_micro_pct: u64`). `FEE_DENOMINATOR = 1_000_000` enables sub-bps precision at
+AI agent micropayment scale. A public `bpsToMicroPercent()` convenience is available for
+callers who think in traditional basis points, but it's not used internally by PTB builders.
 
 ```move
-// CORRECT — always do this:
-let result = ((amount as u128) * (fee_bps as u128)) / 10_000u128;
+// CORRECT — all modules share sweefi::math::calculate_fee():
+const FEE_DENOMINATOR: u128 = 1_000_000; // 1,000,000 = 100%
+let result = ((amount as u128) * (fee_micro_pct as u128)) / FEE_DENOMINATOR;
 assert!(result <= (0xFFFFFFFFFFFFFFFF as u128), EOverflow);
 (result as u64)
 
 // NEVER do this — overflows at ~1.8 × 10^15 tokens:
-let fee = amount * fee_bps / 10_000;
+let fee = amount * fee_micro_pct / 1_000_000;
 ```
 
-This rule applies identically in `payment.move`, `stream.move`, `escrow.move`, and `prepaid.move`.
+All fee math lives in `contracts/sources/math.move`. Individual modules
+(`payment.move`, `stream.move`, `escrow.move`, `prepaid.move`) call `math::calculate_fee()`.
 
 ### 3. Two-Tier Pause Model (ADR-004)
 
@@ -247,14 +325,16 @@ V8 package ID: **TBD — run `sui client publish --gas-budget 500000000` in `con
 
 | Module | Series | Key Codes |
 |--------|--------|-----------|
-| payment | 100s | EInvalidAmount=100, EInvalidFeeBps=101, EOverflow=102 |
-| stream | 200s | EInvalidRate=200, EInsufficientFunds=201, EStreamPaused=202, ETimeoutTooShort=210, ETimeoutTooLong=111 |
-| escrow | 300s | ENotBuyer=300, ENotSeller=301, ENotArbiter=302, EDeadlineNotPassed=303 |
-| prepaid | 400s | EInsufficientBalance=400, EAlreadyClaimed=401, EExceedsMaxCalls=402 |
-| admin | 500s | EAlreadyPaused=500, ENotPaused=501, EProtocolPaused=502 |
-| mandate | 600s | EExceedsLimit=600, ERevoked=601, EExpired=602, ENotDelegator=603 |
-| agent_mandate | 700s | ENotDelegator=700, EInvalidLevel=701 |
-| seal_policy | 800s | EInvalidKeyId=800 |
+| payment | 0s | EInsufficientPayment=0, EZeroAmount=1, EInvalidFeeBps=2 |
+| stream | 100s | ENotPayer=100, ENotRecipient=101, EZeroDeposit=105, EBudgetCapExceeded=108, ETimeoutTooShort=110, ETimeoutTooLong=111 |
+| escrow | 200s | ENotBuyer=200, ENotSeller=201, ENotArbiter=202, EDeadlineNotReached=205, EAlreadyDisputed=208, EArbiterIsSeller=212 |
+| seal_policy | 300 | ENoAccess=300 |
+| mandate | 400s | ENotDelegate=400, EExpired=401, EPerTxLimitExceeded=402, ETotalLimitExceeded=403, ENotDelegator=404, ERevoked=405 |
+| admin | 500s | EAlreadyPaused=500, ENotPaused=501 |
+| agent_mandate | 500s | ENotDelegate=500, EExpired=501, EDailyLimitExceeded=506, EInvalidLevel=508, ECannotDowngrade=510 |
+| prepaid | 600s | ENotAgent=600, ENotProvider=601, EZeroDeposit=602, EWithdrawalLocked=604, ECallCountRegression=605 |
+| identity | 700s | EAlreadyRegistered=700, ENotOwner=701, EReceiptAlreadyRecorded=705 |
+| math | 900 | EOverflow=900 |
 
 **Critical**: `mandate::is_id_revoked(registry, id)` does NOT check `registry.owner == mandate.delegator`.
 All callers must assert ownership BEFORE calling it. This was the V8 H-1 security fix.

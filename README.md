@@ -242,7 +242,7 @@ const tx = buildCreateStreamTx(config, {
   depositAmount: 1_000_000_000n,  // 1 SUI
   ratePerSecond: 1_000_000n,      // 0.001 SUI/sec
   budgetCap: 5_000_000_000n,      // Max 5 SUI total
-  feeBps: 0,
+  feeMicroPercent: 0,
   feeRecipient: ZERO_ADDRESS,
 });
 ```
@@ -269,7 +269,7 @@ const payTx = buildMandatedPayTx(config, {
   recipient: merchantAddress,
   amount: 500_000n,
   mandateId: '0xMANDATE_OBJECT_ID',
-  feeBps: 0,
+  feeMicroPercent: 0,
   feeRecipient: ZERO_ADDRESS,
 });
 ```

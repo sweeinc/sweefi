@@ -229,7 +229,7 @@ const tx = buildCreateStreamTx(config, {
   depositAmount: 1_000_000_000n,  // 1 SUI
   ratePerSecond: 1_000_000n,      // 0.001 SUI/sec
   budgetCap: 5_000_000_000n,      // Max 5 SUI total
-  feeBps: 0,
+  feeMicroPercent: 0,
   feeRecipient: ZERO_ADDRESS,
 });
 ```
@@ -256,7 +256,7 @@ const payTx = buildMandatedPayTx(config, {
   recipient: merchantAddress,
   amount: 500_000n,
   mandateId: '0xMANDATE_OBJECT_ID',
-  feeBps: 0,
+  feeMicroPercent: 0,
   feeRecipient: ZERO_ADDRESS,
 });
 ```
@@ -318,7 +318,7 @@ Deployed on Sui testnet v7. 10 modules, 185 Move test functions (62 positive + 1
 | `mandate` | Basic AP2 spending delegation + revocation |
 | `agent_mandate` | L0-L3 progressive autonomy with lazy daily/weekly reset |
 | `identity` | Agent identity profiles (did:sui) |
-| `math` | Shared arithmetic utilities (safe division, BPS) |
+| `math` | Shared arithmetic utilities (safe division, micro-percent fees) |
 | `admin` | AdminCap, ProtocolState, pause/unpause/burn |
 
 Package ID (testnet v7): `0x242f22b9f8b3d77868f6cde06f294203d7c76afa0cd101f388a6cefa45b54c3d`

@@ -6,7 +6,9 @@
 
 ## Context
 
-SweeFi charges fees in basis points (bps) on payments, stream claims, and escrow releases. The fee calculation `(amount * fee_bps) / 10_000` produces fractional token amounts when the result doesn't divide evenly. A decision must be made about rounding direction and arithmetic safety — both on-chain (Move) and off-chain (TypeScript).
+SweeFi charges fees in micro-percent on payments, stream claims, and escrow releases. The on-chain fee calculation `(amount * fee_micro_pct) / 1_000_000` (where 1,000,000 = 100%) produces fractional token amounts when the result doesn't divide evenly. A decision must be made about rounding direction and arithmetic safety — both on-chain (Move) and off-chain (TypeScript).
+
+> **Unit note**: Both the TS SDK and Move contracts use micro-percent natively (0–1,000,000 where 1,000,000 = 100%). This enables sub-bps fee precision for AI agent micropayments. A public `bpsToMicroPercent()` convenience is available for callers who think in traditional basis points, but it's not used internally. See ADR-002 §4 for the rationale.
 
 Financial protocols have three options:
 1. **Round up** (ceiling) — protocol collects more, user pays more
@@ -19,23 +21,27 @@ Additionally, the TypeScript SDK must convert human-readable amounts (e.g., "1.5
 
 ### On-Chain (Move): Truncate Toward Zero
 
-All three fee-bearing modules use identical logic:
+All fee-bearing modules share `sweefi::math::calculate_fee()`:
 
 ```move
-fun calculate_fee(amount: u64, fee_bps: u64): u64 {
-    if (fee_bps == 0) return 0;
-    let result = ((amount as u128) * (fee_bps as u128)) / 10_000u128;
+const FEE_DENOMINATOR: u128 = 1_000_000; // 1,000,000 = 100% (micro-percent)
+
+public fun calculate_fee(amount: u64, fee_micro_pct: u64): u64 {
+    if (fee_micro_pct == 0) return 0;
+    let result = ((amount as u128) * (fee_micro_pct as u128)) / FEE_DENOMINATOR;
     assert!(result <= (0xFFFFFFFFFFFFFFFF as u128), EOverflow);
     (result as u64)
 }
 ```
 
 Key properties:
+- **Micro-percent denominator**: `1,000,000 = 100%`. Enables sub-bps fees for AI agent micropayments (e.g., `10 = 0.001%`). See ADR-002 §4 for why this was chosen over the traditional 10,000 (bps) denominator.
 - **u128 intermediate**: Prevents overflow on large amounts. A u64 multiplication would overflow at ~1.8 × 10^15 tokens — well within realistic USDC/SUI ranges. The u128 intermediate handles amounts up to ~3.4 × 10^34. This follows the Cetus pattern after their $223M overflow incident.
-- **Integer division truncates**: Move's `/` operator on unsigned integers truncates toward zero. This means `fee = floor(amount * fee_bps / 10_000)`.
+- **Integer division truncates**: Move's `/` operator on unsigned integers truncates toward zero. This means `fee = floor(amount * fee_micro_pct / 1_000_000)`.
 - **Protocol never overcharges**: The invariant is `fee_amount + recipient_amount <= original_amount`. Truncation guarantees this — any remainder stays with the payer as a rounding bonus.
-- **fee_bps validated on input**: `assert!(fee_bps <= 10_000, EInvalidFeeBps)` — prevents fees exceeding 100%.
-- **Zero-fee fast path**: `if (fee_bps == 0) return 0` skips division entirely.
+- **fee_micro_pct validated on input**: `assert!(fee_micro_pct <= 1_000_000, EInvalidFeeMicroPct)` — prevents fees exceeding 100%.
+- **Zero-fee fast path**: `if (fee_micro_pct == 0) return 0` skips division entirely.
+- **Unified units**: Both TS SDK (`feeMicroPercent`) and Move (`fee_micro_pct`) use micro-percent natively. No conversion needed at the PTB boundary.
 
 ### Off-Chain (TypeScript): Pure String Arithmetic
 
@@ -66,13 +72,13 @@ Key properties:
 
 ### Negative
 
-- **Fee recipient loses fractions**: On a 50 bps fee for 999 base units, the fee is `floor(999 * 50 / 10_000) = floor(4.995) = 4`, not 5. The fee recipient loses 0.005 tokens worth. At scale this is negligible — at $1M volume with 50 bps, the rounding loss is < $0.01.
+- **Fee recipient loses fractions**: On a 5,000 micro-percent fee (= 50 bps = 0.5%) for 999 base units, the fee is `floor(999 * 5_000 / 1_000_000) = floor(4.995) = 4`, not 5. The fee recipient loses 0.005 tokens worth. At scale this is negligible — at $1M volume with 50 bps, the rounding loss is < $0.01.
 - **Sub-atomic truncation is silent**: `convertToTokenAmount("0.0000001", 6)` returns `"0"` without warning. This is intentional (no amount below the token's precision can exist on-chain) but could surprise users.
 
 ## References
 
-- `contracts/sources/payment.move` — `calculate_fee()` (line ~365)
-- `contracts/sources/stream.move` — `calculate_fee()` (identical pattern)
-- `contracts/sources/escrow.move` — `calculate_fee()` (identical pattern)
+- `contracts/sources/math.move` — `calculate_fee()` with `FEE_DENOMINATOR = 1_000_000` (shared by all modules)
+- `packages/sui/src/ptb/assert.ts` — `assertFeeMicroPercent()` validation + `bpsToMicroPercent()` public convenience
 - `packages/sui/src/utils.ts` — `convertToTokenAmount()` (pure string arithmetic)
+- `docs/adr/002-batch-claims-gas-economics.md` §4 — rationale for 1,000,000 denominator
 - [Cetus overflow post-mortem](https://twitter.com/CetusProtocol/status/1795803498547392782) — motivation for u128 intermediate

@@ -36,7 +36,7 @@ const tx = buildPayAndProveTx(testnetConfig, {
   sender: buyerAddress,
   recipient: sellerAddress,
   amount: 1_000_000n,       // 0.001 SUI
-  feeBps: 50,               // 0.5% facilitator fee
+  feeMicroPercent: 5_000,    // 0.5% facilitator fee (5,000 / 1,000,000)
   feeRecipient: facilitatorAddress,
   receiptDestination: buyerAddress,  // buyer keeps receipt for SEAL
   memo: "seal:content-id:abc123",

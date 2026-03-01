@@ -25,7 +25,7 @@ The question: are these bugs or features?
 **Why this is correct:**
 
 - **Receipt generation**: The primary reason to self-pay is to generate a `PaymentReceipt` for SEAL decryption. "Pay yourself $0.01 to get a receipt that unlocks content" is a valid use case — the receipt is the product, not the payment.
-- **Fee is caller-controlled**: `fee_bps` is set by the caller. Self-pay with `fee_bps=0` is a net-zero operation (you send coins to yourself). Adding a restriction would add gas cost to every transaction for a "protection" that protects no one.
+- **Fee is caller-controlled**: `fee_micro_pct` is set by the caller. Self-pay with `fee_micro_pct=0` is a net-zero operation (you send coins to yourself). Adding a restriction would add gas cost to every transaction for a "protection" that protects no one.
 - **Testing and development**: Self-pay simplifies integration testing — developers can test the full pay→receipt→SEAL flow with a single wallet.
 - **No economic harm**: The only cost is gas. No third party is affected. The fee recipient (if any) is chosen by the caller.
 

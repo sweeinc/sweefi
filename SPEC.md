@@ -478,16 +478,38 @@ SweeFi uses a **periodic, AI-first wave audit model** — a fresh council of exp
 
 ### Protocol Fee
 
-SweeFi charges a **percentage-based fee with a floor**:
+SweeFi charges a **percentage-based fee**:
 
 ```
-Protocol fee = max($0.01, settlement amount × 50 bps)
+Protocol fee = settlement amount × fee_rate
 ```
 
-- **50 basis points (0.5%)** of the settlement amount
-- **$0.01 minimum** — ensures every settlement covers infrastructure costs
-- Authoritative rate lives on-chain in `ProtocolState.protocolFeeBps` (Move contract)
+- **Default: 50 basis points (0.5%)** — configurable per facilitator
+- **$0.01 advisory minimum** — the facilitator MAY reject settlements below this floor off-chain, but the Move contracts do not enforce a minimum fee on-chain. `calculate_fee_min()` exists in `math.move` but is not wired into production modules (V8 audit F-10).
 - Charged per on-chain settlement, **not** per API call
+- **Exact scheme**: Fees are currently non-functional (both splits go to `payTo`). See V8 audit F-04.
+- **Escrow/stream/prepaid**: Fees ARE enforced on-chain by Move contract events.
+
+#### Fee Unit System (Micro-Percent)
+
+Both the TS SDK and Move contracts use **micro-percent** natively — a unified unit where `1,000,000 = 100%`.
+
+| Layer | Field | Range | `5_000` means | `1_000_000` means |
+|-------|-------|-------|--------------|-------------------|
+| **TS SDK** (`feeMicroPercent` in types.ts) | `feeMicroPercent: number` | 0–1,000,000 | 0.5% | 100% |
+| **Move contracts** (`fee_micro_pct` in math.move) | `fee_micro_pct: u64` | 0–1,000,000 | 0.5% | 100% |
+
+**Why micro-percent?** Traditional basis points (10,000 = 100%) lack precision for AI agent micropayments. Micro-percent enables sub-bps fees — e.g., `10 = 0.001%`. Both layers use the same unit, so PTB builders pass values through directly with no conversion.
+
+**Common values:**
+```
+5_000   = 0.5%   (50 traditional bps)
+10_000  = 1%     (100 traditional bps)
+100     = 0.01%  (1 traditional bps — the old minimum)
+10      = 0.001% (sub-bps — only possible with micro-percent)
+```
+
+A public `bpsToMicroPercent()` convenience is available in `packages/sui/src/ptb/assert.ts` for callers who think in traditional basis points (`bps * 100`), but it is not used internally. See `contracts/sources/math.move` for the on-chain fee math. See ADR-002 §4 and ADR-003 for the architectural rationale.
 
 ### Fee Trust Model (Important Architecture Decision)
 
