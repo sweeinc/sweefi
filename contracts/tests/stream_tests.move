@@ -24,13 +24,13 @@ module sweefi::stream_tests {
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
 
         stream::create<SUI>(
             deposit,
             PROVIDER,
             RATE,
-            100_000,    // budget_cap = deposit
+            10_000_000,    // budget_cap = deposit
             5_000,      // 0.5% fee
             FEE_RECIPIENT,
             &state,
@@ -43,9 +43,9 @@ module sweefi::stream_tests {
         let meter = scenario.take_shared<stream::StreamingMeter<SUI>>();
         assert!(stream::meter_payer(&meter) == PAYER);
         assert!(stream::meter_recipient(&meter) == PROVIDER);
-        assert!(stream::meter_balance(&meter) == 100_000);
+        assert!(stream::meter_balance(&meter) == 10_000_000);
         assert!(stream::meter_rate_per_second(&meter) == RATE);
-        assert!(stream::meter_budget_cap(&meter) == 100_000);
+        assert!(stream::meter_budget_cap(&meter) == 10_000_000);
         assert!(stream::meter_total_claimed(&meter) == 0);
         assert!(stream::meter_active(&meter) == true);
 
@@ -62,9 +62,9 @@ module sweefi::stream_tests {
         let mut scenario = ts::begin(PAYER);
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
-        let deposit = coin::mint_for_testing<SUI>(0, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(999_999, scenario.ctx());
 
-        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         admin::destroy_cap_for_testing(_cap);
         admin::destroy_state_for_testing(state);
@@ -78,9 +78,9 @@ module sweefi::stream_tests {
         let mut scenario = ts::begin(PAYER);
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
 
-        stream::create<SUI>(deposit, PROVIDER, 0, 100_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, 0, 10_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         admin::destroy_cap_for_testing(_cap);
         admin::destroy_state_for_testing(state);
@@ -98,9 +98,9 @@ module sweefi::stream_tests {
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        // Create stream: 100k tokens, 300/sec
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        // Create stream: 10M tokens, 300/sec
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         // Advance 10 seconds
         clock.increment_for_testing(10_000); // 10,000 ms
@@ -115,7 +115,7 @@ module sweefi::stream_tests {
         stream::claim(&mut meter, &clock, scenario.ctx());
 
         assert!(stream::meter_total_claimed(&meter) == 3_000);
-        assert!(stream::meter_balance(&meter) == 97_000); // 100k - 3k
+        assert!(stream::meter_balance(&meter) == 9_997_000); // 10M - 3k
 
         ts::return_shared(meter);
 
@@ -137,9 +137,9 @@ module sweefi::stream_tests {
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 50_000, FEE_RECIPIENT, &state, &clock, scenario.ctx());
-        // 50_000 fee_bps = 5%
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 10_000_000, 50_000, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        // 50_000 fee_micro_pct = 5%
 
         // Advance 10 seconds → accrued = 3000
         clock.increment_for_testing(10_000);
@@ -151,7 +151,7 @@ module sweefi::stream_tests {
         // Fee: 3000 * 50_000 / 1_000_000 = 150
         // Recipient: 3000 - 150 = 2850
         assert!(stream::meter_total_claimed(&meter) == 3_000);
-        assert!(stream::meter_balance(&meter) == 97_000);
+        assert!(stream::meter_balance(&meter) == 9_997_000);
 
         ts::return_shared(meter);
 
@@ -179,23 +179,23 @@ module sweefi::stream_tests {
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        // Budget cap = deposit = 1500, rate = 300/sec → exhausted after 5 seconds
+        // Budget cap = deposit = 1_500_000, rate = 300/sec → exhausted after 5000 seconds
         // (create() enforces deposit <= budget_cap; set them equal to test cap exhaustion)
-        let deposit = coin::mint_for_testing<SUI>(1_500, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 1_500, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_500_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 1_500_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
-        // Advance 10 seconds (double the budget — accrual capped at 1500 by budget_cap)
-        clock.increment_for_testing(10_000);
+        // Advance 10000 seconds (double the budget — accrual capped at 1_500_000 by budget_cap)
+        clock.increment_for_testing(10_000_000);
 
         scenario.next_tx(PROVIDER);
         let mut meter = scenario.take_shared<stream::StreamingMeter<SUI>>();
 
-        // Should only be able to claim 1500 (budget cap), not 3000
-        assert!(stream::claimable(&meter, &clock) == 1_500);
+        // Should only be able to claim 1_500_000 (budget cap), not 3_000_000
+        assert!(stream::claimable(&meter, &clock) == 1_500_000);
 
         stream::claim(&mut meter, &clock, scenario.ctx());
 
-        assert!(stream::meter_total_claimed(&meter) == 1_500);
+        assert!(stream::meter_total_claimed(&meter) == 1_500_000);
         assert!(stream::meter_active(&meter) == false); // auto-deactivated
         assert!(stream::meter_balance(&meter) == 0); // all claimed (deposit == budget_cap)
 
@@ -213,8 +213,8 @@ module sweefi::stream_tests {
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         // First claim after 5 seconds
         clock.increment_for_testing(5_000);
@@ -242,8 +242,8 @@ module sweefi::stream_tests {
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         clock.increment_for_testing(5_000);
 
@@ -266,8 +266,8 @@ module sweefi::stream_tests {
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         // Immediately claim with zero elapsed time
         scenario.next_tx(PROVIDER);
@@ -291,8 +291,8 @@ module sweefi::stream_tests {
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         // Advance 5 seconds then pause
         clock.increment_for_testing(5_000);
@@ -332,8 +332,8 @@ module sweefi::stream_tests {
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         // Advance 10 seconds → 3000 accrued
         clock.increment_for_testing(10_000);
@@ -355,7 +355,7 @@ module sweefi::stream_tests {
         scenario.next_tx(PROVIDER);
         stream::claim(&mut meter, &clock, scenario.ctx());
         assert!(stream::meter_total_claimed(&meter) == 3_000);
-        assert!(stream::meter_balance(&meter) == 97_000);
+        assert!(stream::meter_balance(&meter) == 9_997_000);
 
         ts::return_shared(meter);
 
@@ -379,8 +379,8 @@ module sweefi::stream_tests {
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         // Advance 10 seconds → 3000 accrued
         clock.increment_for_testing(10_000);
@@ -415,8 +415,8 @@ module sweefi::stream_tests {
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         // Advance 10 seconds → 3000 accrued
         clock.increment_for_testing(10_000);
@@ -442,7 +442,7 @@ module sweefi::stream_tests {
         // Verify payer got refund of remaining balance
         scenario.next_tx(PAYER);
         let refund = scenario.take_from_address<coin::Coin<SUI>>(PAYER);
-        assert!(refund.value() == 97_000); // 100k - 3k accrued
+        assert!(refund.value() == 9_997_000); // 10M - 3k accrued
         ts::return_to_address(PAYER, refund);
 
         admin::destroy_cap_for_testing(_cap);
@@ -458,8 +458,8 @@ module sweefi::stream_tests {
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         // Provider tries to pause — should fail
         scenario.next_tx(PROVIDER);
@@ -481,8 +481,8 @@ module sweefi::stream_tests {
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         // Advance 10 seconds → 3000 accrued by recipient
         clock.increment_for_testing(10_000);
@@ -500,10 +500,10 @@ module sweefi::stream_tests {
         assert!(provider_coin.value() == 3_000);
         ts::return_to_address(PROVIDER, provider_coin);
 
-        // Payer gets refund of remaining 97000
+        // Payer gets refund of remaining 9_997_000
         scenario.next_tx(PAYER);
         let refund = scenario.take_from_address<coin::Coin<SUI>>(PAYER);
-        assert!(refund.value() == 97_000);
+        assert!(refund.value() == 9_997_000);
         ts::return_to_address(PAYER, refund);
 
         admin::destroy_cap_for_testing(_cap);
@@ -520,8 +520,8 @@ module sweefi::stream_tests {
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         // Advance 10 seconds → 3000 accrued
         clock.increment_for_testing(10_000);
@@ -561,8 +561,8 @@ module sweefi::stream_tests {
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         // Cycle 1: active 10s, then pause
         clock.increment_for_testing(10_000); // T=10000, 3000 accrued
@@ -612,8 +612,8 @@ module sweefi::stream_tests {
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         // Advance 10 seconds → accrued 3000
         clock.increment_for_testing(10_000);
@@ -621,7 +621,7 @@ module sweefi::stream_tests {
         scenario.next_tx(PAYER);
         let meter = scenario.take_shared<stream::StreamingMeter<SUI>>();
 
-        // Close — should send 3000 to provider and refund 97000 to payer
+        // Close — should send 3000 to provider and refund 9_997_000 to payer
         stream::close(meter, &clock, scenario.ctx());
 
         // Verify provider got final claim
@@ -633,7 +633,7 @@ module sweefi::stream_tests {
         // Verify payer got refund
         scenario.next_tx(PAYER);
         let refund = scenario.take_from_address<coin::Coin<SUI>>(PAYER);
-        assert!(refund.value() == 97_000);
+        assert!(refund.value() == 9_997_000);
         ts::return_to_address(PAYER, refund);
 
         admin::destroy_cap_for_testing(_cap);
@@ -648,8 +648,8 @@ module sweefi::stream_tests {
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         // Pause immediately
         scenario.next_tx(PAYER);
@@ -666,7 +666,7 @@ module sweefi::stream_tests {
         // Full refund to payer (nothing accrued while paused)
         scenario.next_tx(PAYER);
         let refund = scenario.take_from_address<coin::Coin<SUI>>(PAYER);
-        assert!(refund.value() == 100_000);
+        assert!(refund.value() == 10_000_000);
         ts::return_to_address(PAYER, refund);
 
         admin::destroy_cap_for_testing(_cap);
@@ -682,8 +682,8 @@ module sweefi::stream_tests {
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         // Provider tries to close — should fail
         scenario.next_tx(PROVIDER);
@@ -706,16 +706,16 @@ module sweefi::stream_tests {
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(50_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 200_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(5_000_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 20_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         scenario.next_tx(PAYER);
         let mut meter = scenario.take_shared<stream::StreamingMeter<SUI>>();
-        assert!(stream::meter_balance(&meter) == 50_000);
+        assert!(stream::meter_balance(&meter) == 5_000_000);
 
-        let extra = coin::mint_for_testing<SUI>(30_000, scenario.ctx());
+        let extra = coin::mint_for_testing<SUI>(3_000_000, scenario.ctx());
         stream::top_up(&mut meter, extra, &state, &clock, scenario.ctx());
-        assert!(stream::meter_balance(&meter) == 80_000);
+        assert!(stream::meter_balance(&meter) == 8_000_000);
 
         ts::return_shared(meter);
         admin::destroy_cap_for_testing(_cap);
@@ -780,8 +780,8 @@ module sweefi::stream_tests {
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         // Advance 5 seconds → 1500 accrued, then pause
         clock.increment_for_testing(5_000);
@@ -807,7 +807,7 @@ module sweefi::stream_tests {
         // Verify payer got refund of remaining balance
         scenario.next_tx(PAYER);
         let refund = scenario.take_from_address<coin::Coin<SUI>>(PAYER);
-        assert!(refund.value() == 98_500); // 100k - 1500
+        assert!(refund.value() == 9_998_500); // 10M - 1500
         ts::return_to_address(PAYER, refund);
 
         admin::destroy_cap_for_testing(_cap);
@@ -862,8 +862,8 @@ module sweefi::stream_tests {
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         // Advance 5 seconds, pause
         clock.increment_for_testing(5_000);
@@ -896,21 +896,21 @@ module sweefi::stream_tests {
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        // Deposit 1000 but budget 100000 — balance runs out first
-        let deposit = coin::mint_for_testing<SUI>(1_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        // Deposit 1_000_000 but budget 10_000_000 — balance runs out first
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
-        // Advance enough to accrue more than balance (300/sec * 10sec = 3000 > 1000)
-        clock.increment_for_testing(10_000);
+        // Advance enough to accrue more than balance (300/sec * 10000sec = 3_000_000 > 1_000_000)
+        clock.increment_for_testing(10_000_000);
 
         scenario.next_tx(PROVIDER);
         let mut meter = scenario.take_shared<stream::StreamingMeter<SUI>>();
 
-        // Should be capped at balance (1000), not accrued (3000)
-        assert!(stream::claimable(&meter, &clock) == 1_000);
+        // Should be capped at balance (1_000_000), not accrued (3_000_000)
+        assert!(stream::claimable(&meter, &clock) == 1_000_000);
 
         stream::claim(&mut meter, &clock, scenario.ctx());
-        assert!(stream::meter_total_claimed(&meter) == 1_000);
+        assert!(stream::meter_total_claimed(&meter) == 1_000_000);
         assert!(stream::meter_balance(&meter) == 0);
         assert!(stream::meter_active(&meter) == false); // balance exhausted
 
@@ -932,11 +932,11 @@ module sweefi::stream_tests {
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
         let two_days_ms: u64 = 2 * 24 * 60 * 60 * 1000; // 172_800_000
 
         stream::create_with_timeout<SUI>(
-            deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT,
+            deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT,
             two_days_ms, &state, &clock, scenario.ctx(),
         );
 
@@ -944,7 +944,7 @@ module sweefi::stream_tests {
         let meter = scenario.take_shared<stream::StreamingMeter<SUI>>();
         assert!(stream::meter_payer(&meter) == PAYER);
         assert!(stream::meter_recipient(&meter) == PROVIDER);
-        assert!(stream::meter_balance(&meter) == 100_000);
+        assert!(stream::meter_balance(&meter) == 10_000_000);
         // Verify the accessor returns the custom timeout
         assert!(stream::meter_recipient_close_timeout_ms(&meter) == two_days_ms);
 
@@ -962,8 +962,8 @@ module sweefi::stream_tests {
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         scenario.next_tx(PAYER);
         let meter = scenario.take_shared<stream::StreamingMeter<SUI>>();
@@ -985,9 +985,9 @@ module sweefi::stream_tests {
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
         let two_days_ms: u64 = 172_800_000;
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
         stream::create_with_timeout<SUI>(
-            deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT,
+            deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT,
             two_days_ms, &state, &clock, scenario.ctx(),
         );
 
@@ -1022,9 +1022,9 @@ module sweefi::stream_tests {
         let two_days_ms: u64 = 172_800_000;
         let one_day_ms: u64 = 86_400_000;
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
         stream::create_with_timeout<SUI>(
-            deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT,
+            deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT,
             two_days_ms, &state, &clock, scenario.ctx(),
         );
 
@@ -1055,11 +1055,11 @@ module sweefi::stream_tests {
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
         let one_hour_ms: u64 = 3_600_000;
 
         stream::create_with_timeout<SUI>(
-            deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT,
+            deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT,
             one_hour_ms, &state, &clock, scenario.ctx(),
         );
 
@@ -1078,9 +1078,9 @@ module sweefi::stream_tests {
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
         let two_days_ms: u64 = 172_800_000;
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
         stream::create_with_timeout<SUI>(
-            deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT,
+            deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT,
             two_days_ms, &state, &clock, scenario.ctx(),
         );
 
@@ -1115,24 +1115,24 @@ module sweefi::stream_tests {
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        // Budget cap = deposit = 1500, rate = 300/sec → budget exhausted after 5 seconds
-        let deposit = coin::mint_for_testing<SUI>(1_500, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 1_500, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        // Budget cap = deposit = 1_500_000, rate = 300/sec → budget exhausted after 5000 seconds
+        let deposit = coin::mint_for_testing<SUI>(1_500_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 1_500_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
-        // Advance 10 seconds (double the budget) → accrued 3000, capped at 1500
-        clock.increment_for_testing(10_000);
+        // Advance 10000 seconds (double the budget) → accrued 3_000_000, capped at 1_500_000
+        clock.increment_for_testing(10_000_000);
 
         // Provider claims entire budget — stream auto-deactivates
         scenario.next_tx(PROVIDER);
         let mut meter = scenario.take_shared<stream::StreamingMeter<SUI>>();
         stream::claim(&mut meter, &clock, scenario.ctx());
-        assert!(stream::meter_total_claimed(&meter) == 1_500);
+        assert!(stream::meter_total_claimed(&meter) == 1_500_000);
         assert!(stream::meter_active(&meter) == false);
 
         // Payer tries to top up the exhausted stream → EBudgetCapExceeded
         // (funds would be permanently trapped: recipient can't claim, cap is immutable)
         scenario.next_tx(PAYER);
-        let extra = coin::mint_for_testing<SUI>(500, scenario.ctx());
+        let extra = coin::mint_for_testing<SUI>(500_000, scenario.ctx());
         stream::top_up(&mut meter, extra, &state, &clock, scenario.ctx());
 
         ts::return_shared(meter);
@@ -1157,8 +1157,8 @@ module sweefi::stream_tests {
         admin::pause(&cap, &mut state, scenario.ctx());
 
         // Try to create a stream — should fail
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         admin::destroy_cap_for_testing(cap);
         admin::destroy_state_for_testing(state);
@@ -1174,8 +1174,8 @@ module sweefi::stream_tests {
         let (cap, mut state) = admin::create_for_testing(scenario.ctx());
 
         // Create stream first (while unpaused)
-        let deposit = coin::mint_for_testing<SUI>(50_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 200_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(5_000_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 20_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         // Pause the protocol
         admin::pause(&cap, &mut state, scenario.ctx());
@@ -1183,7 +1183,7 @@ module sweefi::stream_tests {
         // Try to top up — should fail
         scenario.next_tx(PAYER);
         let mut meter = scenario.take_shared<stream::StreamingMeter<SUI>>();
-        let extra = coin::mint_for_testing<SUI>(30_000, scenario.ctx());
+        let extra = coin::mint_for_testing<SUI>(3_000_000, scenario.ctx());
         stream::top_up(&mut meter, extra, &state, &clock, scenario.ctx());
 
         ts::return_shared(meter);
@@ -1200,8 +1200,8 @@ module sweefi::stream_tests {
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (cap, mut state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         // Advance 10 seconds
         clock.increment_for_testing(10_000);
@@ -1229,8 +1229,8 @@ module sweefi::stream_tests {
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (cap, mut state) = admin::create_for_testing(scenario.ctx());
 
-        let deposit = coin::mint_for_testing<SUI>(100_000, scenario.ctx());
-        stream::create<SUI>(deposit, PROVIDER, RATE, 100_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        stream::create<SUI>(deposit, PROVIDER, RATE, 10_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         clock.increment_for_testing(10_000);
 

@@ -22,12 +22,12 @@ module sweefi::payment_tests {
         // Create payment coin (1000 units)
         let payment = coin::mint_for_testing<SUI>(1000, scenario.ctx());
 
-        // Pay exact amount with 5_000 fee_bps (0.5%)
+        // Pay exact amount with 5_000 fee_micro_pct (0.5%)
         let receipt = payment::pay<SUI>(
             payment,
             MERCHANT,
             1000,       // amount
-            5_000,      // fee_bps (0.5%)
+            5_000,      // fee_micro_pct (0.5%)
             FEE_RECIPIENT,
             b"test-payment-001",
             &clock,
@@ -182,8 +182,8 @@ module sweefi::payment_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = payment::EInvalidFeeBps)]
-    fun test_pay_invalid_fee_bps() {
+    #[expected_failure(abort_code = payment::EInvalidFeeMicroPct)]
+    fun test_pay_invalid_fee_micro_pct() {
         let mut scenario = ts::begin(PAYER);
         let clock = clock::create_for_testing(scenario.ctx());
 
@@ -207,7 +207,7 @@ module sweefi::payment_tests {
 
     #[test]
     fun test_pay_fee_calculation_large_amount() {
-        // Verify overflow protection: large amount * fee_bps uses u128 intermediate
+        // Verify overflow protection: large amount * fee_micro_pct uses u128 intermediate
         let mut scenario = ts::begin(PAYER);
         let clock = clock::create_for_testing(scenario.ctx());
 
@@ -254,7 +254,7 @@ module sweefi::payment_tests {
         // Verify invoice fields
         assert!(payment::invoice_recipient(&invoice) == MERCHANT);
         assert!(payment::invoice_expected_amount(&invoice) == 1000);
-        assert!(payment::invoice_fee_bps(&invoice) == 5_000);
+        assert!(payment::invoice_fee_micro_pct(&invoice) == 5_000);
 
         // Transfer invoice to payer (simulating off-chain handoff)
         payment::send_invoice(invoice, PAYER);
@@ -388,7 +388,7 @@ module sweefi::payment_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = payment::EInvalidFeeBps)]
+    #[expected_failure(abort_code = payment::EInvalidFeeMicroPct)]
     fun test_invoice_invalid_fee_fails() {
         let mut scenario = ts::begin(MERCHANT);
 

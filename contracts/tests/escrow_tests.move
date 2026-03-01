@@ -51,7 +51,7 @@ module sweefi::escrow_tests {
         assert!(escrow::escrow_amount(&e) == 1_000_000);
         assert!(escrow::escrow_deadline_ms(&e) == DEADLINE_MS);
         assert!(escrow::escrow_state(&e) == 0); // STATE_ACTIVE
-        assert!(escrow::escrow_fee_bps(&e) == 5_000);
+        assert!(escrow::escrow_fee_micro_pct(&e) == 5_000);
         assert!(escrow::escrow_description(&e) == &b"deliver NFT");
 
         ts::return_shared(e);
@@ -100,8 +100,8 @@ module sweefi::escrow_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = escrow::EInvalidFeeBps)]
-    fun test_create_invalid_fee_bps_fails() {
+    #[expected_failure(abort_code = escrow::EInvalidFeeMicroPct)]
+    fun test_create_invalid_fee_micro_pct_fails() {
         let mut scenario = ts::begin(BUYER);
         let clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
@@ -194,13 +194,13 @@ module sweefi::escrow_tests {
         // Verify seller received funds (1_000_000 - 5_000 fee = 995_000)
         scenario.next_tx(SELLER);
         let seller_coin = scenario.take_from_address<coin::Coin<SUI>>(SELLER);
-        assert!(seller_coin.value() == 995_000); // 1_000_000 - 5_000 fee (5_000 fee_bps)
+        assert!(seller_coin.value() == 995_000); // 1_000_000 - 5_000 fee (5_000 fee_micro_pct)
         ts::return_to_address(SELLER, seller_coin);
 
         // Verify fee recipient got fee
         scenario.next_tx(FEE_RECIPIENT);
         let fee_coin = scenario.take_from_address<coin::Coin<SUI>>(FEE_RECIPIENT);
-        assert!(fee_coin.value() == 5_000); // 1_000_000 * 5_000 fee_bps / 1_000_000
+        assert!(fee_coin.value() == 5_000); // 1_000_000 * 5_000 fee_micro_pct / 1_000_000
         ts::return_to_address(FEE_RECIPIENT, fee_coin);
 
         admin::destroy_cap_for_testing(_cap);
@@ -408,7 +408,7 @@ module sweefi::escrow_tests {
         // SELLER calls refund() after the deadline. Key invariants to verify:
         //   1. Refund SUCCEEDS even though SELLER is the caller (truly permissionless)
         //   2. Funds go to BUYER (not SELLER — destination is hardcoded to escrow.buyer)
-        //   3. No fee is deducted on refund (fee_bps only applies to release)
+        //   3. No fee is deducted on refund (fee_micro_pct only applies to release)
         //
         // This test differs from test_refund_after_deadline (which uses STRANGER) by
         // explicitly verifying that an economically adversarial caller (SELLER) cannot
@@ -435,7 +435,7 @@ module sweefi::escrow_tests {
         // BUYER receives the full deposit — no fee on refunds, regardless of caller
         scenario.next_tx(BUYER);
         let refund = scenario.take_from_address<coin::Coin<SUI>>(BUYER);
-        assert!(refund.value() == 1_000_000); // full 1M — fee_bps=200 does NOT apply to refunds
+        assert!(refund.value() == 1_000_000); // full 1M — fee_micro_pct=200 does NOT apply to refunds
         ts::return_to_address(BUYER, refund);
 
         admin::destroy_cap_for_testing(_cap);
@@ -792,7 +792,7 @@ module sweefi::escrow_tests {
         // Seller: 50000 - 1000 = 49000
         scenario.next_tx(SELLER);
         let seller_coin = scenario.take_from_address<coin::Coin<SUI>>(SELLER);
-        assert!(seller_coin.value() == 980_000); // 1_000_000 - 20_000 fee (20_000 fee_bps)
+        assert!(seller_coin.value() == 980_000); // 1_000_000 - 20_000 fee (20_000 fee_micro_pct)
         ts::return_to_address(SELLER, seller_coin);
 
         // Fee: 1000

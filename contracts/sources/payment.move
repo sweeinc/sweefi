@@ -26,7 +26,7 @@ module sweefi::payment {
 
     const EInsufficientPayment: u64 = 0;
     const EZeroAmount: u64 = 1;
-    const EInvalidFeeBps: u64 = 2;
+    const EInvalidFeeMicroPct: u64 = 2;
 
     // ══════════════════════════════════════════════════════════════
     // Types
@@ -44,7 +44,7 @@ module sweefi::payment {
         creator: address,       // address that called create_invoice
         recipient: address,     // where payment proceeds go
         expected_amount: u64,   // exact amount the payer must provide (base units)
-        fee_bps: u64,           // fee rate; 1_000_000 = 100% — see math.move
+        fee_micro_pct: u64,           // fee rate; 1_000_000 = 100% — see math.move
         fee_recipient: address, // where the fee portion is sent
     }
 
@@ -83,7 +83,7 @@ module sweefi::payment {
         creator: address,
         recipient: address,
         expected_amount: u64,
-        fee_bps: u64,
+        fee_micro_pct: u64,
         fee_recipient: address,
     }
 
@@ -108,19 +108,19 @@ module sweefi::payment {
     public fun create_invoice(
         recipient: address,
         expected_amount: u64,
-        fee_bps: u64,
+        fee_micro_pct: u64,
         fee_recipient: address,
         ctx: &mut TxContext,
     ): Invoice {
         assert!(expected_amount > 0, EZeroAmount);
-        assert!(fee_bps <= 1_000_000, EInvalidFeeBps);
+        assert!(fee_micro_pct <= 1_000_000, EInvalidFeeMicroPct);
 
         let invoice = Invoice {
             id: object::new(ctx),
             creator: ctx.sender(),
             recipient,
             expected_amount,
-            fee_bps,
+            fee_micro_pct,
             fee_recipient,
         };
 
@@ -129,7 +129,7 @@ module sweefi::payment {
             creator: ctx.sender(),
             recipient,
             expected_amount,
-            fee_bps,
+            fee_micro_pct,
             fee_recipient,
         });
 
@@ -147,12 +147,12 @@ module sweefi::payment {
     entry fun create_and_send_invoice(
         recipient: address,
         expected_amount: u64,
-        fee_bps: u64,
+        fee_micro_pct: u64,
         fee_recipient: address,
         send_to: address,
         ctx: &mut TxContext,
     ) {
-        let invoice = create_invoice(recipient, expected_amount, fee_bps, fee_recipient, ctx);
+        let invoice = create_invoice(recipient, expected_amount, fee_micro_pct, fee_recipient, ctx);
         transfer::transfer(invoice, send_to);
     }
 
@@ -167,13 +167,13 @@ module sweefi::payment {
     /// Council Finding #1: Takes ownership of Coin<T> (not &Coin<T>).
     /// Returns change to payer if overpayment.
     ///
-    /// PRECONDITION: caller must validate fee_bps <= 1_000_000 before calling.
+    /// PRECONDITION: caller must validate fee_micro_pct <= 1_000_000 before calling.
     ///   (enforced here, but the error message is clearer if caught at the call site)
     public fun pay<T>(
         mut payment: Coin<T>,
         recipient: address,
         amount: u64,
-        fee_bps: u64,
+        fee_micro_pct: u64,
         fee_recipient: address,
         memo: vector<u8>,
         clock: &Clock,
@@ -181,7 +181,7 @@ module sweefi::payment {
     ): PaymentReceipt {
         // Validate inputs
         assert!(amount > 0, EZeroAmount);
-        assert!(fee_bps <= 1_000_000, EInvalidFeeBps);
+        assert!(fee_micro_pct <= 1_000_000, EInvalidFeeMicroPct);
         assert!(payment.value() >= amount, EInsufficientPayment);
 
         // Return change before fee split — fee is computed on `amount`, not on
@@ -193,7 +193,7 @@ module sweefi::payment {
         };
 
         // Calculate fee with overflow protection (u128 intermediate)
-        let fee_amount = math::calculate_fee(amount, fee_bps);
+        let fee_amount = math::calculate_fee(amount, fee_micro_pct);
 
         // Split and transfer fee
         if (fee_amount > 0) {
@@ -243,13 +243,13 @@ module sweefi::payment {
         payment: Coin<T>,
         recipient: address,
         amount: u64,
-        fee_bps: u64,
+        fee_micro_pct: u64,
         fee_recipient: address,
         memo: vector<u8>,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        let receipt = pay<T>(payment, recipient, amount, fee_bps, fee_recipient, memo, clock, ctx);
+        let receipt = pay<T>(payment, recipient, amount, fee_micro_pct, fee_recipient, memo, clock, ctx);
         transfer::public_transfer(receipt, ctx.sender());
     }
 
@@ -276,7 +276,7 @@ module sweefi::payment {
             creator: _,
             recipient,
             expected_amount,
-            fee_bps,
+            fee_micro_pct,
             fee_recipient,
         } = invoice;
 
@@ -296,7 +296,7 @@ module sweefi::payment {
         };
 
         // Calculate fee with overflow protection
-        let fee_amount = math::calculate_fee(expected_amount, fee_bps);
+        let fee_amount = math::calculate_fee(expected_amount, fee_micro_pct);
 
         // Split and transfer fee
         if (fee_amount > 0) {
@@ -375,7 +375,7 @@ module sweefi::payment {
     public fun cancel_invoice(invoice: Invoice) {
         let Invoice {
             id, creator: _, recipient: _, expected_amount: _,
-            fee_bps: _, fee_recipient: _,
+            fee_micro_pct: _, fee_recipient: _,
         } = invoice;
         object::delete(id);
     }
@@ -397,7 +397,7 @@ module sweefi::payment {
     public fun invoice_creator(i: &Invoice): address { i.creator }
     public fun invoice_recipient(i: &Invoice): address { i.recipient }
     public fun invoice_expected_amount(i: &Invoice): u64 { i.expected_amount }
-    public fun invoice_fee_bps(i: &Invoice): u64 { i.fee_bps }
+    public fun invoice_fee_micro_pct(i: &Invoice): u64 { i.fee_micro_pct }
     public fun invoice_fee_recipient(i: &Invoice): address { i.fee_recipient }
 
 }

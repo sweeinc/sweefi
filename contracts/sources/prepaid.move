@@ -82,7 +82,7 @@ module sweefi::prepaid {
     const ECallCountRegression: u64 = 605;
     const EMaxCallsExceeded: u64 = 606;
     const ERateLimitExceeded: u64 = 607;
-    const EInvalidFeeBps: u64 = 608;
+    const EInvalidFeeMicroPct: u64 = 608;
     const EWithdrawalPending: u64 = 609;
     const EWithdrawalNotPending: u64 = 610;
     const EBalanceNotExhausted: u64 = 611;
@@ -147,7 +147,7 @@ module sweefi::prepaid {
         withdrawal_delay_ms: u64,      // agent must wait this long after request_withdrawal() before finalizing
         withdrawal_pending: bool,      // true = withdrawal requested; claims still allowed during this period
         withdrawal_requested_ms: u64,  // when request_withdrawal() was called; 0 = no pending withdrawal
-        fee_bps: u64,                  // protocol fee on each claim; 1_000_000 = 100% — see math.move
+        fee_micro_pct: u64,                  // protocol fee on each claim; 1_000_000 = 100% — see math.move
         fee_recipient: address,        // where fee portion is sent on each claim
         // ── v0.2 fraud proof fields ──────────────────────────────────────────────
         // dispute_window_ms == 0 selects v0.1 mode (immediate settlement).
@@ -259,7 +259,7 @@ module sweefi::prepaid {
         rate_per_call: u64,
         max_calls: u64,
         withdrawal_delay_ms: u64,
-        fee_bps: u64,
+        fee_micro_pct: u64,
         fee_recipient: address,
         protocol_state: &admin::ProtocolState,
         clock: &Clock,
@@ -274,7 +274,7 @@ module sweefi::prepaid {
         // max_calls=0 means provider can never claim (claim() checks cumulative <= max_calls,
         // so any non-zero count fails). Use u64::MAX for unlimited calls.
         assert!(max_calls > 0, EZeroRate);
-        assert!(fee_bps <= 1_000_000, EInvalidFeeBps);
+        assert!(fee_micro_pct <= 1_000_000, EInvalidFeeMicroPct);
         assert!(withdrawal_delay_ms >= MIN_WITHDRAWAL_DELAY_MS, EWithdrawalDelayTooShort);
         assert!(withdrawal_delay_ms <= MAX_WITHDRAWAL_DELAY_MS, EWithdrawalDelayTooLong);
 
@@ -295,7 +295,7 @@ module sweefi::prepaid {
             withdrawal_delay_ms,
             withdrawal_pending: false,
             withdrawal_requested_ms: 0,
-            fee_bps,
+            fee_micro_pct,
             fee_recipient,
             // v0.2 defaults (unsigned mode — immediate claims)
             provider_pubkey: vector[],
@@ -330,7 +330,7 @@ module sweefi::prepaid {
         rate_per_call: u64,
         max_calls: u64,
         withdrawal_delay_ms: u64,
-        fee_bps: u64,
+        fee_micro_pct: u64,
         fee_recipient: address,
         provider_pubkey: vector<u8>,
         dispute_window_ms: u64,
@@ -344,7 +344,7 @@ module sweefi::prepaid {
         assert!(amount >= MIN_DEPOSIT, EZeroDeposit);
         assert!(rate_per_call > 0, EZeroRate);
         assert!(max_calls > 0, EZeroRate);
-        assert!(fee_bps <= 1_000_000, EInvalidFeeBps);
+        assert!(fee_micro_pct <= 1_000_000, EInvalidFeeMicroPct);
         assert!(withdrawal_delay_ms >= MIN_WITHDRAWAL_DELAY_MS, EWithdrawalDelayTooShort);
         assert!(withdrawal_delay_ms <= MAX_WITHDRAWAL_DELAY_MS, EWithdrawalDelayTooLong);
 
@@ -372,7 +372,7 @@ module sweefi::prepaid {
             withdrawal_delay_ms,
             withdrawal_pending: false,
             withdrawal_requested_ms: 0,
-            fee_bps,
+            fee_micro_pct,
             fee_recipient,
             provider_pubkey,
             dispute_window_ms,
@@ -450,7 +450,7 @@ module sweefi::prepaid {
         assert!(gross_amount <= balance.deposited.value(), ERateLimitExceeded);
 
         // Calculate fee (overflow-safe, same as stream.move)
-        let fee_amount = math::calculate_fee(gross_amount, balance.fee_bps);
+        let fee_amount = math::calculate_fee(gross_amount, balance.fee_micro_pct);
 
         if (balance.dispute_window_ms == 0) {
             // ── v0.1: Immediate settlement ──────────────────────
@@ -738,7 +738,7 @@ module sweefi::prepaid {
             withdrawal_delay_ms: _,
             withdrawal_pending: _,
             withdrawal_requested_ms: _,
-            fee_bps: _,
+            fee_micro_pct: _,
             fee_recipient: _,
             provider_pubkey: _,
             dispute_window_ms: _,
@@ -839,7 +839,7 @@ module sweefi::prepaid {
             withdrawal_delay_ms: _,
             withdrawal_pending: _,
             withdrawal_requested_ms: _,
-            fee_bps: _,
+            fee_micro_pct: _,
             fee_recipient: _,
             provider_pubkey: _,
             dispute_window_ms: _,
@@ -887,7 +887,7 @@ module sweefi::prepaid {
             withdrawal_delay_ms: _,
             withdrawal_pending: _,
             withdrawal_requested_ms: _,
-            fee_bps: _,
+            fee_micro_pct: _,
             fee_recipient: _,
             provider_pubkey: _,
             dispute_window_ms: _,
@@ -940,7 +940,7 @@ module sweefi::prepaid {
             withdrawal_delay_ms: _,
             withdrawal_pending: _,
             withdrawal_requested_ms: _,
-            fee_bps: _,
+            fee_micro_pct: _,
             fee_recipient: _,
             provider_pubkey: _,
             dispute_window_ms: _,
@@ -973,7 +973,7 @@ module sweefi::prepaid {
     public fun balance_withdrawal_pending<T>(b: &PrepaidBalance<T>): bool { b.withdrawal_pending }
     public fun balance_withdrawal_delay_ms<T>(b: &PrepaidBalance<T>): u64 { b.withdrawal_delay_ms }
     public fun balance_last_claim_ms<T>(b: &PrepaidBalance<T>): u64 { b.last_claim_ms }
-    public fun balance_fee_bps<T>(b: &PrepaidBalance<T>): u64 { b.fee_bps }
+    public fun balance_fee_micro_pct<T>(b: &PrepaidBalance<T>): u64 { b.fee_micro_pct }
     // v0.2 accessors
     public fun balance_provider_pubkey<T>(b: &PrepaidBalance<T>): &vector<u8> { &b.provider_pubkey }
     public fun balance_dispute_window_ms<T>(b: &PrepaidBalance<T>): u64 { b.dispute_window_ms }
@@ -1003,7 +1003,7 @@ module sweefi::prepaid {
             withdrawal_delay_ms: _,
             withdrawal_pending: _,
             withdrawal_requested_ms: _,
-            fee_bps: _,
+            fee_micro_pct: _,
             fee_recipient: _,
             provider_pubkey: _,
             dispute_window_ms: _,

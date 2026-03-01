@@ -49,7 +49,7 @@ module sweefi::escrow {
     const ENotDisputed: u64 = 207;
     const EAlreadyDisputed: u64 = 208;
     const EZeroAmount: u64 = 209;
-    const EInvalidFeeBps: u64 = 210;
+    const EInvalidFeeMicroPct: u64 = 210;
     const EDescriptionTooLong: u64 = 211;
     const EArbiterIsSeller: u64 = 212;
     const EArbiterIsBuyer: u64 = 213;
@@ -106,7 +106,7 @@ module sweefi::escrow {
         amount: u64,            // original deposit — balance cannot be used for events after destructuring
         deadline_ms: u64,       // Clock.timestamp_ms() threshold; after this anyone can trigger refund
         state: u8,              // STATE_ACTIVE | STATE_DISPUTED | STATE_RELEASED | STATE_REFUNDED
-        fee_bps: u64,           // facilitator fee on release only; 1_000_000 = 100% — see math.move
+        fee_micro_pct: u64,           // facilitator fee on release only; 1_000_000 = 100% — see math.move
         fee_recipient: address, // where the fee portion goes on release
         created_at_ms: u64,     // creation timestamp for off-chain analytics
         description: vector<u8>, // buyer-supplied context; max 1024 bytes; not validated on-chain
@@ -141,7 +141,7 @@ module sweefi::escrow {
         arbiter: address,
         amount: u64,
         deadline_ms: u64,
-        fee_bps: u64,
+        fee_micro_pct: u64,
         token_type: ascii::String,
         timestamp_ms: u64,
     }
@@ -189,7 +189,7 @@ module sweefi::escrow {
         seller: address,
         arbiter: address,
         deadline_ms: u64,
-        fee_bps: u64,
+        fee_micro_pct: u64,
         fee_recipient: address,
         description: vector<u8>,
         protocol_state: &admin::ProtocolState,
@@ -203,7 +203,7 @@ module sweefi::escrow {
         // H-6: Enforce minimum deposit to prevent dust spam on shared objects
         assert!(deposit_value >= MIN_DEPOSIT, EZeroAmount);
         assert!(deadline_ms > now_ms, EDeadlineInPast);
-        assert!(fee_bps <= 1_000_000, EInvalidFeeBps);
+        assert!(fee_micro_pct <= 1_000_000, EInvalidFeeMicroPct);
         assert!(description.length() <= 1024, EDescriptionTooLong);
         // Prevent seller == arbiter: seller could dispute() then release() as arbiter,
         // bypassing buyer consent entirely. See security audit session 128.
@@ -226,7 +226,7 @@ module sweefi::escrow {
             amount: deposit_value,
             deadline_ms,
             state: STATE_ACTIVE,
-            fee_bps,
+            fee_micro_pct,
             fee_recipient,
             created_at_ms: now_ms,
             description,
@@ -239,7 +239,7 @@ module sweefi::escrow {
             arbiter,
             amount: deposit_value,
             deadline_ms,
-            fee_bps,
+            fee_micro_pct,
             token_type: type_name::into_string(type_name::with_defining_ids<T>()),
             timestamp_ms: now_ms,
         });
@@ -273,7 +273,7 @@ module sweefi::escrow {
             amount,
             deadline_ms: _,
             state,
-            fee_bps,
+            fee_micro_pct,
             fee_recipient,
             created_at_ms: _,
             description: _,
@@ -295,7 +295,7 @@ module sweefi::escrow {
         let now_ms = clock.timestamp_ms();
 
         // Calculate fee with overflow protection (u128 intermediate)
-        let fee_amount = math::calculate_fee(amount, fee_bps);
+        let fee_amount = math::calculate_fee(amount, fee_micro_pct);
         // _seller_amount is computed for documentation clarity — the balance split
         // handles the arithmetic implicitly; this makes the intent legible to auditors.
         let _seller_amount = amount - fee_amount;
@@ -388,7 +388,7 @@ module sweefi::escrow {
             amount,
             deadline_ms,
             state,
-            fee_bps: _,
+            fee_micro_pct: _,
             fee_recipient: _,
             created_at_ms: _,
             description: _,
@@ -516,7 +516,7 @@ module sweefi::escrow {
     public fun escrow_amount<T>(e: &Escrow<T>): u64 { e.amount }
     public fun escrow_deadline_ms<T>(e: &Escrow<T>): u64 { e.deadline_ms }
     public fun escrow_state<T>(e: &Escrow<T>): u8 { e.state }
-    public fun escrow_fee_bps<T>(e: &Escrow<T>): u64 { e.fee_bps }
+    public fun escrow_fee_micro_pct<T>(e: &Escrow<T>): u64 { e.fee_micro_pct }
     public fun escrow_created_at_ms<T>(e: &Escrow<T>): u64 { e.created_at_ms }
     public fun escrow_description<T>(e: &Escrow<T>): &vector<u8> { &e.description }
 

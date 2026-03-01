@@ -52,7 +52,7 @@ module sweefi::prepaid_tests {
         assert!(prepaid::balance_max_calls(&bal) == UNLIMITED);
         assert!(prepaid::balance_claimed_calls(&bal) == 0);
         assert!(prepaid::balance_withdrawal_pending(&bal) == false);
-        assert!(prepaid::balance_fee_bps(&bal) == 5_000);
+        assert!(prepaid::balance_fee_micro_pct(&bal) == 5_000);
 
         ts::return_shared(bal);
         admin::destroy_cap_for_testing(_cap);
@@ -120,7 +120,7 @@ module sweefi::prepaid_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = prepaid::EInvalidFeeBps)]
+    #[expected_failure(abort_code = prepaid::EInvalidFeeMicroPct)]
     fun test_deposit_invalid_fee_fails() {
         let mut scenario = ts::begin(AGENT);
         let clock = clock::create_for_testing(scenario.ctx());
@@ -374,7 +374,7 @@ module sweefi::prepaid_tests {
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        // 50_000 fee_bps = 5% fee
+        // 50_000 fee_micro_pct = 5% fee
         let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
         prepaid::deposit<SUI>(deposit, PROVIDER, RATE, UNLIMITED, DELAY_MS, 50_000, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 

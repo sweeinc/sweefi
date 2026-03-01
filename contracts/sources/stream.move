@@ -36,11 +36,15 @@ module sweefi::stream {
     const EZeroRate: u64 = 104;
     const EZeroDeposit: u64 = 105;
     const ENothingToClaim: u64 = 106;
-    const EInvalidFeeBps: u64 = 107;
+    const EInvalidFeeMicroPct: u64 = 107;
     const EBudgetCapExceeded: u64 = 108;
     const ETimeoutNotReached: u64 = 109;
     const ETimeoutTooShort: u64 = 110;
     const ETimeoutTooLong: u64 = 111;
+
+    /// H-6: Minimum deposit to prevent dust spam on shared objects.
+    /// Consistent with escrow.move and prepaid.move MIN_DEPOSIT.
+    const MIN_DEPOSIT: u64 = 1_000_000;
 
     /// Default recipient close timeout: 7 days in ms (7 * 24 * 60 * 60 * 1000).
     /// Used when create() is called without explicit timeout.
@@ -82,7 +86,7 @@ module sweefi::stream {
         created_at_ms: u64,         // creation timestamp for off-chain analytics
         active: bool,               // false = paused or exhausted; accrual only occurs when true
         paused_at_ms: u64,          // non-zero = pause timestamp with pending unclaimed accrual; 0 = no pending accrual
-        fee_bps: u64,               // facilitator fee on claims; 1_000_000 = 100% — see math.move
+        fee_micro_pct: u64,               // facilitator fee on claims; 1_000_000 = 100% — see math.move
         fee_recipient: address,     // where the fee portion is sent on each claim
     }
 
@@ -160,7 +164,7 @@ module sweefi::stream {
         recipient: address,
         rate_per_second: u64,
         budget_cap: u64,
-        fee_bps: u64,
+        fee_micro_pct: u64,
         fee_recipient: address,
         protocol_state: &admin::ProtocolState,
         clock: &Clock,
@@ -168,9 +172,9 @@ module sweefi::stream {
     ) {
         admin::assert_not_paused(protocol_state);
         let deposit_value = deposit.value();
-        assert!(deposit_value > 0, EZeroDeposit);
+        assert!(deposit_value >= MIN_DEPOSIT, EZeroDeposit);
         assert!(rate_per_second > 0, EZeroRate);
-        assert!(fee_bps <= 1_000_000, EInvalidFeeBps);
+        assert!(fee_micro_pct <= 1_000_000, EInvalidFeeMicroPct);
         assert!(budget_cap > 0, EBudgetCapExceeded);
         // H-5: Deposit must not exceed budget_cap — excess is unclaimable and
         // only refundable via close(), making the stream appear overfunded.
@@ -191,7 +195,7 @@ module sweefi::stream {
             created_at_ms: now_ms,
             active: true,
             paused_at_ms: 0,
-            fee_bps,
+            fee_micro_pct,
             fee_recipient,
         };
 
@@ -218,7 +222,7 @@ module sweefi::stream {
         recipient: address,
         rate_per_second: u64,
         budget_cap: u64,
-        fee_bps: u64,
+        fee_micro_pct: u64,
         fee_recipient: address,
         recipient_close_timeout_ms: u64,
         protocol_state: &admin::ProtocolState,
@@ -227,9 +231,9 @@ module sweefi::stream {
     ) {
         admin::assert_not_paused(protocol_state);
         let deposit_value = deposit.value();
-        assert!(deposit_value > 0, EZeroDeposit);
+        assert!(deposit_value >= MIN_DEPOSIT, EZeroDeposit);
         assert!(rate_per_second > 0, EZeroRate);
-        assert!(fee_bps <= 1_000_000, EInvalidFeeBps);
+        assert!(fee_micro_pct <= 1_000_000, EInvalidFeeMicroPct);
         assert!(budget_cap > 0, EBudgetCapExceeded);
         // H-5: Deposit must not exceed budget_cap — excess is unclaimable and
         // only refundable via close(), making the stream appear overfunded.
@@ -252,7 +256,7 @@ module sweefi::stream {
             created_at_ms: now_ms,
             active: true,
             paused_at_ms: 0,
-            fee_bps,
+            fee_micro_pct,
             fee_recipient,
         };
 
@@ -326,7 +330,7 @@ module sweefi::stream {
         assert!(claimable > 0, ENothingToClaim);
 
         // Calculate fee (overflow-safe)
-        let fee_amount = math::calculate_fee(claimable, meter.fee_bps);
+        let fee_amount = math::calculate_fee(claimable, meter.fee_micro_pct);
         let recipient_amount = claimable - fee_amount;
 
         // Transfer fee
@@ -497,7 +501,7 @@ module sweefi::stream {
         };
 
         if (claimable > 0) {
-            let fee_amount = math::calculate_fee(claimable, meter.fee_bps);
+            let fee_amount = math::calculate_fee(claimable, meter.fee_micro_pct);
             let recipient_amount = claimable - fee_amount;
 
             if (fee_amount > 0) {
@@ -542,7 +546,7 @@ module sweefi::stream {
             created_at_ms: _,
             active: _,
             paused_at_ms: _,
-            fee_bps: _,
+            fee_micro_pct: _,
             fee_recipient: _,
         } = meter;
 
@@ -625,7 +629,7 @@ module sweefi::stream {
 
         // Transfer accrued to recipient (with fee split)
         if (claimable > 0) {
-            let fee_amount = math::calculate_fee(claimable, meter.fee_bps);
+            let fee_amount = math::calculate_fee(claimable, meter.fee_micro_pct);
             let recipient_amount = claimable - fee_amount;
 
             if (fee_amount > 0) {
@@ -671,7 +675,7 @@ module sweefi::stream {
             created_at_ms: _,
             active: _,
             paused_at_ms: _,
-            fee_bps: _,
+            fee_micro_pct: _,
             fee_recipient: _,
         } = meter;
 
@@ -767,7 +771,7 @@ module sweefi::stream {
     public fun meter_active<T>(m: &StreamingMeter<T>): bool { m.active }
     public fun meter_created_at_ms<T>(m: &StreamingMeter<T>): u64 { m.created_at_ms }
     public fun meter_last_claim_ms<T>(m: &StreamingMeter<T>): u64 { m.last_claim_ms }
-    public fun meter_fee_bps<T>(m: &StreamingMeter<T>): u64 { m.fee_bps }
+    public fun meter_fee_micro_pct<T>(m: &StreamingMeter<T>): u64 { m.fee_micro_pct }
 
     /// Returns the effective recipient close timeout for this stream (ms).
     /// Reads from dynamic field if set, otherwise returns the 7-day default.
