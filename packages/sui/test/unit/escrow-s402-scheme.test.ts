@@ -9,7 +9,7 @@
  *   - Minimum amount enforcement
  *   - Deadline exact match (longer changes escrow economics)
  *   - Arbiter matching when specified
- *   - Fee_bps matching (prevent fee bypass — client controls PTB arg)
+ *   - fee_micro_pct matching (prevent fee bypass — client controls PTB arg)
  *   - Defense-in-depth re-verify on settle
  */
 
@@ -41,7 +41,7 @@ function createMockEscrowEvent(overrides: Partial<{
   arbiter: string;
   amount: string;
   deadline_ms: string;
-  fee_bps: string;
+  fee_micro_pct: string;
   token_type: string;
 }> = {}) {
   return {
@@ -57,7 +57,7 @@ function createMockEscrowEvent(overrides: Partial<{
       arbiter: overrides.arbiter ?? MOCK_ARBITER,
       amount: overrides.amount ?? "5000000",
       deadline_ms: overrides.deadline_ms ?? "1700100000000",
-      fee_bps: overrides.fee_bps ?? "100",
+      fee_micro_pct: overrides.fee_micro_pct ?? "10000", // 100 bps × 100 = 10000 micro-percent
       token_type: overrides.token_type ?? USDC_MAINNET,
       timestamp_ms: "1700000000000",
     },
@@ -389,11 +389,11 @@ describe("EscrowSuiFacilitatorScheme", () => {
       expect(result.valid).toBe(true);
     });
 
-    it("should reject fee_bps mismatch (fee bypass attack)", async () => {
+    it("should reject fee_micro_pct mismatch (fee bypass attack)", async () => {
       const signer = createMockFacilitatorSigner({
         simulateTransaction: async () =>
           createSuccessfulDryRun({
-            events: [createMockEscrowEvent({ fee_bps: "0" })],
+            events: [createMockEscrowEvent({ fee_micro_pct: "0" })],
           }),
       });
       const scheme = new EscrowSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
@@ -405,11 +405,11 @@ describe("EscrowSuiFacilitatorScheme", () => {
       expect(result.invalidReason).toContain("Fee mismatch");
     });
 
-    it("should accept fee_bps=0 when requirements have no protocol fee", async () => {
+    it("should accept fee_micro_pct=0 when requirements have no protocol fee", async () => {
       const signer = createMockFacilitatorSigner({
         simulateTransaction: async () =>
           createSuccessfulDryRun({
-            events: [createMockEscrowEvent({ fee_bps: "0" })],
+            events: [createMockEscrowEvent({ fee_micro_pct: "0" })],
           }),
       });
       const scheme = new EscrowSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);

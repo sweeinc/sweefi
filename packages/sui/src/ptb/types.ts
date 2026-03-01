@@ -38,8 +38,8 @@ export interface PayParams {
   recipient: string;
   /** Amount in smallest units (MIST for SUI, base units for USDC) */
   amount: bigint;
-  /** Facilitator fee in basis points (0-10000) */
-  feeBps: number;
+  /** Fee in micro-percent (0–1,000,000 where 1,000,000 = 100%). See assert.ts for common values. */
+  feeMicroPercent: number;
   /** Address that receives the fee */
   feeRecipient: string;
   /** Optional memo (UTF-8 string or raw bytes) */
@@ -54,8 +54,8 @@ export interface CreateInvoiceParams {
   recipient: string;
   /** Expected payment amount in smallest units */
   expectedAmount: bigint;
-  /** Fee in basis points (0-10000) */
-  feeBps: number;
+  /** Fee in micro-percent (0–1,000,000 where 1,000,000 = 100%). See assert.ts for common values. */
+  feeMicroPercent: number;
   /** Address that receives the fee */
   feeRecipient: string;
   /** If provided, invoice is transferred to this address */
@@ -92,8 +92,8 @@ export interface CreateStreamParams {
   ratePerSecond: bigint;
   /** Maximum total spend (gross, including fees) */
   budgetCap: bigint;
-  /** Fee in basis points (0-10000) */
-  feeBps: number;
+  /** Fee in micro-percent (0–1,000,000 where 1,000,000 = 100%). See assert.ts for common values. */
+  feeMicroPercent: number;
   /** Address that receives the fee on claims */
   feeRecipient: string;
 }
@@ -170,8 +170,8 @@ export interface PrepaidDepositParams {
   maxCalls?: bigint | string;
   /** How long agent must wait after last claim to withdraw (ms). Min 60s, max 7d. */
   withdrawalDelayMs: bigint;
-  /** Protocol fee on claims in basis points (0-10000) */
-  feeBps: number;
+  /** Fee in micro-percent (0–1,000,000 where 1,000,000 = 100%). See assert.ts for common values. */
+  feeMicroPercent: number;
   /** Address that receives the protocol fee */
   feeRecipient: string;
 }

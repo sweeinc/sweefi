@@ -1,6 +1,7 @@
 import { Transaction, coinWithBalance } from "@mysten/sui/transactions";
 import type { SweefiConfig, PayParams } from "./types";
 import { SUI_CLOCK } from "./deployments";
+import { assertFeeMicroPercent } from "./assert";
 
 // ══════════════════════════════════════════════════════════════
 // Mandate types
@@ -94,6 +95,8 @@ export function buildMandatedPayTx(
   config: SweefiConfig,
   params: MandatedPayParams,
 ): Transaction {
+  assertFeeMicroPercent(params.feeMicroPercent, "buildMandatedPayTx");
+
   const tx = new Transaction();
   tx.setSender(params.sender);
 
@@ -123,7 +126,7 @@ export function buildMandatedPayTx(
       coin,
       tx.pure.address(params.recipient),
       tx.pure.u64(params.amount),
-      tx.pure.u64(params.feeBps),
+      tx.pure.u64(params.feeMicroPercent),
       tx.pure.address(params.feeRecipient),
       tx.pure.vector("u8", Array.from(memo)),
       tx.object(SUI_CLOCK),

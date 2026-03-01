@@ -104,7 +104,7 @@ describe.skipIf(SKIP)("PTB dev-inspect against live testnet v6", () => {
       sender: senderAddress,
       recipient: RECIPIENT,
       amount: 1_000n,
-      feeBps: 50,
+      feeMicroPercent: 5_000,
       feeRecipient: FEE_RECIPIENT,
     });
     const result = await devInspect(tx);
@@ -117,7 +117,7 @@ describe.skipIf(SKIP)("PTB dev-inspect against live testnet v6", () => {
       sender: senderAddress,
       recipient: RECIPIENT,
       amount: 1_000n,
-      feeBps: 50,
+      feeMicroPercent: 5_000,
       feeRecipient: FEE_RECIPIENT,
     });
     // Must consume the receipt or Sui rejects with UnusedValueWithoutDrop
@@ -132,7 +132,7 @@ describe.skipIf(SKIP)("PTB dev-inspect against live testnet v6", () => {
       sender: senderAddress,
       recipient: RECIPIENT,
       amount: 1_000n,
-      feeBps: 50,
+      feeMicroPercent: 5_000,
       feeRecipient: FEE_RECIPIENT,
       receiptDestination: senderAddress,
       memo: "dryrun-test",
@@ -146,7 +146,7 @@ describe.skipIf(SKIP)("PTB dev-inspect against live testnet v6", () => {
       sender: senderAddress,
       recipient: RECIPIENT,
       expectedAmount: 5_000n,
-      feeBps: 100,
+      feeMicroPercent: 10_000,
       feeRecipient: FEE_RECIPIENT,
       sendTo: senderAddress,
     });
@@ -164,7 +164,7 @@ describe.skipIf(SKIP)("PTB dev-inspect against live testnet v6", () => {
       depositAmount: 10_000n,
       ratePerSecond: 100n,
       budgetCap: 100_000n,
-      feeBps: 50,
+      feeMicroPercent: 5_000,
       feeRecipient: FEE_RECIPIENT,
     });
     const result = await devInspect(tx);
@@ -179,7 +179,7 @@ describe.skipIf(SKIP)("PTB dev-inspect against live testnet v6", () => {
       depositAmount: 10_000n,
       ratePerSecond: 100n,
       budgetCap: 100_000n,
-      feeBps: 50,
+      feeMicroPercent: 5_000,
       feeRecipient: FEE_RECIPIENT,
       recipientCloseTimeoutMs: 172_800_000n, // 2 days
     });
@@ -201,7 +201,7 @@ describe.skipIf(SKIP)("PTB dev-inspect against live testnet v6", () => {
       arbiter: ARBITER,
       depositAmount: 5_000n,
       deadlineMs: BigInt(Date.now() + 86_400_000),
-      feeBps: 50,
+      feeMicroPercent: 5_000,
       feeRecipient: FEE_RECIPIENT,
       memo: "dryrun-test",
     });

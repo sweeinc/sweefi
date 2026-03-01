@@ -1,7 +1,7 @@
 import { Transaction, coinWithBalance } from "@mysten/sui/transactions";
 import type { SweefiConfig, CreateStreamParams, CreateStreamWithTimeoutParams, StreamOpParams, StreamTopUpParams, BatchClaimParams } from "./types";
 import { SUI_CLOCK } from "./deployments";
-import { assertFeeBps, assertPositive } from "./assert";
+import { assertFeeMicroPercent, assertPositive } from "./assert";
 
 function requireProtocolState(config: SweefiConfig, fn: string): string {
   if (!config.protocolStateId) {
@@ -25,7 +25,7 @@ export function buildCreateStreamTx(
 ): Transaction {
   assertPositive(params.depositAmount, "depositAmount", "buildCreateStreamTx");
   assertPositive(params.ratePerSecond, "ratePerSecond", "buildCreateStreamTx");
-  assertFeeBps(params.feeBps, "buildCreateStreamTx");
+  assertFeeMicroPercent(params.feeMicroPercent, "buildCreateStreamTx");
 
   const protocolStateId = requireProtocolState(config, "buildCreateStreamTx");
   const tx = new Transaction();
@@ -41,7 +41,7 @@ export function buildCreateStreamTx(
       tx.pure.address(params.recipient),
       tx.pure.u64(params.ratePerSecond),
       tx.pure.u64(params.budgetCap),
-      tx.pure.u64(params.feeBps),
+      tx.pure.u64(params.feeMicroPercent),
       tx.pure.address(params.feeRecipient),
       tx.object(protocolStateId),
       tx.object(SUI_CLOCK),
@@ -64,7 +64,7 @@ export function buildCreateStreamWithTimeoutTx(
 ): Transaction {
   assertPositive(params.depositAmount, "depositAmount", "buildCreateStreamWithTimeoutTx");
   assertPositive(params.ratePerSecond, "ratePerSecond", "buildCreateStreamWithTimeoutTx");
-  assertFeeBps(params.feeBps, "buildCreateStreamWithTimeoutTx");
+  assertFeeMicroPercent(params.feeMicroPercent, "buildCreateStreamWithTimeoutTx");
 
   const protocolStateId = requireProtocolState(config, "buildCreateStreamWithTimeoutTx");
   const tx = new Transaction();
@@ -80,7 +80,7 @@ export function buildCreateStreamWithTimeoutTx(
       tx.pure.address(params.recipient),
       tx.pure.u64(params.ratePerSecond),
       tx.pure.u64(params.budgetCap),
-      tx.pure.u64(params.feeBps),
+      tx.pure.u64(params.feeMicroPercent),
       tx.pure.address(params.feeRecipient),
       tx.pure.u64(params.recipientCloseTimeoutMs),
       tx.object(protocolStateId),

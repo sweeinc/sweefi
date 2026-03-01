@@ -1,7 +1,7 @@
 import { Transaction, coinWithBalance } from "@mysten/sui/transactions";
 import type { SweefiConfig } from "./types";
 import { SUI_CLOCK } from "./deployments";
-import { assertFeeBps, assertPositive } from "./assert";
+import { assertFeeMicroPercent, assertPositive } from "./assert";
 
 function requireProtocolState(config: SweefiConfig): string {
   if (!config.protocolStateId) {
@@ -31,8 +31,8 @@ export interface CreateEscrowParams {
   depositAmount: bigint;
   /** Deadline timestamp in milliseconds (auto-refund after this) */
   deadlineMs: bigint;
-  /** Fee in basis points (0-10000), charged on release only */
-  feeBps: number;
+  /** Fee in micro-percent (0–1,000,000 where 1,000,000 = 100%), charged on release only */
+  feeMicroPercent: number;
   /** Address that receives the fee */
   feeRecipient: string;
   /** Optional memo (UTF-8 string or raw bytes) */
@@ -66,7 +66,7 @@ export function buildCreateEscrowTx(
   params: CreateEscrowParams,
 ): Transaction {
   assertPositive(params.depositAmount, "depositAmount", "buildCreateEscrowTx");
-  assertFeeBps(params.feeBps, "buildCreateEscrowTx");
+  assertFeeMicroPercent(params.feeMicroPercent, "buildCreateEscrowTx");
 
   const protocolStateId = requireProtocolState(config);
   const tx = new Transaction();
@@ -86,7 +86,7 @@ export function buildCreateEscrowTx(
       tx.pure.address(params.seller),
       tx.pure.address(params.arbiter),
       tx.pure.u64(params.deadlineMs),
-      tx.pure.u64(params.feeBps),
+      tx.pure.u64(params.feeMicroPercent),
       tx.pure.address(params.feeRecipient),
       tx.pure.vector("u8", Array.from(memo)),
       tx.object(protocolStateId),

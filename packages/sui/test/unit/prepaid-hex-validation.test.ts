@@ -19,7 +19,7 @@ const validParams = {
   ratePerCall: 1000n,
   maxCalls: 100n,
   withdrawalDelayMs: 1_800_000n,
-  feeBps: 500,
+  feeMicroPercent: 50_000,
   feeRecipient: "0xFEE",
   disputeWindowMs: 300_000n,
 };

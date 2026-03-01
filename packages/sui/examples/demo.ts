@@ -39,7 +39,7 @@ const STREAM_DEPOSIT = 10_000_000n; // 0.01 SUI
 const STREAM_RATE = 1_000n; // 1000 MIST/sec = 0.000001 SUI/sec
 const STREAM_BUDGET_CAP = 5_000_000n; // 0.005 SUI max
 const ESCROW_DEPOSIT = 2_000_000n; // 0.002 SUI
-const FEE_BPS = 50; // 0.5% fee
+const FEE_MICRO_PCT = 5_000; // 0.5% fee (micro-percent: 5_000 / 1_000_000)
 
 const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl("testnet"), network: "testnet" });
 const config = testnetConfig;
@@ -149,14 +149,14 @@ async function demoPayment(
   feeRecipient: Ed25519Keypair,
 ) {
   header("DEMO 1: Direct Payment");
-  log("pay", `Paying ${Number(PAYMENT_AMOUNT) / 1e9} SUI to recipient with ${FEE_BPS / 100}% fee`);
+  log("pay", `Paying ${Number(PAYMENT_AMOUNT) / 1e9} SUI to recipient with ${FEE_MICRO_PCT / 10_000}% fee`);
 
   const tx = buildPayTx(config, {
     coinType: SUI_COIN_TYPE,
     sender: payer.toSuiAddress(),
     recipient: recipient.toSuiAddress(),
     amount: PAYMENT_AMOUNT,
-    feeBps: FEE_BPS,
+    feeMicroPercent: FEE_MICRO_PCT,
     feeRecipient: feeRecipient.toSuiAddress(),
     memo: "SweeFi demo payment",
   });
@@ -214,7 +214,7 @@ async function demoStream(
     depositAmount: STREAM_DEPOSIT,
     ratePerSecond: STREAM_RATE,
     budgetCap: STREAM_BUDGET_CAP,
-    feeBps: FEE_BPS,
+    feeMicroPercent: FEE_MICRO_PCT,
     feeRecipient: feeRecipient.toSuiAddress(),
   });
 
@@ -333,7 +333,7 @@ async function demoEscrow(
     arbiter: arbiter.toSuiAddress(),
     depositAmount: ESCROW_DEPOSIT,
     deadlineMs,
-    feeBps: FEE_BPS,
+    feeMicroPercent: FEE_MICRO_PCT,
     feeRecipient: feeRecipient.toSuiAddress(),
     memo: "SweeFi demo escrow — API access license",
   });
@@ -419,7 +419,7 @@ async function demoPayAndProve(
     sender: payer.toSuiAddress(),
     recipient: recipient.toSuiAddress(),
     amount: PAYMENT_AMOUNT,
-    feeBps: FEE_BPS,
+    feeMicroPercent: FEE_MICRO_PCT,
     feeRecipient: feeRecipient.toSuiAddress(),
     receiptDestination: payer.toSuiAddress(), // buyer keeps receipt for SEAL
     memo: "seal:content-id:demo-encrypted-api-docs",
@@ -472,7 +472,7 @@ async function demoRecipientClose(
     depositAmount: STREAM_DEPOSIT,
     ratePerSecond: STREAM_RATE,
     budgetCap: STREAM_BUDGET_CAP,
-    feeBps: FEE_BPS,
+    feeMicroPercent: FEE_MICRO_PCT,
     feeRecipient: feeRecipient.toSuiAddress(),
   });
 

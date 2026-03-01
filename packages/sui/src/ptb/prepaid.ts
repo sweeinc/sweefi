@@ -12,7 +12,7 @@ import type {
 } from "./types";
 import type { Ed25519Verifier } from "../receipts";
 import { SUI_CLOCK } from "./deployments";
-import { assertFeeBps, assertPositive } from "./assert";
+import { assertFeeMicroPercent, assertPositive } from "./assert";
 
 /** u64::MAX as string — use as max_calls for unlimited prepaid balances */
 export const UNLIMITED_CALLS = "18446744073709551615";
@@ -60,7 +60,7 @@ export function buildDepositTx(
 ): Transaction {
   assertPositive(params.amount, "amount", "buildDepositTx");
   assertPositive(params.ratePerCall, "ratePerCall", "buildDepositTx");
-  assertFeeBps(params.feeBps, "buildDepositTx");
+  assertFeeMicroPercent(params.feeMicroPercent, "buildDepositTx");
 
   const protocolStateId = requireProtocolState(config, "buildDepositTx");
   const tx = new Transaction();
@@ -77,7 +77,7 @@ export function buildDepositTx(
       tx.pure.u64(params.ratePerCall),
       tx.pure.u64(params.maxCalls ?? UNLIMITED_CALLS),
       tx.pure.u64(params.withdrawalDelayMs),
-      tx.pure.u64(params.feeBps),
+      tx.pure.u64(params.feeMicroPercent),
       tx.pure.address(params.feeRecipient),
       tx.object(protocolStateId),
       tx.object(SUI_CLOCK),
@@ -274,7 +274,7 @@ export function buildDepositWithReceiptsTx(
 ): Transaction {
   assertPositive(params.amount, "amount", "buildDepositWithReceiptsTx");
   assertPositive(params.ratePerCall, "ratePerCall", "buildDepositWithReceiptsTx");
-  assertFeeBps(params.feeBps, "buildDepositWithReceiptsTx");
+  assertFeeMicroPercent(params.feeMicroPercent, "buildDepositWithReceiptsTx");
 
   const protocolStateId = requireProtocolState(config, "buildDepositWithReceiptsTx");
   const tx = new Transaction();
@@ -291,7 +291,7 @@ export function buildDepositWithReceiptsTx(
       tx.pure.u64(params.ratePerCall),
       tx.pure.u64(params.maxCalls ?? UNLIMITED_CALLS),
       tx.pure.u64(params.withdrawalDelayMs),
-      tx.pure.u64(params.feeBps),
+      tx.pure.u64(params.feeMicroPercent),
       tx.pure.address(params.feeRecipient),
       tx.pure("vector<u8>", hexToBytes(params.providerPubkey)),
       tx.pure.u64(params.disputeWindowMs),

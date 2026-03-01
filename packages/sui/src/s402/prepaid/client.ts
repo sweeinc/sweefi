@@ -17,6 +17,7 @@ import { S402_VERSION } from 's402';
 import type { ClientSuiSigner } from '../../signer.js';
 import type { SweefiConfig } from '../../ptb/types.js';
 import { buildDepositTx } from '../../ptb/prepaid.js';
+import { bpsToMicroPercent } from '../../ptb/assert.js';
 
 export class PrepaidSuiClientScheme implements s402ClientScheme {
   readonly scheme = 'prepaid' as const;
@@ -49,7 +50,7 @@ export class PrepaidSuiClientScheme implements s402ClientScheme {
       maxCalls: maxCalls ? BigInt(maxCalls) : undefined,
       withdrawalDelayMs: BigInt(withdrawalDelayMs),
       // Fee params from requirements
-      feeBps: requirements.protocolFeeBps ?? 0,
+      feeMicroPercent: bpsToMicroPercent(requirements.protocolFeeBps ?? 0),
       feeRecipient: requirements.protocolFeeAddress ?? payTo,
     });
 

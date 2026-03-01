@@ -46,7 +46,7 @@ const tx = buildPayTx(testnetConfig, {
   sender: signer.address,
   recipient: "0xb0b...",
   amount: 100_000_000n, // 0.1 SUI in MIST
-  feeBps: 50,           // 0.5% facilitator fee
+  feeMicroPercent: 5_000, // 0.5% facilitator fee (micro-percent: 5_000 / 1_000_000)
   feeRecipient: "0xfee...",
   memo: "payment for services",
 });

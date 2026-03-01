@@ -1,7 +1,7 @@
 import { Transaction, coinWithBalance } from "@mysten/sui/transactions";
 import type { SweefiConfig, PayParams, CreateInvoiceParams, PayInvoiceParams } from "./types";
 import { SUI_CLOCK } from "./deployments";
-import { assertFeeBps, assertPositive } from "./assert";
+import { assertFeeMicroPercent, assertPositive } from "./assert";
 
 /**
  * Build a PTB for direct payment with fee split + receipt.
@@ -12,7 +12,7 @@ import { assertFeeBps, assertPositive } from "./assert";
  */
 export function buildPayTx(config: SweefiConfig, params: PayParams): Transaction {
   assertPositive(params.amount, "amount", "buildPayTx");
-  assertFeeBps(params.feeBps, "buildPayTx");
+  assertFeeMicroPercent(params.feeMicroPercent, "buildPayTx");
 
   const tx = new Transaction();
   tx.setSender(params.sender);
@@ -30,7 +30,7 @@ export function buildPayTx(config: SweefiConfig, params: PayParams): Transaction
       coin,
       tx.pure.address(params.recipient),
       tx.pure.u64(params.amount),
-      tx.pure.u64(params.feeBps),
+      tx.pure.u64(params.feeMicroPercent),
       tx.pure.address(params.feeRecipient),
       tx.pure.vector("u8", Array.from(memo)),
       tx.object(SUI_CLOCK),
@@ -54,7 +54,7 @@ export function buildPayComposableTx(
   params: PayParams,
 ) {
   assertPositive(params.amount, "amount", "buildPayComposableTx");
-  assertFeeBps(params.feeBps, "buildPayComposableTx");
+  assertFeeMicroPercent(params.feeMicroPercent, "buildPayComposableTx");
 
   const tx = new Transaction();
   tx.setSender(params.sender);
@@ -72,7 +72,7 @@ export function buildPayComposableTx(
       coin,
       tx.pure.address(params.recipient),
       tx.pure.u64(params.amount),
-      tx.pure.u64(params.feeBps),
+      tx.pure.u64(params.feeMicroPercent),
       tx.pure.address(params.feeRecipient),
       tx.pure.vector("u8", Array.from(memo)),
       tx.object(SUI_CLOCK),
@@ -92,7 +92,7 @@ export function buildCreateInvoiceTx(
   params: CreateInvoiceParams,
 ): Transaction {
   assertPositive(params.expectedAmount, "expectedAmount", "buildCreateInvoiceTx");
-  assertFeeBps(params.feeBps, "buildCreateInvoiceTx");
+  assertFeeMicroPercent(params.feeMicroPercent, "buildCreateInvoiceTx");
 
   const tx = new Transaction();
   tx.setSender(params.sender);
@@ -104,7 +104,7 @@ export function buildCreateInvoiceTx(
       arguments: [
         tx.pure.address(params.recipient),
         tx.pure.u64(params.expectedAmount),
-        tx.pure.u64(params.feeBps),
+        tx.pure.u64(params.feeMicroPercent),
         tx.pure.address(params.feeRecipient),
         tx.pure.address(params.sendTo),
       ],
@@ -116,7 +116,7 @@ export function buildCreateInvoiceTx(
       arguments: [
         tx.pure.address(params.recipient),
         tx.pure.u64(params.expectedAmount),
-        tx.pure.u64(params.feeBps),
+        tx.pure.u64(params.feeMicroPercent),
         tx.pure.address(params.feeRecipient),
       ],
     });

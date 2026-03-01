@@ -13,6 +13,7 @@ import { S402_VERSION } from 's402';
 import type { ClientSuiSigner } from '../../signer.js';
 import type { SweefiConfig } from '../../ptb/types.js';
 import { buildCreateStreamTx } from '../../ptb/stream.js';
+import { bpsToMicroPercent } from '../../ptb/assert.js';
 
 export class StreamSuiClientScheme implements s402ClientScheme {
   readonly scheme = 'stream' as const;
@@ -37,7 +38,7 @@ export class StreamSuiClientScheme implements s402ClientScheme {
       depositAmount: BigInt(stream.minDeposit),
       ratePerSecond: BigInt(stream.ratePerSecond),
       budgetCap: BigInt(stream.budgetCap),
-      feeBps: requirements.protocolFeeBps ?? 0,
+      feeMicroPercent: bpsToMicroPercent(requirements.protocolFeeBps ?? 0),
       feeRecipient: requirements.protocolFeeAddress ?? requirements.payTo,
     });
 

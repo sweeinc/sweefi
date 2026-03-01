@@ -61,7 +61,7 @@ describe("buildPayTx", () => {
       sender: SENDER,
       recipient: RECIPIENT,
       amount: 1_000_000n,
-      feeBps: 50,
+      feeMicroPercent: 5_000,
       feeRecipient: FEE_RECIPIENT,
     });
 
@@ -74,7 +74,7 @@ describe("buildPayTx", () => {
       sender: SENDER,
       recipient: RECIPIENT,
       amount: 1_000_000n,
-      feeBps: 50,
+      feeMicroPercent: 5_000,
       feeRecipient: FEE_RECIPIENT,
       memo: "test payment",
     });
@@ -88,7 +88,7 @@ describe("buildPayTx", () => {
       sender: SENDER,
       recipient: RECIPIENT,
       amount: 1_000_000n,
-      feeBps: 50,
+      feeMicroPercent: 5_000,
       feeRecipient: FEE_RECIPIENT,
       memo: new Uint8Array([0xde, 0xad]),
     });
@@ -103,7 +103,7 @@ describe("buildPayTx", () => {
       sender: SENDER,
       recipient: RECIPIENT,
       amount: 500n,
-      feeBps: 0,
+      feeMicroPercent: 0,
       feeRecipient: FEE_RECIPIENT,
     });
 
@@ -118,7 +118,7 @@ describe("buildPayComposableTx", () => {
       sender: SENDER,
       recipient: RECIPIENT,
       amount: 1_000_000n,
-      feeBps: 50,
+      feeMicroPercent: 5_000,
       feeRecipient: FEE_RECIPIENT,
     });
 
@@ -132,7 +132,7 @@ describe("buildPayComposableTx", () => {
       sender: SENDER,
       recipient: RECIPIENT,
       amount: 1_000_000n,
-      feeBps: 50,
+      feeMicroPercent: 5_000,
       feeRecipient: FEE_RECIPIENT,
     });
 
@@ -152,7 +152,7 @@ describe("buildPayAndProveTx", () => {
       sender: SENDER,
       recipient: RECIPIENT,
       amount: 1_000_000n,
-      feeBps: 50,
+      feeMicroPercent: 5_000,
       feeRecipient: FEE_RECIPIENT,
       receiptDestination: SENDER,
     });
@@ -167,7 +167,7 @@ describe("buildPayAndProveTx", () => {
       sender: SENDER,
       recipient: RECIPIENT,
       amount: 500_000n,
-      feeBps: 100,
+      feeMicroPercent: 10_000,
       feeRecipient: FEE_RECIPIENT,
       receiptDestination: AGENT, // agent decrypts, not the human who paid
     });
@@ -181,7 +181,7 @@ describe("buildPayAndProveTx", () => {
       sender: SENDER,
       recipient: RECIPIENT,
       amount: 1_000_000n,
-      feeBps: 50,
+      feeMicroPercent: 5_000,
       feeRecipient: FEE_RECIPIENT,
       receiptDestination: SENDER,
       memo: "seal:content-id:abc123",
@@ -197,7 +197,7 @@ describe("buildCreateInvoiceTx", () => {
       sender: SENDER,
       recipient: RECIPIENT,
       expectedAmount: 5_000_000n,
-      feeBps: 100,
+      feeMicroPercent: 10_000,
       feeRecipient: FEE_RECIPIENT,
       sendTo: SENDER,
     });
@@ -210,7 +210,7 @@ describe("buildCreateInvoiceTx", () => {
       sender: SENDER,
       recipient: RECIPIENT,
       expectedAmount: 5_000_000n,
-      feeBps: 100,
+      feeMicroPercent: 10_000,
       feeRecipient: FEE_RECIPIENT,
     });
 
@@ -244,7 +244,7 @@ describe("buildCreateStreamTx", () => {
       depositAmount: 100_000_000n,
       ratePerSecond: 300n,
       budgetCap: 1_000_000_000n,
-      feeBps: 50,
+      feeMicroPercent: 5_000,
       feeRecipient: FEE_RECIPIENT,
     });
 
@@ -261,7 +261,7 @@ describe("buildCreateStreamWithTimeoutTx", () => {
       depositAmount: 100_000_000n,
       ratePerSecond: 300n,
       budgetCap: 1_000_000_000n,
-      feeBps: 50,
+      feeMicroPercent: 5_000,
       feeRecipient: FEE_RECIPIENT,
       recipientCloseTimeoutMs: 172_800_000n, // 2 days
     });
@@ -277,7 +277,7 @@ describe("buildCreateStreamWithTimeoutTx", () => {
       depositAmount: 50_000n,
       ratePerSecond: 100n,
       budgetCap: 500_000n,
-      feeBps: 0,
+      feeMicroPercent: 0,
       feeRecipient: FEE_RECIPIENT,
       recipientCloseTimeoutMs: 86_400_000n, // exactly 1 day (minimum)
     });
@@ -293,7 +293,7 @@ describe("buildCreateStreamWithTimeoutTx", () => {
       depositAmount: 1_000_000n,
       ratePerSecond: 10n,
       budgetCap: 10_000_000n,
-      feeBps: 200,
+      feeMicroPercent: 20_000,
       feeRecipient: FEE_RECIPIENT,
       recipientCloseTimeoutMs: 2_592_000_000n, // 30 days
     });
@@ -428,7 +428,7 @@ describe("stream operation sequences", () => {
       depositAmount: 100_000n,
       ratePerSecond: 100n,
       budgetCap: 1_000_000n,
-      feeBps: 50,
+      feeMicroPercent: 5_000,
       feeRecipient: FEE_RECIPIENT,
     });
     const claim = streamOp(buildClaimTx, RECIPIENT);
@@ -514,7 +514,7 @@ describe("stream operation sequences", () => {
       depositAmount: 100_000n,
       ratePerSecond: 100n,
       budgetCap: 1_000_000n,
-      feeBps: 50,
+      feeMicroPercent: 5_000,
       feeRecipient: FEE_RECIPIENT,
     });
     const recipientClose = streamOp(buildRecipientCloseTx, RECIPIENT);
@@ -532,7 +532,7 @@ describe("stream operation sequences", () => {
       depositAmount: 100_000n,
       ratePerSecond: 100n,
       budgetCap: 1_000_000n,
-      feeBps: 50,
+      feeMicroPercent: 5_000,
       feeRecipient: FEE_RECIPIENT,
       recipientCloseTimeoutMs: 172_800_000n, // 2 days
     });
@@ -574,7 +574,7 @@ describe("PTB builder conventions", () => {
         sender: SENDER,
         recipient: RECIPIENT,
         amount: 100n,
-        feeBps: 0,
+        feeMicroPercent: 0,
         feeRecipient: FEE_RECIPIENT,
       }),
     ).not.toThrow();
@@ -587,7 +587,7 @@ describe("PTB builder conventions", () => {
         depositAmount: 100n,
         ratePerSecond: 1n,
         budgetCap: 1000n,
-        feeBps: 0,
+        feeMicroPercent: 0,
         feeRecipient: FEE_RECIPIENT,
       }),
     ).not.toThrow();
@@ -602,7 +602,7 @@ describe("PTB builder conventions", () => {
       sender: SENDER,
       recipient: RECIPIENT,
       amount: 100_000n, // 0.10 USDC
-      feeBps: 50,
+      feeMicroPercent: 5_000,
       feeRecipient: FEE_RECIPIENT,
     });
 
@@ -623,7 +623,7 @@ describe("buildCreateEscrowTx", () => {
       arbiter: ARBITER,
       depositAmount: 10_000_000n,
       deadlineMs: BigInt(Date.now() + 86_400_000), // 24h from now
-      feeBps: 50,
+      feeMicroPercent: 5_000,
       feeRecipient: FEE_RECIPIENT,
     });
 
@@ -638,7 +638,7 @@ describe("buildCreateEscrowTx", () => {
       arbiter: ARBITER,
       depositAmount: 10_000_000n,
       deadlineMs: BigInt(Date.now() + 86_400_000),
-      feeBps: 50,
+      feeMicroPercent: 5_000,
       feeRecipient: FEE_RECIPIENT,
       memo: "Payment for API access — 30-day license",
     });
@@ -654,7 +654,7 @@ describe("buildCreateEscrowTx", () => {
       arbiter: ARBITER,
       depositAmount: 1n,
       deadlineMs: 999999999999n,
-      feeBps: 0,
+      feeMicroPercent: 0,
       feeRecipient: FEE_RECIPIENT,
     });
 
@@ -835,7 +835,7 @@ describe("protocolStateId requirement", () => {
         depositAmount: 100n,
         ratePerSecond: 1n,
         budgetCap: 1000n,
-        feeBps: 0,
+        feeMicroPercent: 0,
         feeRecipient: FEE_RECIPIENT,
       }),
     ).toThrow("protocolStateId");
@@ -850,7 +850,7 @@ describe("protocolStateId requirement", () => {
         depositAmount: 100n,
         ratePerSecond: 1n,
         budgetCap: 1000n,
-        feeBps: 0,
+        feeMicroPercent: 0,
         feeRecipient: FEE_RECIPIENT,
         recipientCloseTimeoutMs: 86_400_000n,
       }),
@@ -877,7 +877,7 @@ describe("protocolStateId requirement", () => {
         arbiter: ARBITER,
         depositAmount: 100n,
         deadlineMs: 999999999999n,
-        feeBps: 0,
+        feeMicroPercent: 0,
         feeRecipient: FEE_RECIPIENT,
       }),
     ).toThrow("protocolStateId");
@@ -891,7 +891,7 @@ describe("protocolStateId requirement", () => {
         sender: SENDER,
         recipient: RECIPIENT,
         amount: 100n,
-        feeBps: 0,
+        feeMicroPercent: 0,
         feeRecipient: FEE_RECIPIENT,
       }),
     ).not.toThrow();

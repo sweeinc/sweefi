@@ -19,8 +19,8 @@
  *      - deadline_ms matches requirements.escrow.deadlineMs (exact — longer
  *        changes escrow economics by locking seller funds longer)
  *      - arbiter matches if specified in requirements
- *      - fee_bps matches requirements.protocolFeeBps (prevent fee bypass —
- *        client controls this PTB arg)
+ *      - fee_micro_pct matches requirements.protocolFeeBps (converted to
+ *        micro-percent; prevent fee bypass — client controls this PTB arg)
  *
  * After settlement, the Escrow object ID is returned as escrowId.
  */
@@ -36,6 +36,7 @@ import type {
 import type { FacilitatorSuiSigner } from '../../signer.js';
 import { coinTypesEqual } from '../../utils.js';
 import { normalizeSuiAddress } from '@mysten/sui/utils';
+import { bpsToMicroPercent } from '../../ptb/assert.js';
 
 export class EscrowSuiFacilitatorScheme implements s402FacilitatorScheme {
   readonly scheme = 'escrow' as const;
@@ -46,11 +47,20 @@ export class EscrowSuiFacilitatorScheme implements s402FacilitatorScheme {
    *   extraction verifies the event originates from this package (prevents event
    *   spoofing from attacker-deployed contracts). When omitted, falls back to
    *   suffix matching (less secure, suitable for development/testing).
+   * @param network - Optional network hint. Throws on mainnet without packageId (V8 audit F-13).
    */
   constructor(
     private readonly signer: FacilitatorSuiSigner,
     private readonly packageId?: string,
-  ) {}
+    network?: string,
+  ) {
+    if (!packageId && network?.includes("mainnet")) {
+      throw new Error(
+        "EscrowSuiFacilitatorScheme: packageId is required on mainnet to prevent event spoofing. " +
+        "Set SWEEFI_PACKAGE_ID environment variable."
+      );
+    }
+  }
 
   async verify(
     payload: s402PaymentPayload,
@@ -158,13 +168,14 @@ export class EscrowSuiFacilitatorScheme implements s402FacilitatorScheme {
         };
       }
 
-      // Verify fee_bps matches (prevent fee bypass — client controls this PTB arg,
-      // so a dishonest client could set fee_bps=0 to skip protocol fees)
-      const requiredFeeBps = BigInt(requirements.protocolFeeBps ?? 0);
-      if (BigInt(escrowEvent.fee_bps) !== requiredFeeBps) {
+      // Verify fee_micro_pct matches (prevent fee bypass — client controls this PTB arg,
+      // so a dishonest client could set fee_micro_pct=0 to skip protocol fees).
+      // Convert from s402 wire format bps (10,000 = 100%) to Move micro-percent (1,000,000 = 100%).
+      const requiredFeeMicroPct = BigInt(bpsToMicroPercent(requirements.protocolFeeBps ?? 0));
+      if (BigInt(escrowEvent.fee_micro_pct) !== requiredFeeMicroPct) {
         return {
           valid: false,
-          invalidReason: `Fee mismatch: event=${escrowEvent.fee_bps}, required=${requiredFeeBps}`,
+          invalidReason: `Fee mismatch: event=${escrowEvent.fee_micro_pct}, required=${requiredFeeMicroPct}`,
           payerAddress,
         };
       }
@@ -240,7 +251,7 @@ interface EscrowCreatedEventData {
   arbiter: string;
   amount: string;
   deadline_ms: string;
-  fee_bps: string;
+  fee_micro_pct: string;
   token_type: string;
   /** On-chain clock timestamp — informational, not attacker-controlled */
   timestamp_ms: string;

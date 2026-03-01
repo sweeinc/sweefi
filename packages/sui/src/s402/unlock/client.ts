@@ -16,6 +16,7 @@ import { S402_VERSION } from 's402';
 import type { ClientSuiSigner } from '../../signer.js';
 import type { SweefiConfig } from '../../ptb/types.js';
 import { buildCreateEscrowTx } from '../../ptb/escrow.js';
+import { bpsToMicroPercent } from '../../ptb/assert.js';
 
 export class UnlockSuiClientScheme implements s402ClientScheme {
   readonly scheme = 'unlock' as const;
@@ -45,7 +46,7 @@ export class UnlockSuiClientScheme implements s402ClientScheme {
       arbiter: escrow?.arbiter ?? seller,
       depositAmount: BigInt(requirements.amount),
       deadlineMs: BigInt(deadlineMs),
-      feeBps: requirements.protocolFeeBps ?? 0,
+      feeMicroPercent: bpsToMicroPercent(requirements.protocolFeeBps ?? 0),
       feeRecipient: requirements.payTo,
     });
 

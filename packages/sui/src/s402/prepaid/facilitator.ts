@@ -42,11 +42,20 @@ export class PrepaidSuiFacilitatorScheme implements s402FacilitatorScheme {
    *   extraction verifies the event originates from this package (prevents event
    *   spoofing from attacker-deployed contracts). When omitted, falls back to
    *   suffix matching (less secure, suitable for development/testing).
+   * @param network - Optional network hint. Throws on mainnet without packageId (V8 audit F-13).
    */
   constructor(
     private readonly signer: FacilitatorSuiSigner,
     private readonly packageId?: string,
-  ) {}
+    network?: string,
+  ) {
+    if (!packageId && network?.includes("mainnet")) {
+      throw new Error(
+        "PrepaidSuiFacilitatorScheme: packageId is required on mainnet to prevent event spoofing. " +
+        "Set SWEEFI_PACKAGE_ID environment variable."
+      );
+    }
+  }
 
   async verify(
     payload: s402PaymentPayload,
