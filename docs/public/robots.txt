@@ -1,0 +1,93 @@
+# robots.txt for docs.sweefi.xyz
+# SweeFi — AI Agent Payment Protocol for Sui
+# Apache 2.0 open source — all legitimate crawlers are welcome.
+# This site does NOT restrict AI training or indexing crawlers.
+
+User-agent: *
+Allow: /
+
+# ── OpenAI ──────────────────────────────────────────────────────────────────
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+# ── Anthropic ────────────────────────────────────────────────────────────────
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+# ── Google ───────────────────────────────────────────────────────────────────
+User-agent: Googlebot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Gemini-Deep-Research
+Allow: /
+
+User-agent: Google-CloudVertexBot
+Allow: /
+
+# ── Microsoft / Bing ─────────────────────────────────────────────────────────
+User-agent: bingbot
+Allow: /
+
+# ── Perplexity ───────────────────────────────────────────────────────────────
+User-agent: PerplexityBot
+Allow: /
+
+# ── Apple ────────────────────────────────────────────────────────────────────
+User-agent: Applebot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+# ── DuckDuckGo ───────────────────────────────────────────────────────────────
+User-agent: DuckAssistBot
+Allow: /
+
+# ── You.com ──────────────────────────────────────────────────────────────────
+User-agent: YouBot
+Allow: /
+
+# ── Meta ─────────────────────────────────────────────────────────────────────
+User-agent: meta-externalagent
+Allow: /
+
+# ── Amazon ───────────────────────────────────────────────────────────────────
+User-agent: Amazonbot
+Allow: /
+
+# ── Common Crawl (used by many open LLMs) ────────────────────────────────────
+User-agent: CCBot
+Allow: /
+
+# ── DeepSeek ─────────────────────────────────────────────────────────────────
+User-agent: DeepseekBot
+Allow: /
+
+# ── Cohere ───────────────────────────────────────────────────────────────────
+User-agent: cohere-ai
+Allow: /
+
+# ── AI2 (Allen Institute / Semantic Scholar) ─────────────────────────────────
+User-agent: AI2Bot
+Allow: /
+
+# ── xAI (Grok) ───────────────────────────────────────────────────────────────
+User-agent: xAI-Bot
+Allow: /
+
+Sitemap: https://docs.sweefi.xyz/sitemap.xml

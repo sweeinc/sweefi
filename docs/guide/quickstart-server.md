@@ -46,7 +46,7 @@ The `facilitatorUrl` option is **metadata** — it's included in the 402 respons
 ## What `s402Gate` Does
 
 1. If no payment header → responds with **402** and requirements JSON
-2. If `X-PAYMENT` header present → validates the payment proof
+2. If `x-payment` header present → validates the payment proof
 3. If `processPayment` configured → settles the payment
 4. If valid → calls `next()` and your handler runs
 5. If invalid or no `processPayment` configured → responds with **402** and error details

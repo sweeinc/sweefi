@@ -50,7 +50,7 @@ Agent                    Server                  Sui Testnet
   | [auto-detect s402]     |                        |
   | [sign payment TX]      |                        |
   |                        |                        |
-  |-- GET + X-PAYMENT ---->|                        |
+  |-- GET + x-payment ---->|                        |
   |                        |-- execute signed TX -->|
   |                        |                        |
   |                        |<-- TX digest ----------|
@@ -223,6 +223,7 @@ app.get('/premium', (c) => c.json({ data: 'premium content' }));
 
 ```typescript
 import { buildCreateStreamTx } from '@sweefi/sui/ptb';
+import { ZERO_ADDRESS } from '@sweefi/sui';
 
 const tx = buildCreateStreamTx(config, {
   coinType: '0x2::sui::SUI',
@@ -240,6 +241,7 @@ const tx = buildCreateStreamTx(config, {
 
 ```typescript
 import { buildCreateMandateTx, buildMandatedPayTx } from '@sweefi/sui/ptb';
+import { ZERO_ADDRESS } from '@sweefi/sui';
 
 // Human creates mandate for AI agent
 const createTx = buildCreateMandateTx(config, {

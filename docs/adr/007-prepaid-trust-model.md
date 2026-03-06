@@ -50,7 +50,74 @@ The provider signs each API response (or batch of responses) with a receipt that
 - Receipt format standardized in s402 types
 - Dispute window added to claim flow (optimistic — claims succeed unless challenged)
 
-### v0.3+: TEE Attestation (Hardware Security)
+### v0.3: Provider-Submitted Receipts (Self-Enforcing Claims)
+
+The provider includes their highest signed receipt as an argument to `claim()`.
+The Move contract verifies the receipt's call count >= the claimed count before
+releasing funds. No dispute window needed — invalid claims are rejected immediately.
+
+This eliminates L1 (the contract no longer relies on the agent to submit evidence)
+but introduces a new trade-off: the provider holds the signing key and could forge
+receipts. See the design brief below.
+
+#### v0.3 Design Brief
+
+**New function signature** (ships alongside existing `claim()` for backward compat):
+
+```move
+/// Provider claims with a self-attested receipt. The contract verifies the
+/// receipt signature matches the provider's registered pubkey and that the
+/// receipt's call count >= the claimed cumulative count. No dispute window
+/// needed — invalid claims are rejected immediately.
+public fun claim_with_receipt<T>(
+    balance: &mut PrepaidBalance<T>,
+    cumulative_call_count: u64,
+    // Provider's highest signed receipt fields:
+    receipt_call_number: u64,
+    receipt_timestamp_ms: u64,
+    receipt_response_hash: vector<u8>,
+    receipt_signature: vector<u8>,
+    clock: &Clock,
+    ctx: &mut TxContext,
+)
+```
+
+**Contract logic:**
+1. Standard guards: sender == provider, !disputed, no pending claim, count >= claimed_calls
+2. Compute delta and gross_amount (same as existing `claim()`)
+3. Reconstruct BCS message from receipt fields (same encoding as `dispute_claim()`)
+4. `ed25519::ed25519_verify(&receipt_signature, &balance.provider_pubkey, &msg)` — reject if invalid
+5. `assert!(receipt_call_number >= cumulative_call_count, EInvalidReceipt)` — receipt must cover at least the claimed count
+6. If all checks pass → **immediate settlement** (transfer funds). No pending state, no dispute window.
+
+**Why this eliminates L1:** The provider must prove — via their own signature — that
+they committed to serving at least N calls before they can claim N. The agent no longer
+needs to submit evidence. The dispute mechanism becomes unnecessary for this claim path.
+
+**Critical analysis — can the provider forge receipts?**
+
+The provider holds the Ed25519 private key. They can sign a receipt for any call count
+and any response hash. A receipt claiming "I served 10,000 calls" with a fabricated
+response hash is cryptographically valid.
+
+**Why forged receipts add accountability despite the provider holding the key:**
+- Without v0.3: The provider submits a bare `cumulative_call_count`. There is no
+  cryptographic artifact. The claim is ephemeral.
+- With v0.3: The provider's signature on "I served N calls" is a **durable, verifiable
+  commitment**. If the agent publishes their own receipt set showing only M < N signed
+  receipts with real response hashes, the discrepancy is provable to any third party
+  (arbitrator, reputation system, court). The forged receipt becomes evidence of fraud.
+
+**What v0.3 does NOT do:** It does not prevent a dishonest provider from overclaiming
+in real-time. The on-chain contract cannot distinguish a genuine receipt from a forged
+one (both are valid Ed25519 signatures). Prevention requires hardware attestation (v0.4).
+
+**Recommendation:** Ship `claim_with_receipt()` as an optional path alongside `claim()`.
+Balances with `dispute_window_ms > 0` can use either path. Balances with
+`dispute_window_ms == 0` (v0.1 mode) continue using `claim()` only. This is
+backward-compatible and additive.
+
+### v0.4+: TEE Attestation (Hardware Security)
 
 For highest-assurance use cases, the API server runs inside a Trusted Execution Environment (Nautilus/SGX). The usage count is attested by hardware — no trust in the provider at all.
 
@@ -60,7 +127,7 @@ This is the endgame but requires Nautilus TEE infrastructure to mature on Sui.
 
 ### Positive
 - v0.1 ships with honest, documented trust model (not fake "trustless" claims)
-- Upgrade path is clear and incremental (economic → cryptographic → hardware)
+- Upgrade path is clear and incremental (economic → cryptographic → self-enforcing → hardware)
 - Each level is backward-compatible (signed receipts don't break unsigned flow)
 
 ### Negative
@@ -94,10 +161,25 @@ This is the correct behavior for a rational agent (submit your best evidence).
 A dishonest agent who submits an early receipt to cheat the provider violates the
 terms of service and loses the ability to use that provider further.
 
-**v0.3 fix:** Change receipt semantics so each receipt certifies a *cumulative*
-count (`call_count_so_far`), not just a single call number. Then `dispute_claim`
-can check: "provider signed a receipt certifying N cumulative calls, but now claims
-M > N." This proof is unambiguous regardless of which receipt the agent submits.
+**Why cumulative receipts do NOT fix this:** An earlier draft proposed changing
+receipt semantics so each receipt certifies a cumulative count (`call_count_so_far`).
+This does not help. A dishonest agent holding cumulative receipts for 75 and 100
+can submit the "75 total" receipt to dispute a legitimate claim of 100 — the same
+attack as with per-call receipts. The fundamental issue is that the on-chain contract
+cannot verify the agent submitted their *highest* receipt, regardless of semantics.
+
+**Mitigation (v0.2 — accepted):** Provider's economic defense against dishonest
+agents: small claim batches + address blacklisting. v0.2 is explicitly asymmetric —
+it protects agents from overclaiming providers, not providers from dishonest agents.
+This is acceptable for the target use case ($5-$50 deposits).
+
+**v0.3 candidate — provider-submitted receipts:** The provider includes their
+highest signed receipt WITH the claim. The contract verifies the provider signed
+for at least as many calls as they're claiming. This eliminates the dispute window
+entirely (self-enforcing). Trade-off: the provider holds the signing key and can
+forge receipt counts, but this makes them accountable for the commitment — forging
+a higher count than actual service is a provable lie if the agent publishes their
+own receipt set. Full analysis deferred to a v0.3 design ADR.
 
 ### L2: No on-chain proof of provider pubkey ownership
 
@@ -125,9 +207,13 @@ Agent                         Provider
 This challenge-response flow is not enforced on-chain (Move cannot query external
 services) but should be implemented by all s402 client integrations.
 
+## Revision History
+
+- **2026-02-15** — Original (Session 128). v0.1 trust model, v0.2 signed receipts, v0.3 TEE roadmap.
+- **2026-03-01** — L1 correction. Cumulative receipts do NOT fix L1 (traced through `dispute_claim()` — same attack works). v0.3 roadmap updated: provider-submitted receipts (not cumulative). TEE moved to v0.4.
+
 ## References
 
 - `sweefi/contracts/sources/prepaid.move` — contract implementation with trust model comments
 - Cetus $223M overflow — motivates u128 intermediate math in claim calculation
 - Nautilus TEE documentation — endgame for hardware-attested usage proofs
-- `SECURITY-REVIEW-V02.md` — v0.2 security audit findings and fixes

@@ -84,7 +84,7 @@ The USD → SUI conversion happens ONCE at deposit time:
 
 1. Human buys USDC via on-ramp (Coinbase, MoonPay, etc.)
 2. Human deposits USDC into SweeFi Prepaid vault or agent wallet on Sui
-3. Human creates Mandate<USDC> with spending limits
+3. Human creates `Mandate<USDC>` with spending limits
 4. All subsequent agent transactions are USDC-on-Sui (no per-TX conversion)
 5. Agent draws from pre-funded vault per Mandate constraints
 
@@ -92,7 +92,7 @@ The USD → SUI conversion happens ONCE at deposit time:
 
 **Phase 1: `@sweefi/ap2-adapter` package**
 - Accept AP2 Intent Mandate (JSON) → map to SweeFi Mandate parameters
-- Create on-chain `Mandate<T>` via PTB from AP2 intent
+- Create on-chain Mandate via PTB from AP2 intent
 - Return AP2-compatible PaymentMandate confirmations
 - Validate AP2 signatures (ECDSA hardware-backed keys)
 

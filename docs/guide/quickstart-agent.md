@@ -39,7 +39,7 @@ Agent                    API Server                  Sui
   |  [build payment PTB]   |                          |
   |  [sign with keypair]   |                          |
   |                        |                          |
-  |── GET + X-PAYMENT ───>|                          |
+  |── GET + x-payment ───>|                          |
   |                        |── execute signed TX ───>|
   |                        |<── TX digest ───────────|
   |<── 200 + data ────────|                          |
@@ -47,7 +47,7 @@ Agent                    API Server                  Sui
 
 1. Your agent sends a normal `GET` request
 2. The server responds with **HTTP 402** and payment requirements (amount, token, recipient)
-3. `createS402Client` detects the 402, builds a Sui PTB, signs it, and retries with the payment proof in an `X-PAYMENT` header
+3. `createS402Client` detects the 402, builds a Sui PTB, signs it, and retries with the payment proof in an `x-payment` header
 4. The server (or facilitator) executes the signed transaction on Sui
 5. An on-chain `PaymentReceipt` is created — owned by the payer
 6. The server returns the premium data

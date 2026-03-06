@@ -122,7 +122,7 @@ The `fly.toml` is configured for:
 | `GET` | `/ready` | No | Readiness probe (checks RPC connectivity) |
 | `GET` | `/.well-known/s402-facilitator` | No | Facilitator identity + capabilities |
 | `GET` | `/.well-known/s402.json` | No | s402 discovery document |
-| `GET` | `/supported` | Yes | Networks and schemes |
+| `GET` | `/supported` | No | Networks and schemes |
 | `POST` | `/verify` | Yes | Verify payment without broadcasting |
 | `POST` | `/settle` | Yes | Verify + broadcast to Sui |
 | `POST` | `/s402/process` | Yes | Atomic verify + settle (recommended) |

@@ -254,6 +254,8 @@ Protocol-level scheme implementations used by the facilitator and client:
 ```typescript
 import {
   SUI_COIN_TYPE,       // '0x2::sui::SUI'
+  USDSUI_MAINNET,      // USDsui — Bridge (Stripe) native stablecoin
+  USDSUI_DECIMALS,     // 6
   USDC_MAINNET,        // mainnet USDC type
   USDC_TESTNET,        // testnet USDC type
   SUI_MAINNET_CAIP2,   // 'sui:mainnet'

@@ -21,7 +21,7 @@ Agent                    Server                   Sui
   |  [buildPayTx]          |                       |
   |  [sign with keypair]   |                       |
   |                        |                       |
-  |── GET + X-PAYMENT ────>|                       |
+  |── GET + x-payment ────>|                       |
   |                        |── execute signed TX ──>|
   |                        |   payment::pay_and_keep()  |
   |                        |   → PaymentReceipt    |

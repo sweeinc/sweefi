@@ -86,7 +86,7 @@ The wrapper:
 1. Sends the initial `GET`
 2. If 402, extracts requirements from the `payment-required` header
 3. Calls the s402 client to build + sign a payment
-4. Retries the request with the payment in the `X-PAYMENT` header
+4. Retries the request with the payment in the `x-payment` header
 5. Returns the final response
 
 ### Options

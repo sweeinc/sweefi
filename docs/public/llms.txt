@@ -1,0 +1,47 @@
+# SweeFi
+
+> Open-source payment protocol for AI agents on Sui. Five on-chain payment primitives, 42 PTB builders, 35 MCP tools. Apache 2.0.
+
+SweeFi implements the s402 HTTP 402 protocol — when an AI agent hits a payment-gated API, it auto-detects the price, signs a Sui transaction, and retries without human intervention. The protocol is wire-compatible with Coinbase's x402 at the HTTP layer, but uses Sui's Programmable Transaction Blocks for atomic, composable settlement impossible on EVM.
+
+Eight Move modules deployed to Sui testnet (v8). 849+ tests. Builds for: autonomous AI agents, API monetization without API keys, streaming micropayments for AI inference, trustless escrow for digital goods, pay-to-decrypt via SEAL threshold encryption.
+
+## Getting Started
+
+- [Quickstart (AI Agent)](https://docs.sweefi.xyz/guide/quickstart-agent): 5-minute guide — agent auto-pays for API access
+- [Quickstart (API Server)](https://docs.sweefi.xyz/guide/quickstart-server): Add 402-gating to any Hono/Express API
+- [Installation](https://docs.sweefi.xyz/guide/): npm install @sweefi/sui
+
+## Payment Schemes
+
+- [Exact Scheme](https://docs.sweefi.xyz/guide/exact): One-shot atomic payment, wire-compatible with x402
+- [Prepaid Scheme](https://docs.sweefi.xyz/guide/prepaid): Deposit budget on-chain, 1000 API calls = 2 transactions
+- [Escrow Scheme](https://docs.sweefi.xyz/guide/escrow): Time-locked with arbiter disputes, permissionless timeout refunds
+- [Stream Scheme](https://docs.sweefi.xyz/guide/stream): Per-second micropayments with hard budget caps
+- [Seal Scheme](https://docs.sweefi.xyz/guide/seal): Pay-to-decrypt via SEAL threshold encryption
+
+## Packages
+
+- [@sweefi/sui](https://docs.sweefi.xyz/guide/sui): 42 PTB builder functions, s402 client with auto-pay
+- [@sweefi/server](https://docs.sweefi.xyz/guide/server): s402Gate middleware for Hono / Express / any HTTP framework
+- [@sweefi/mcp](https://docs.sweefi.xyz/guide/mcp): 35 MCP tools — Claude, Cursor, and MCP-compatible AI agents pay directly
+- [@sweefi/cli](https://docs.sweefi.xyz/guide/cli): Terminal: pay, stream, escrow, mandate management
+- [@sweefi/facilitator](https://docs.sweefi.xyz/guide/facilitator): Self-hostable settlement server (Hono, Docker, Fly.io)
+- [@sweefi/vue](https://docs.sweefi.xyz/guide/vue): Vue 3 composables + plugin
+- [@sweefi/react](https://docs.sweefi.xyz/guide/react): React hooks + context provider
+- [@sweefi/ap2-adapter](https://docs.sweefi.xyz/guide/ap2): Google Agent Payment Authorization (AP2) bridge to Sui settlement
+- [s402 Protocol](https://docs.sweefi.xyz/protocol/): HTTP 402 protocol spec — chain-agnostic payment negotiation
+
+## Architecture
+
+- [Move Contracts](https://docs.sweefi.xyz/contracts/): Eight modules — payment, stream, escrow, seal_policy, prepaid, mandate, agent_mandate, admin
+- [PTB Builders](https://docs.sweefi.xyz/guide/sui): Composable Programmable Transaction Block patterns
+- [Facilitator Architecture](https://docs.sweefi.xyz/guide/facilitator): Sign-first model — client's private key never leaves the device
+- [Security Model](https://docs.sweefi.xyz/security/): Every fund path has a recovery path; no admin keys; permissionless timeouts
+
+## Optional
+
+- [GitHub Repository](https://github.com/sweeinc/sweefi): Source code, issues, contributions
+- [s402 vs x402](https://docs.sweefi.xyz/x402/): Technical comparison — same HTTP 402, different settlement layer
+- [Changelog](https://docs.sweefi.xyz/changelog/): Version history (v1 → v8)
+- [npm packages](https://www.npmjs.com/org/sweefi): All published @sweefi/* packages

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Dark background pill, matches deck/brand theme -->
+  <rect width="32" height="32" rx="7" fill="#0D1117"/>
+  <!-- Stylized S — two arcs forming an S-curve, brand blue -->
+  <!-- Top arc: curves right -->
+  <path
+    d="M21 10.5
+       C21 10.5 19.5 8 16 8
+       C12.5 8 10.5 10 10.5 12.5
+       C10.5 15 12.5 16 16 16.5"
+    stroke="#4FC1FF"
+    stroke-width="2.6"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <!-- Bottom arc: curves left -->
+  <path
+    d="M11 21.5
+       C11 21.5 12.5 24 16 24
+       C19.5 24 21.5 22 21.5 19.5
+       C21.5 17 19.5 16 16 15.5"
+    stroke="#4FC1FF"
+    stroke-width="2.6"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>

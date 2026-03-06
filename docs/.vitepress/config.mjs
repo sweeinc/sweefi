@@ -4,8 +4,26 @@ export default defineConfig({
   title: 'SweeFi',
   description: 'Open-source agentic payment infrastructure for Sui. Five payment schemes. 42 PTB builders. Built for AI agents that spend money autonomously.',
   cleanUrls: true,
+  lastUpdated: true,
+  sitemap: {
+    hostname: 'https://docs.sweefi.xyz',
+    transformItems(items) {
+      return items.map(item => {
+        // Boost priority on high-value entry points
+        if (item.url === 'guide/quickstart-agent' || item.url === 'guide/quickstart-server') {
+          return { ...item, priority: 0.9, changefreq: 'weekly' }
+        }
+        if (item.url === 'guide/') {
+          return { ...item, priority: 1.0, changefreq: 'weekly' }
+        }
+        if (item.url.startsWith('guide/') || item.url.startsWith('guide/sui')) {
+          return { ...item, priority: 0.8, changefreq: 'weekly' }
+        }
+        return { ...item, priority: 0.6, changefreq: 'monthly' }
+      })
+    },
+  },
   srcExclude: [
-    'adr/**',
     'specs/**',
     'SDK-ARCHITECTURE-RESTRUCTURE.md',
     'SEAL-ISSUE-BACKLOG.md',
@@ -14,6 +32,7 @@ export default defineConfig({
     'MAINNET-DEPLOYMENT.md',
     'V8-FINAL-AUDIT.md',
     'V8-POST-FIX-AUDIT.md',
+    'SECURITY-REVIEW-V02-WAVE2.md',
     'claude-code-mcp.md',
   ],
   head: [
@@ -77,6 +96,15 @@ export default defineConfig({
           { text: 'Move Modules Overview', link: '/guide/contracts' },
           { text: 'Mandates (AP2)', link: '/guide/mandates' },
           { text: 'Fee & Trust Model', link: '/guide/fee-ownership' },
+        ],
+      },
+      {
+        text: 'Reference',
+        items: [
+          { text: 'Protocol Specification', link: '/guide/protocol' },
+          { text: 'Behavioral Guarantees', link: '/guide/behavioral-guarantees' },
+          { text: 'Glossary', link: '/guide/glossary' },
+          { text: 'Architecture Decisions', link: '/guide/adrs' },
         ],
       },
     ],
