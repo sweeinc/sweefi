@@ -18,6 +18,7 @@ export function resolveCoinType(input?: string, network: string = "testnet"): st
   const upper = input.toUpperCase();
   if (upper === "SUI") return COIN_TYPES.SUI;
   if (upper === "USDC") return network === "mainnet" ? COIN_TYPES.USDC : TESTNET_COIN_TYPES.USDC;
+  if (upper === "USDSUI") return COIN_TYPES.USDSUI;
   if (upper === "USDT") return COIN_TYPES.USDT;
   return input;
 }

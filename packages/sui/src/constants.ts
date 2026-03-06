@@ -1,4 +1,11 @@
 /**
+ * USDsui — Sui's native stablecoin issued by Bridge (a Stripe company).
+ * Launched mainnet Mar 4, 2026. 6 decimals. GENIUS-compliant. Gasless transfers.
+ */
+export const USDSUI_MAINNET =
+  "0x44f838219cf67b058f3b37907b655f226153c18e33dfcd0da559a844fea9b1c1::usdsui::USDSUI";
+
+/**
  * Native Circle USDC on Sui (CCTP)
  * This is the canonical USDC — NOT the deprecated Wormhole-bridged version (0x5d4b...)
  */
@@ -15,6 +22,11 @@ export const USDC_TESTNET =
  * Native SUI coin type
  */
 export const SUI_COIN_TYPE = "0x2::sui::SUI";
+
+/**
+ * USDsui decimal places (same as USDC — 6)
+ */
+export const USDSUI_DECIMALS = 6;
 
 /**
  * USDC decimal places (same as Circle USDC everywhere)
@@ -54,6 +66,9 @@ export const SUI_ADDRESS_REGEX = /^0x[a-fA-F0-9]{64}$/;
  */
 export const COIN_TYPES = {
   SUI: "0x2::sui::SUI",
+  /** USDsui — Sui's native stablecoin issued by Bridge (Stripe). Default settlement token. */
+  USDSUI:
+    "0x44f838219cf67b058f3b37907b655f226153c18e33dfcd0da559a844fea9b1c1::usdsui::USDSUI",
   /** Circle native USDC on Sui mainnet (NOT deprecated Wormhole wUSDC 0x5d4b...) */
   USDC: "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
   /** Wormhole-bridged USDT (mainnet) */
@@ -69,6 +84,7 @@ export const TESTNET_COIN_TYPES = {
 /** Decimal precision for known coin types */
 export const COIN_DECIMALS: Record<string, number> = {
   [COIN_TYPES.SUI]: 9,
+  [COIN_TYPES.USDSUI]: 6,
   [COIN_TYPES.USDC]: 6,
   [COIN_TYPES.USDT]: 6,
   [TESTNET_COIN_TYPES.USDC]: 6,

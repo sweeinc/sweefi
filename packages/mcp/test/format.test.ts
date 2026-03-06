@@ -56,6 +56,11 @@ describe("resolveCoinType", () => {
     expect(resolveCoinType("USDC", "sui:testnet")).toBe(TESTNET_COIN_TYPES.USDC);
   });
 
+  it("resolves USDSUI to mainnet address", () => {
+    expect(resolveCoinType("usdsui")).toBe(COIN_TYPES.USDSUI);
+    expect(resolveCoinType("USDSUI")).toBe(COIN_TYPES.USDSUI);
+  });
+
   it("passes through full type strings", () => {
     const custom = "0xabc::token::TOKEN";
     expect(resolveCoinType(custom)).toBe(custom);

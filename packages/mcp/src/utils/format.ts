@@ -254,6 +254,7 @@ export function formatBalance(amount: string | bigint, coinType: string): string
 export function getSymbol(coinType: string): string {
   if (coinType === COIN_TYPES.SUI || coinType.endsWith("::sui::SUI")) return "SUI";
   if (coinType === COIN_TYPES.USDC || coinType.includes("::usdc::USDC")) return "USDC";
+  if (coinType.includes("::usdsui::USDSUI")) return "USDSUI";
   if (coinType === COIN_TYPES.USDT) return "USDT";
   // Truncate unknown types
   return coinType.length > 20 ? `${coinType.slice(0, 10)}...` : coinType;
@@ -275,6 +276,7 @@ export function resolveCoinType(input?: string, network?: string): string {
     const isTestnet = network?.includes("testnet") ?? false;
     return isTestnet ? TESTNET_COIN_TYPES.USDC : COIN_TYPES.USDC;
   }
+  if (upper === "USDSUI") return COIN_TYPES.USDSUI;
   if (upper === "USDT") return COIN_TYPES.USDT;
   return input; // assume it's a full type string
 }
