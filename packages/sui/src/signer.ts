@@ -94,6 +94,15 @@ export interface FacilitatorSuiSigner {
     digest: string,
     network: string,
   ): Promise<{ events?: Array<{ type: string; parsedJson?: unknown }> }>;
+
+  /**
+   * Sign transaction bytes as gas sponsor (optional — only when keypair configured).
+   * Used for sponsored transactions where the facilitator pays gas.
+   *
+   * @param transactionBytes - Base64-encoded transaction bytes
+   * @returns Base64-encoded sponsor signature
+   */
+  sponsorSign?(transactionBytes: string): Promise<string>;
 }
 
 /**
@@ -197,6 +206,17 @@ export function toFacilitatorSuiSigner(
       });
       return { events: result.events ?? undefined };
     },
+
+    // Only expose sponsorSign when a keypair is configured
+    ...(keypair
+      ? {
+          async sponsorSign(transactionBytes: string): Promise<string> {
+            const txBytes = fromBase64(transactionBytes);
+            const { signature } = await keypair.signTransaction(txBytes);
+            return signature;
+          },
+        }
+      : {}),
   };
 }
 

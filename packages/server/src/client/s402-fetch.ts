@@ -95,7 +95,14 @@ export function wrapFetchWithS402(
     while (retries < maxRetries) {
       // Only create a new payment if requirements changed or no cached payload
       if (!cachedPayload || cachedRequirements !== requirements) {
-        const payload = await client.createPayment(requirements);
+        let payload;
+        try {
+          payload = await client.createPayment(requirements);
+        } catch (createError) {
+          // All createPayment errors are non-retryable (mandate auth failures,
+          // missing config, etc.) — bubble up immediately
+          throw createError;
+        }
         cachedPayload = encodePaymentPayload(payload);
         cachedRequirements = requirements;
         paymentCreated = true;

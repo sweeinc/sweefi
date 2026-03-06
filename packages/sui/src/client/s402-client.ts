@@ -32,7 +32,7 @@ import { toClientSuiSigner } from "../signer.js";
 import type { s402ClientConfig } from "./s402-types.js";
 
 export function createS402Client(config: s402ClientConfig) {
-  const { wallet, network, rpcUrl, facilitatorUrl, packageId } = config;
+  const { wallet, network, rpcUrl, facilitatorUrl, packageId, mandate } = config;
 
   const suiNetwork = network.replace("sui:", "") as "testnet" | "mainnet" | "devnet";
   const suiClient = rpcUrl
@@ -42,7 +42,17 @@ export function createS402Client(config: s402ClientConfig) {
   const signer = toClientSuiSigner(wallet, suiClient);
 
   const client = new s402Client();
-  client.register(network, new ExactSuiClientScheme(signer));
+
+  // Thread mandate config to exact scheme (requires packageId for the MoveCall target)
+  if (mandate && !packageId) {
+    throw new Error(
+      'mandate config requires packageId — validate_and_spend needs the Move package target',
+    );
+  }
+  const mandateConfig = mandate && packageId
+    ? { mandateId: mandate.mandateId, registryId: mandate.registryId, packageId }
+    : undefined;
+  client.register(network, new ExactSuiClientScheme(signer, mandateConfig));
 
   if (packageId) {
     const sweefiConfig = { packageId };

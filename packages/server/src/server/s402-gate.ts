@@ -53,6 +53,8 @@ export interface s402GateConfig {
   facilitatorUrl?: string;
   /** Protocol fee in basis points */
   protocolFeeBps?: number;
+  /** Address that receives the protocol fee (if different from payTo) */
+  protocolFeeAddress?: string;
   /** Mandate requirements */
   mandate?: { required: boolean; minPerTx?: string };
   /** Prepaid scheme config (included in requirements when schemes includes 'prepaid') */
@@ -62,6 +64,8 @@ export interface s402GateConfig {
     minDeposit: string;
     withdrawalDelayMs: string;
   };
+  /** Gas station config — when set, the facilitator sponsors gas for transactions */
+  gasStation?: { sponsorAddress: string; maxBudget?: string };
   /** Custom verify+settle handler (overrides built-in facilitator call) */
   processPayment?: (payload: unknown, requirements: s402PaymentRequirements) => Promise<s402SettleResponse>;
 }
@@ -75,9 +79,20 @@ export function s402Gate(config: s402GateConfig): MiddlewareHandler {
     asset = '0x2::sui::SUI',
     facilitatorUrl,
     protocolFeeBps,
+    protocolFeeAddress,
     mandate,
     prepaid,
+    gasStation,
   } = config;
+
+  // Validate protocolFeeBps at construction time (fail fast on misconfig)
+  if (protocolFeeBps !== undefined) {
+    if (!Number.isInteger(protocolFeeBps) || protocolFeeBps < 0 || protocolFeeBps > 10000) {
+      throw new Error(
+        `protocolFeeBps must be an integer 0-10000 (basis points), got ${protocolFeeBps}`,
+      );
+    }
+  }
 
   // Always include "exact" (base scheme)
   const accepts: s402Scheme[] = [...new Set([...schemes, 'exact' as const])];
@@ -93,7 +108,9 @@ export function s402Gate(config: s402GateConfig): MiddlewareHandler {
     payTo,
     facilitatorUrl,
     protocolFeeBps,
+    protocolFeeAddress,
     mandate: mandate ? { required: mandate.required, minPerTx: mandate.minPerTx } : undefined,
+    extensions: gasStation ? { gasStation } : undefined,
     prepaid: prepaid ? {
       ratePerCall: prepaid.ratePerCall,
       maxCalls: prepaid.maxCalls,

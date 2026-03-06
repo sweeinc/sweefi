@@ -3,12 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "license": "Apache-2.0",
   "scripts": {
-    "demo": "tsx demo.ts"
+    "demo": "tsx demo.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@mysten/seal": "^1.0.0",
-    "@mysten/sui": "^2.0.0",
+    "@mysten/sui": "^2.6.0",
     "@sweefi/sui": "workspace:*"
   },
   "devDependencies": {

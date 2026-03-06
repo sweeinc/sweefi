@@ -23,4 +23,17 @@ export interface s402ClientConfig {
    * If omitted, only exact payments are supported.
    */
   packageId?: string;
+
+  /**
+   * Mandate configuration for agents with delegated spending authorization.
+   * When provided, the exact scheme includes a `validate_and_spend` MoveCall
+   * in payment PTBs when the server requires mandate authorization.
+   * Requires `packageId` to also be set.
+   */
+  mandate?: {
+    /** Mandate object ID (owned by this agent/delegate) */
+    mandateId: string;
+    /** RevocationRegistry object ID (shared object) */
+    registryId: string;
+  };
 }

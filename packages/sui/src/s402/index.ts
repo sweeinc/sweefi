@@ -12,7 +12,8 @@
 
 // Exact
 export { ExactSuiClientScheme } from './exact/client.js';
-export { ExactSuiFacilitatorScheme } from './exact/facilitator.js';
+export type { ExactSuiClientSchemeConfig } from './exact/client.js';
+export { ExactSuiFacilitatorScheme, DEFAULT_MAX_SPONSOR_GAS_BUDGET } from './exact/facilitator.js';
 
 // Stream
 export { StreamSuiClientScheme } from './stream/client.js';

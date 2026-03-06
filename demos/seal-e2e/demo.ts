@@ -204,7 +204,7 @@ async function main() {
     arbiter: buyerAddress, // buyer = arbiter for demo (can self-release)
     depositAmount: 10_000n,
     deadlineMs: deadline,
-    feeBps: 0,
+    feeMicroPercent: 0,
     feeRecipient: buyerAddress,
     memo: "SEAL pay-to-decrypt demo",
   });

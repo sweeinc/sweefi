@@ -4,30 +4,46 @@
  * Builds a signed payment PTB for one-shot exact payments.
  * Reuses existing PTB logic: coinWithBalance() → transferObjects().
  *
- * FEE COLLECTION NOTE (V8 audit F-04):
- * The exact scheme's fee split currently sends both the merchant and fee
- * portions to `payTo` because `protocolFeeAddress` is never set in the
- * requirements (s402GateConfig has no such field). This means exact payments
- * are effectively fee-free at the transfer level.
+ * FEE COLLECTION (v0.2):
+ * When `protocolFeeAddress` is set in requirements and differs from `payTo`,
+ * the client splits the payment: merchant gets (amount - fee), fee address
+ * gets fee. The facilitator verifies both recipients via dry-run balance changes.
  *
- * This is intentional for v0.1: exact is the simple, zero-overhead scheme.
- * Fee enforcement for escrow/stream/prepaid happens on-chain in Move contracts.
- * To enable exact-scheme fees, a future version must:
- *   1. Add `protocolFeeAddress` to s402GateConfig
- *   2. Include it in the 402 requirements
- *   3. Update ExactSuiFacilitatorScheme.verify() to check
- *      recipient got >= (amount - fee) AND feeAddress got >= fee
+ * MANDATE SUPPORT (v0.2):
+ * When `requirements.mandate.required` is true and `mandateConfig` is provided,
+ * the PTB prepends a `mandate::validate_and_spend` MoveCall before the payment.
+ * The mandate check and payment compose atomically — if either fails, the whole
+ * transaction reverts. The mandate is purely an authorization check; it does NOT
+ * hold funds. The actual payment uses the exact scheme's coinWithBalance pattern.
  */
 
 import { Transaction, coinWithBalance } from '@mysten/sui/transactions';
 import type { s402ClientScheme, s402PaymentRequirements, s402ExactPayload } from 's402';
 import { S402_VERSION } from 's402';
 import type { ClientSuiSigner } from '../../signer.js';
+import { SUI_CLOCK } from '../../ptb/deployments.js';
+
+/**
+ * Optional mandate configuration for agents with spending authorization.
+ * When provided, the scheme can build mandated PTBs that include on-chain
+ * spending validation via `mandate::validate_and_spend`.
+ */
+export interface ExactSuiClientSchemeConfig {
+  /** Mandate object ID (owned by this agent/delegate) */
+  mandateId: string;
+  /** RevocationRegistry object ID (shared object, required for revocation checks) */
+  registryId: string;
+  /** SweeFi Move package ID (for mandate::validate_and_spend target) */
+  packageId: string;
+}
 
 export class ExactSuiClientScheme implements s402ClientScheme {
   readonly scheme = 'exact' as const;
 
-  constructor(private readonly signer: ClientSuiSigner) {}
+  constructor(
+    private readonly signer: ClientSuiSigner,
+    private readonly mandateConfig?: ExactSuiClientSchemeConfig,
+  ) {}
 
   async createPayment(
     requirements: s402PaymentRequirements,
@@ -36,6 +52,38 @@ export class ExactSuiClientScheme implements s402ClientScheme {
 
     const tx = new Transaction();
     tx.setSender(this.signer.address);
+
+    // Gas sponsorship: if server advertises a gas station, set gasOwner so
+    // the facilitator co-signs and pays gas on behalf of the client.
+    const gasStation = requirements.extensions?.gasStation as
+      { sponsorAddress: string; maxBudget?: string } | undefined;
+    if (gasStation?.sponsorAddress) {
+      tx.setGasOwner(gasStation.sponsorAddress);
+      if (gasStation.maxBudget) {
+        tx.setGasBudget(BigInt(gasStation.maxBudget));
+      }
+    }
+
+    // Mandate check: prepend validate_and_spend if server requires authorization
+    if (requirements.mandate?.required) {
+      if (!this.mandateConfig) {
+        throw new Error(
+          'Server requires mandate authorization but no mandate is configured. ' +
+          'Pass mandateConfig to ExactSuiClientScheme constructor.',
+        );
+      }
+      const { mandateId, registryId, packageId } = this.mandateConfig;
+      tx.moveCall({
+        target: `${packageId}::mandate::validate_and_spend`,
+        typeArguments: [asset],
+        arguments: [
+          tx.object(mandateId),
+          tx.pure.u64(BigInt(amount)),
+          tx.object(registryId),
+          tx.object(SUI_CLOCK),
+        ],
+      });
+    }
 
     const totalAmount = BigInt(amount);
 

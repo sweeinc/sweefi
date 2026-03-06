@@ -32,3 +32,7 @@ export type { s402ClientConfig, SuiNetwork } from "./client/s402-types";
 // PaymentAdapter implementation for @sweefi/ui-core
 export { SuiPaymentAdapter } from "./adapter/SuiPaymentAdapter";
 export type { SuiPaymentAdapterConfig } from "./adapter/SuiPaymentAdapter";
+
+// Receipt HTTP helpers (v0.2 signed usage receipts)
+export { signUsageReceipt, parseUsageReceipt, ReceiptAccumulator, S402_RECEIPT_HEADER } from "./receipt-http";
+export type { VerifiedReceipt, ParsedReceipt } from "./receipt-http";
