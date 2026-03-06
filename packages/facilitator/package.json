@@ -40,7 +40,7 @@
     "@sweefi/sui": "workspace:^",
     "hono": "^4.0.0",
     "s402": "^0.2.0",
-    "sui-gas-station": "file:/Users/dannydevs/repos/danny/projects/sui-gas-station-project/sui-gas-station",
+    "sui-gas-station": "^0.2.0",
     "zod": "^3.22.0"
   },
   "devDependencies": {

@@ -164,8 +164,8 @@ importers:
         specifier: ^0.2.0
         version: 0.2.0
       sui-gas-station:
-        specifier: file:/Users/dannydevs/repos/danny/projects/sui-gas-station-project/sui-gas-station
-        version: file:../../sui-gas-station-project/sui-gas-station(@mysten/sui@2.6.0(typescript@5.9.3))
+        specifier: ^0.2.0
+        version: 0.2.0(@mysten/sui@2.6.0(typescript@5.9.3))
       zod:
         specifier: ^3.22.0
         version: 3.25.76
@@ -3067,8 +3067,8 @@ packages:
   strip-literal@3.1.0:
     resolution: {integrity: sha512-8r3mkIM/2+PpjHoOtiAW8Rg3jJLHaV7xPwG+YRGrv6FP0wwk/toTpATxWYOW0BKdWwl82VT2tFYi5DlROa0Mxg==}
 
-  sui-gas-station@file:../../sui-gas-station-project/sui-gas-station:
-    resolution: {directory: ../../sui-gas-station-project/sui-gas-station, type: directory}
+  sui-gas-station@0.2.0:
+    resolution: {integrity: sha512-7kJexmqyC0H837w/RMnuSDu0WlLB/sxnaL1jaDXBe08IQdstzRNaHqduGGI8H0sDykh1b/A0y7oV9QC5+CkZPQ==}
     engines: {node: '>=20'}
     peerDependencies:
       '@mysten/sui': ^2.0.0
@@ -6200,7 +6200,7 @@ snapshots:
     dependencies:
       js-tokens: 9.0.1
 
-  sui-gas-station@file:../../sui-gas-station-project/sui-gas-station(@mysten/sui@2.6.0(typescript@5.9.3)):
+  sui-gas-station@0.2.0(@mysten/sui@2.6.0(typescript@5.9.3)):
     dependencies:
       '@mysten/sui': 2.6.0(typescript@5.9.3)
 
