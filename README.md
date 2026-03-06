@@ -149,19 +149,19 @@ AI Agent (Claude, GPT, Cursor, etc.)
 |---------|-------------|-------|
 | [`@sweefi/ui-core`](packages/ui-core) | Framework-agnostic state machine + `PaymentAdapter` interface | 13 |
 | [`@sweefi/server`](packages/server) | Chain-agnostic HTTP: `s402Gate` middleware + `wrapFetchWithS402` | — |
-| [`@sweefi/sui`](packages/sui) | 40 PTB builders + `SuiPaymentAdapter` + s402 client | 189 |
+| [`@sweefi/sui`](packages/sui) | 40 PTB builders + `SuiPaymentAdapter` + s402 client | 252 |
 | [`@sweefi/vue`](packages/vue) | Vue 3 plugin + `useSweefiPayment()` composable | 10 |
 | [`@sweefi/react`](packages/react) | React context + `useSweefiPayment()` hook (`useSyncExternalStore`) | 12 |
-| [`@sweefi/facilitator`](packages/facilitator) | Self-hostable payment verification — Docker/Fly.io (not on npm) | 37 |
-| [`@sweefi/mcp`](packages/mcp) | MCP server with 35 AI agent tools | 79 |
+| [`@sweefi/facilitator`](packages/facilitator) | Self-hostable payment verification — Docker/Fly.io (not on npm) | 57 |
+| [`@sweefi/mcp`](packages/mcp) | MCP server with 35 AI agent tools | 123 |
 | [`@sweefi/cli`](packages/cli) | CLI tool — wallet, pay, prepaid, mandates | 42 |
 | [`@sweefi/solana`](packages/solana) | Solana s402 payment adapter | 40 |
 | [`@sweefi/ap2-adapter`](packages/ap2-adapter) | Google AP2 ↔ SweeFi mandate bridge | 52 |
-| [`sweefi-contracts`](contracts) | 10 Move modules on Sui testnet (v7) | 185 |
+| [`sweefi-contracts`](contracts) | 10 Move modules on Sui testnet (v7) | 246 |
 
-**Total: 567 tests (382 TypeScript + 185 Move)**
+**Total: 849 passing tests (603 TypeScript + 246 Move)**
 
-**External**: [`s402`](https://www.npmjs.com/package/s402) (HTTP 402 protocol, v0.1.2), `@mysten/sui@2.4.0`, `@mysten/seal@1.0.1`
+**External**: [`s402`](https://www.npmjs.com/package/s402) (HTTP 402 protocol, v0.1.2), `@mysten/sui@2.6.0`, `@mysten/seal@1.0.1`
 
 ## Try It Now
 
@@ -238,6 +238,7 @@ app.get('/premium', (c) => c.json({ data: 'premium content' }));
 
 ```typescript
 import { buildCreateStreamTx } from '@sweefi/sui/ptb';
+import { ZERO_ADDRESS } from '@sweefi/sui';
 
 const tx = buildCreateStreamTx(config, {
   coinType: '0x2::sui::SUI',
@@ -255,6 +256,7 @@ const tx = buildCreateStreamTx(config, {
 
 ```typescript
 import { buildCreateMandateTx, buildMandatedPayTx } from '@sweefi/sui/ptb';
+import { ZERO_ADDRESS } from '@sweefi/sui';
 
 // Human creates mandate for AI agent
 const createTx = buildCreateMandateTx(config, {
@@ -323,7 +325,7 @@ No admin keys control user funds.
 
 ## Smart Contracts
 
-Deployed on Sui testnet v7. 10 modules, 185 Move test functions (62 positive + 123 expected-failure), AdminCap + ProtocolState for governance.
+Deployed on Sui testnet v8. 10 modules, 246 Move test annotations, AdminCap + ProtocolState for governance.
 
 | Module | Purpose |
 |--------|---------|

@@ -7,15 +7,15 @@
 
 **SweeFi** is open-source agentic payment infrastructure for Sui.
 - Monorepo with 10 TS packages + Move smart contracts
-- Built on top of `s402` (HTTP 402 protocol, published on npm as `s402@0.1.7`)
+- Built on top of `s402` (HTTP 402 protocol, published on npm as `s402@0.2.0`)
 - Competing with BEEP (justbeep.it) — proprietary alternative
-- 666+ total tests (481+ TypeScript + 185 Move)
+- 849 passing tests (603 TypeScript + 246 Move) — see STATUS.md for per-package breakdown
 
 ## Repository Structure
 
 ```
 sweefi-project/
-├── contracts/                    # Move smart contracts (10 modules, 185 test functions)
+├── contracts/                    # Move smart contracts (10 modules, 246 test functions)
 │   └── sources/
 │       ├── payment.move          # Direct payments, invoices, receipts
 │       ├── stream.move           # Streaming micropayments + budget caps
@@ -30,13 +30,13 @@ sweefi-project/
 ├── packages/
 │   ├── ui-core/                  # Framework-agnostic state machine + PaymentAdapter interface (13 tests)
 │   ├── server/                   # Chain-agnostic HTTP: s402Gate, wrapFetchWithS402 (integration only)
-│   ├── sui/                      # 40 PTB builders + SuiPaymentAdapter + s402 schemes (189 tests)
+│   ├── sui/                      # 42 PTB builders + SuiPaymentAdapter + s402 schemes (252 tests)
 │   ├── vue/                      # Vue 3 plugin + useSweefiPayment() composable (10 tests)
 │   ├── react/                    # React context + useSweefiPayment() hook (12 tests)
-│   ├── facilitator/              # Self-hostable payment verification — private, Docker only (51 tests)
-│   ├── mcp/                      # MCP server, 30+5 AI agent tools (79 tests)
-│   ├── cli/                      # CLI tool — wallet, pay, prepaid, mandates (42 tests)
-│   ├── ap2-adapter/              # AP2 ↔ SweeFi mandate mapper + bridge (44 tests)
+│   ├── facilitator/              # Self-hostable payment verification — private, Docker only (57 tests)
+│   ├── mcp/                      # MCP server, 35 AI agent tools (124 tests)
+│   ├── cli/                      # CLI tool — wallet, pay, prepaid, mandates (43 tests)
+│   ├── ap2-adapter/              # AP2 ↔ SweeFi mandate mapper + bridge (52 tests)
 │   └── solana/                   # Solana s402 exact scheme adapter
 ├── demos/
 │   ├── agent-pays-api/           # Working agent demo (server + client + e2e)
@@ -188,7 +188,7 @@ proposing a change that touches any of these areas, **read the relevant ADR firs
 | ADR-004 | AdminCap & Emergency Pause | Two-tier: pause blocks new deposits, NEVER blocks exits. AdminCap has no fund extraction rights. |
 | ADR-005 | Permissive Access & Receipt Transferability | Receipts are bearer credentials. Ownership = access. No sender checks. |
 | ADR-006 | Object Ownership Model | Owned = one-party mutations (fast path). Shared = multi-party mutations (consensus). |
-| ADR-007 | Prepaid Trust Model | v0.1 = economic trust bounds. v0.2 = signed receipts. v0.3 = TEE attestation. |
+| ADR-007 | Prepaid Trust Model | v0.1 = economic trust bounds. v0.2 = signed receipts + fraud proofs. v0.3 = provider-submitted receipts (self-enforcing). v0.4 = TEE attestation. |
 | ADR-008 | Facilitator API Gaps | `GET /ready` checks RPC (not just config). `/settlements` is per-key only (fleet-wide = info leak). Dedup key must include apiKey (cross-tenant collision). 4xx/5xx not cached. |
 
 ---
@@ -312,7 +312,7 @@ These are hard rules. Do not debate them; read the ADR if you want context.
 Previous deployed: `0x242f22b9f8b3d77868f6cde06f294203d7c76afa0cd101f388a6cefa45b54c3d` (v7)
 V8 package ID: **TBD — run `sui client publish --gas-budget 500000000` in `contracts/` then update here + `packages/sui/src/ptb/deployments.ts`**
 
-10 modules, 180 Move test functions (all passing as of V8).
+10 modules, 246 Move test functions (all passing as of V8).
 
 **Key design patterns:**
 - All payment functions are `public` (composable in PTBs), not `entry`
@@ -365,7 +365,7 @@ aborts at `create()`, not at assertions — the failure is confusing. Always use
 @sweefi/vue ────────────► @sweefi/ui-core
 @sweefi/react ──────────► @sweefi/ui-core
 
-External: s402@0.1.2 (npm), @mysten/sui@2.4.0, @mysten/seal@1.0.1
+External: s402@0.2.0 (npm), @mysten/sui@2.4.0, @mysten/seal@1.0.1
 
 Dependency direction (strict — never reverse):
   s402 ← @sweefi/server ← @sweefi/sui ← @sweefi/mcp, @sweefi/cli
@@ -388,11 +388,29 @@ Dependency direction (strict — never reverse):
 
 ---
 
+## s402 / SweeFi Boundary (CRITICAL — Read Before ANY Code Change)
+
+**s402 is chain-agnostic. SweeFi is chain-specific.** This boundary is load-bearing:
+
+| Concern | Belongs in | NOT in |
+|---------|-----------|--------|
+| Address format validation (Sui `0x` + 64 hex) | `@sweefi/sui` (constants.ts, utils.ts) | `s402` |
+| Amount magnitude checks (u64 max) | `@sweefi/sui` | `s402` |
+| Chain SDK imports (`@mysten/sui`) | `@sweefi/sui` | `s402` |
+| Coin type defaults (`0x2::sui::SUI`) | `@sweefi/sui` | `s402` |
+| Wire format, HTTP encoding, scheme interfaces | `s402` | `@sweefi/sui` |
+
+**If you need chain-specific validation**, add it in `@sweefi/sui` — the correct layer. The s402 package validates structure and safety only (non-empty strings, no control characters, numeric format). It has a `test/boundary.test.ts` that will fail the build if chain-specific patterns leak in.
+
+**Why this exists:** In Feb 2026, multiple AI sessions introduced Sui-specific validation into s402's protocol layer. It survived through 4-6 AI sessions because each one assumed prior work was correct. The `@sweefi/sui` package already has `validateSuiAddress()` and `SUI_ADDRESS_REGEX` in `constants.ts` / `utils.ts` — that's where chain validation belongs.
+
+---
+
 ## Key Dependencies
 
 - `@mysten/sui` — Sui TypeScript SDK (peerDep: `^2.0.0`)
 - `@modelcontextprotocol/sdk@^1.26.0` — MCP server SDK
-- `s402@^0.1.0` — s402 payment protocol core
+- `s402@^0.2.0` — s402 payment protocol core
 - `hono@^4.0.0` — Web framework (facilitator)
 - `zod@^3.22.0` — Runtime validation
 
@@ -516,7 +534,7 @@ Audits are performed as "AI council wave" reviews — fresh-eyes analysis with n
 | `FEE_RECIPIENT` env var | `config.ts` | Optional — forwarded to `/.well-known/s402-facilitator`; feeRecipient is encoded in each s402 header; facilitator doesn't need to collect fees |
 | `RATE_LIMIT_MAX_TOKENS` | `config.ts` | Token-bucket max capacity (default: 100). Was hardcoded. |
 | `RATE_LIMIT_REFILL_RATE` | `config.ts` | Tokens/second refill rate (default: 10). Was hardcoded. |
-| `/.well-known/s402-facilitator` | `routes.ts` | New endpoint — describes facilitator (who settles). Distinct from `/.well-known/s402.json` (resource server). Used by OpenClaw + ecosystem tooling for discovery. |
+| `/.well-known/s402-facilitator` | `routes.ts` | New endpoint — describes facilitator (who settles). Distinct from `/.well-known/s402.json` (resource server). Used by ecosystem tooling for discovery. |
 | API_KEYS 16-char minimum | `config.ts` | Zod validates each API key individually after comma-split. Short keys abort server startup. |
 
 ### Facilitator API surface review + fixes (Feb 2026, teaching session)

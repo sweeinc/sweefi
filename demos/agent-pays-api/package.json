@@ -4,17 +4,19 @@
   "private": true,
   "type": "module",
   "description": "Live agent demo: AI agent auto-pays s402-gated API on Sui testnet",
+  "license": "Apache-2.0",
   "scripts": {
     "demo": "node --env-file=.env --import tsx/esm demo.ts",
     "server": "node --env-file=.env --import tsx/esm server.ts",
-    "agent": "node --env-file=.env --import tsx/esm agent.ts"
+    "agent": "node --env-file=.env --import tsx/esm agent.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@mysten/sui": "^2.0.0",
-    "s402": "^0.1.0",
+    "@hono/node-server": "^1.14.0",
+    "@mysten/sui": "^2.6.0",
     "@sweefi/sui": "workspace:*",
     "hono": "^4.7.0",
-    "@hono/node-server": "^1.14.0"
+    "s402": "^0.1.0"
   },
   "devDependencies": {
     "tsx": "^4.7.0",

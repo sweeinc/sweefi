@@ -2,7 +2,10 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in SweeFi, **please report it responsibly** using [GitHub's private vulnerability reporting](https://github.com/sweeinc/sweefi/security/advisories/new).
+If you discover a security vulnerability in SweeFi, **please report it responsibly** via one of:
+
+- [GitHub private security advisory](https://github.com/sweeinc/sweefi/security/advisories/new) (preferred)
+- Email: **security@sweefi.xyz**
 
 This keeps reports private, tracked, and convertible into security advisories. Please include:
 - Description of the vulnerability

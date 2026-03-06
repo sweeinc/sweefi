@@ -1,0 +1,63 @@
+name: Release
+
+# Changesets workflow: on every push to main, either:
+#   A) There are .changeset/*.md files → create/update a "Version Packages" PR
+#   B) The "Version Packages" PR was just merged → publish to npm
+#
+# Required repo secrets:
+#   NPM_TOKEN — npm automation token with publish rights to @sweefi/* packages
+#   GITHUB_TOKEN — auto-provided by Actions; needs write:contents + write:pull-requests
+
+on:
+  push:
+    branches: [main]
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+permissions:
+  contents: write       # changesets/action needs to push version commits
+  pull-requests: write  # changesets/action opens the Version Packages PR
+  id-token: write       # npm provenance (trusted publishing)
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history lets changesets diff the changelog correctly
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          # registry-url causes setup-node to write //registry.npmjs.org/:_authToken
+          # into .npmrc using NODE_AUTH_TOKEN — used by `changeset publish`
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Create Release Pull Request or Publish
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          # Version bump: runs `changeset version` then commits + opens/updates PR
+          version: pnpm version
+          # Publish: runs after the Version PR is merged; builds then publishes
+          publish: pnpm release
+          commit: "chore: version packages"
+          title: "chore: version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # changesets/action passes this through; NODE_AUTH_TOKEN is what npm reads
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
