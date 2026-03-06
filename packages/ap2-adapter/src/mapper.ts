@@ -85,6 +85,37 @@ export function createAgentMandateFromAP2Intent(
 }
 
 // ══════════════════════════════════════════════════════════════
+// Fiat → base unit conversion (float-free)
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * Convert a fiat value (e.g. 279.99) to on-chain base units using
+ * pure bigint math. Avoids IEEE 754 precision loss that occurs when
+ * multiplying floats by large conversion factors.
+ *
+ * Strategy: parse the float's string representation to extract an
+ * integer numerator and power-of-10 denominator, then multiply in
+ * bigint space.
+ *
+ * Example: fiatToBaseUnits(279.99, 1_000_000n) → 279_990_000n
+ */
+function fiatToBaseUnits(value: number, rate: bigint): bigint {
+  const str = value.toString();
+  const dotIndex = str.indexOf('.');
+  if (dotIndex === -1) {
+    // Whole number — no decimal part
+    return BigInt(str) * rate;
+  }
+  const decimals = str.length - dotIndex - 1;
+  const wholePart = str.slice(0, dotIndex);
+  const fracPart = str.slice(dotIndex + 1);
+  // e.g. "279.99" → numerator = 27999, scale = 100
+  const numerator = BigInt(wholePart + fracPart);
+  const scale = 10n ** BigInt(decimals);
+  return (numerator * rate) / scale;
+}
+
+// ══════════════════════════════════════════════════════════════
 // CartMandate → Invoice (strong: amount, merchant, expiry map)
 // ══════════════════════════════════════════════════════════════
 
@@ -115,9 +146,10 @@ export function createInvoiceFromAP2Cart(
     throw new Error(`Cart total must be positive, got ${value}`);
   }
 
-  // Convert fiat → on-chain base units.
+  // Convert fiat → on-chain base units using string-based parsing
+  // to avoid IEEE 754 float precision loss on large amounts.
   // Example: $10.50 × 1_000_000 (USDC-6) = 10_500_000 base units.
-  const expectedAmount = BigInt(Math.round(value * Number(config.usdToBaseUnits)));
+  const expectedAmount = fiatToBaseUnits(value, config.usdToBaseUnits);
 
   return {
     sender: config.payee,        // Payee creates the invoice
