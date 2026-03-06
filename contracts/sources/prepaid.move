@@ -787,6 +787,7 @@ module sweefi::prepaid {
         admin::assert_not_paused(protocol_state);
         assert!(ctx.sender() == balance.agent, ENotAgent);
         assert!(!balance.withdrawal_pending, EWithdrawalPending);
+        assert!(!balance.disputed, EBalanceDisputed);
 
         let amount = coin.value();
         assert!(amount > 0, EZeroDeposit);

@@ -655,4 +655,114 @@ describe("PrepaidSuiServerScheme (s402 native)", () => {
     const scheme = new PrepaidSuiServerScheme();
     expect(scheme.scheme).toBe("prepaid");
   });
+
+  // ─── v0.2 Server Tests ───────────────────────
+
+  it("should include v0.2 fields when receiptConfig is provided", () => {
+    const scheme = new PrepaidSuiServerScheme({
+      providerPubkey: "a".repeat(64),
+      disputeWindowMs: "300000",
+    });
+    const result = scheme.buildRequirements({
+      schemes: ["prepaid"],
+      price: "10000000",
+      network: SUI_MAINNET_CAIP2,
+      payTo: MOCK_PAYTO,
+      prepaid: {
+        ratePerCall: "1000000",
+        minDeposit: "10000000",
+        withdrawalDelayMs: "3600000",
+      },
+    });
+    expect(result.prepaid?.providerPubkey).toBe("a".repeat(64));
+    expect(result.prepaid?.disputeWindowMs).toBe("300000");
+  });
+
+  it("should omit v0.2 fields when no receiptConfig (v0.1 mode)", () => {
+    const scheme = new PrepaidSuiServerScheme(); // no constructor args
+    const result = scheme.buildRequirements({
+      schemes: ["prepaid"],
+      price: "10000000",
+      network: SUI_MAINNET_CAIP2,
+      payTo: MOCK_PAYTO,
+      prepaid: {
+        ratePerCall: "1000000",
+        minDeposit: "10000000",
+        withdrawalDelayMs: "3600000",
+      },
+    });
+    expect(result.prepaid?.providerPubkey).toBeUndefined();
+    expect(result.prepaid?.disputeWindowMs).toBeUndefined();
+  });
+});
+
+// ─────────────────────────────────────────────────
+// v0.2: Facilitator providerPubkey validation
+// ─────────────────────────────────────────────────
+
+describe("PrepaidSuiFacilitatorScheme — v0.2 pubkey validation", () => {
+  it("should accept valid 64-hex-char providerPubkey in requirements", async () => {
+    const signer = createMockFacilitatorSigner();
+    const facilitator = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
+
+    const requirements = createMockS402Requirements({
+      prepaid: {
+        ratePerCall: "1000000",
+        minDeposit: "10000000",
+        withdrawalDelayMs: "3600000",
+        providerPubkey: "a".repeat(64),
+        disputeWindowMs: "300000",
+      },
+    });
+
+    const result = await facilitator.verify(createMockS402PrepaidPayload(), requirements);
+    expect(result.valid).toBe(true);
+  });
+
+  it("should accept 0x-prefixed providerPubkey", async () => {
+    const signer = createMockFacilitatorSigner();
+    const facilitator = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
+
+    const requirements = createMockS402Requirements({
+      prepaid: {
+        ratePerCall: "1000000",
+        minDeposit: "10000000",
+        withdrawalDelayMs: "3600000",
+        providerPubkey: "0x" + "b".repeat(64),
+        disputeWindowMs: "300000",
+      },
+    });
+
+    const result = await facilitator.verify(createMockS402PrepaidPayload(), requirements);
+    expect(result.valid).toBe(true);
+  });
+
+  it("should reject malformed providerPubkey (wrong length)", async () => {
+    const signer = createMockFacilitatorSigner();
+    const facilitator = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
+
+    const requirements = createMockS402Requirements({
+      prepaid: {
+        ratePerCall: "1000000",
+        minDeposit: "10000000",
+        withdrawalDelayMs: "3600000",
+        providerPubkey: "abcd", // too short
+        disputeWindowMs: "300000",
+      },
+    });
+
+    const result = await facilitator.verify(createMockS402PrepaidPayload(), requirements);
+    expect(result.valid).toBe(false);
+    expect(result.invalidReason).toContain("Invalid providerPubkey format");
+  });
+
+  it("should still work without providerPubkey (v0.1 backward compat)", async () => {
+    const signer = createMockFacilitatorSigner();
+    const facilitator = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
+
+    // Standard v0.1 requirements — no providerPubkey
+    const requirements = createMockS402Requirements();
+    const result = await facilitator.verify(createMockS402PrepaidPayload(), requirements);
+    expect(result.valid).toBe(true);
+  });
 });

@@ -2041,4 +2041,103 @@ module sweefi::prepaid_tests {
         clock.destroy_for_testing();
         scenario.end();
     }
+
+    // ══════════════════════════════════════════════════════════════
+    // Defense-in-depth: top_up blocked on disputed balance
+    // ══════════════════════════════════════════════════════════════
+
+    // top_up on a disputed balance should abort with EBalanceDisputed.
+    // Added for consistency with claim, finalize_claim, agent_close,
+    // provider_close — all of which check !disputed.
+    #[test]
+    #[expected_failure(abort_code = prepaid::EBalanceDisputed)]
+    fun test_top_up_blocked_when_disputed() {
+        let mut scenario = ts::begin(AGENT);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        setup_v2_balance(&mut scenario, &clock, &state);
+
+        // Provider claims 100 calls → pending
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::claim(&mut bal, 100, &clock, scenario.ctx());
+        ts::return_shared(bal);
+
+        // Agent disputes with receipt #50
+        scenario.next_tx(AGENT);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::dispute_claim(
+            &mut bal,
+            @0x06d553b842f768751ef60436013fd9a563de7986dc8991a2b3a8edb7037fc8ed,
+            50,
+            1700000000000,
+            TEST_RESPONSE_HASH,
+            TEST_SIG_CALL_50,
+            &clock,
+            scenario.ctx(),
+        );
+        assert!(prepaid::balance_disputed(&bal) == true);
+        ts::return_shared(bal);
+
+        // Agent tries to top up the disputed balance → should abort
+        scenario.next_tx(AGENT);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        let extra = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+        prepaid::top_up(&mut bal, extra, &state, &clock, scenario.ctx());
+
+        ts::return_shared(bal);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // L2 documentation test: all-zero pubkey is accepted
+    // ══════════════════════════════════════════════════════════════
+
+    // Documents that deposit_with_receipts only validates pubkey LENGTH (32 bytes),
+    // not CONTENT. An all-zero pubkey passes but makes disputes impossible
+    // (no valid signature verifies against the zero key). This is a subset of
+    // the L2 limitation (agent controls pubkey at deposit time).
+    #[test]
+    fun test_deposit_with_receipts_zero_pubkey_accepted() {
+        let mut scenario = ts::begin(AGENT);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+        let zero_pubkey = vector[
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ];
+        prepaid::deposit_with_receipts<SUI>(
+            deposit, PROVIDER, RATE, UNLIMITED, DELAY_MS, 0, FEE_RECIPIENT,
+            zero_pubkey, 300_000, // 5 min dispute window
+            &state, &clock, scenario.ctx(),
+        );
+
+        // Balance created successfully — length check passes
+        scenario.next_tx(AGENT);
+        let bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        assert!(prepaid::balance_remaining(&bal) == 1_000_000);
+        assert!(prepaid::balance_dispute_window_ms(&bal) == 300_000);
+        // The zero pubkey is stored — disputes will fail sig verification (L2)
+        let expected = vector[
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ];
+        assert!(prepaid::balance_provider_pubkey(&bal) == &expected);
+
+        ts::return_shared(bal);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
 }

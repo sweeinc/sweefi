@@ -166,6 +166,22 @@ export class PrepaidSuiFacilitatorScheme implements s402FacilitatorScheme {
         };
       }
 
+      // v0.2: lightweight pubkey format validation when requirements indicate
+      // signed receipt mode. The actual pubkey binding is enforced by the Move
+      // contract when creating the PrepaidBalance object — both deposit() and
+      // deposit_with_receipts() emit the same PrepaidDeposited event, so
+      // extractDepositEvent() handles both v0.1 and v0.2 transparently.
+      if (reqPrepaid.providerPubkey) {
+        const clean = reqPrepaid.providerPubkey.replace(/^0x/, '');
+        if (!/^[0-9a-fA-F]{64}$/.test(clean)) {
+          return {
+            valid: false,
+            invalidReason: `Invalid providerPubkey format: expected 32-byte hex, got ${clean.length / 2} bytes`,
+            payerAddress,
+          };
+        }
+      }
+
       return { valid: true, payerAddress };
     } catch (error) {
       return {
