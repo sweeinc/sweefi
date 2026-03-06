@@ -10,15 +10,20 @@
     "url": "https://github.com/sweeinc/sweefi.git",
     "directory": "packages/mcp"
   },
+  "homepage": "https://sweefi.xyz",
   "keywords": [
-    "mcp",
-    "model-context-protocol",
     "sui",
-    "payments",
+    "s402",
+    "http-402",
+    "payment",
+    "web3",
     "ai-agent",
-    "streaming-payments",
-    "escrow",
-    "web3"
+    "defi",
+    "micropayments",
+    "agentic-commerce",
+    "mcp",
+    "claude",
+    "model-context-protocol"
   ],
   "engines": {
     "node": ">=18"
@@ -47,7 +52,11 @@
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "pnpm run build && pnpm run typecheck && pnpm run test"
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "publishConfig": {
     "access": "public"
   },
@@ -60,7 +69,7 @@
     "@mysten/sui": "^2.0.0"
   },
   "devDependencies": {
-    "@mysten/sui": "^2.4.0",
+    "@mysten/sui": "^2.6.0",
     "@types/node": "^22.13.4",
     "tsdown": "^0.20.3",
     "tsx": "^4.0.0",

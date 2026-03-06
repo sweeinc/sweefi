@@ -1,6 +1,6 @@
 # @sweefi/mcp
 
-Give your AI agent a wallet. 30 payment tools for Claude, Cursor, and any MCP-compatible AI.
+Give your AI agent a wallet. 35 AI agent tools for Claude, Cursor, and any MCP-compatible AI (30 default + 5 opt-in).
 
 `@sweefi/mcp` is an [MCP server](https://modelcontextprotocol.io/) that exposes SweeFi's on-chain payment primitives as tools your AI agent can discover and call. Direct payments, streaming micropayments, escrow, prepaid API billing, and mandated spending — all on Sui.
 

@@ -137,6 +137,18 @@ Receipt utilities (also from `@sweefi/sui/ptb`):
 | `signReceipt` | Sign a receipt using a pluggable `Ed25519Signer` |
 | `verifyReceipt` | Verify a receipt signature offline (agent-side check before on-chain dispute) |
 
+HTTP-layer receipt helpers (from `@sweefi/sui`):
+
+| Export | Description |
+|--------|-------------|
+| `signUsageReceipt` | Provider-side: sign a receipt and format as HTTP header value |
+| `parseUsageReceipt` | Agent-side: parse header, optionally verify signature |
+| `ReceiptAccumulator` | Agent-side: in-memory store keyed by `balanceId`, tracks highest receipt, detects fraud |
+| `S402_RECEIPT_HEADER` | Header name constant: `X-S402-Receipt` |
+| `PrepaidReceiptConfig` | Server constructor config for v0.2 mode (`providerPubkey` + `disputeWindowMs`) |
+
+Types: `VerifiedReceipt`, `ParsedReceipt`, `Ed25519Signer`, `Ed25519Verifier`
+
 ### Mandates
 
 Basic mandates enforce a simple per-transaction spending cap on a delegated agent:
@@ -248,6 +260,8 @@ For sponsored transactions, pass `[clientSig, sponsorSig]` as the `signature` ar
 ```typescript
 import {
   SUI_COIN_TYPE,       // "0x2::sui::SUI"
+  USDSUI_MAINNET,      // USDsui — Bridge (Stripe) native stablecoin on Sui mainnet
+  USDSUI_DECIMALS,     // 6
   USDC_MAINNET,        // Circle native USDC on Sui mainnet (CCTP, not Wormhole-bridged)
   USDC_TESTNET,        // Circle native USDC on Sui testnet
   USDC_DECIMALS,       // 6

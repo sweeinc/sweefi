@@ -3,8 +3,19 @@
   "version": "0.1.0",
   "type": "module",
   "description": "CLI for AI agent payments on Sui — pay, stream, escrow, and manage mandates from the terminal",
-  "keywords": ["sui", "s402", "http-402", "payment", "cli", "ai-agent", "micropayments"],
-  "homepage": "https://github.com/sweeinc/sweefi#readme",
+  "keywords": [
+    "sui",
+    "s402",
+    "http-402",
+    "payment",
+    "web3",
+    "ai-agent",
+    "defi",
+    "micropayments",
+    "agentic-commerce",
+    "cli"
+  ],
+  "homepage": "https://sweefi.xyz",
   "license": "Apache-2.0",
   "author": "Danny Devs",
   "bin": {
@@ -22,7 +33,11 @@
       }
     }
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "publishConfig": {
     "access": "public"
   },
@@ -37,9 +52,9 @@
     "prepublishOnly": "pnpm run build && pnpm run typecheck && pnpm run test"
   },
   "dependencies": {
+    "@mysten/sui": "^2.6.0",
     "@sweefi/sui": "workspace:^",
-    "s402": "^0.1.0",
-    "@mysten/sui": "^2.0.0"
+    "s402": "^0.2.0"
   },
   "devDependencies": {
     "tsdown": "^0.20.3",

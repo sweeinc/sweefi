@@ -10,14 +10,19 @@
     "url": "https://github.com/sweeinc/sweefi.git",
     "directory": "packages/ap2-adapter"
   },
+  "homepage": "https://sweefi.xyz",
   "keywords": [
-    "ap2",
-    "agent-payments",
     "sui",
     "s402",
-    "sweefi",
-    "mandates",
-    "a2a"
+    "http-402",
+    "payment",
+    "web3",
+    "ai-agent",
+    "defi",
+    "micropayments",
+    "agentic-commerce",
+    "ap2",
+    "google"
   ],
   "engines": {
     "node": ">=18"
@@ -51,14 +56,14 @@
   },
   "dependencies": {
     "@sweefi/sui": "workspace:^",
-    "s402": "^0.1.0",
+    "s402": "^0.2.0",
     "zod": "^3.22.0"
   },
   "peerDependencies": {
     "@mysten/sui": "^2.0.0"
   },
   "devDependencies": {
-    "@mysten/sui": "^2.4.0",
+    "@mysten/sui": "^2.6.0",
     "@types/node": "^22.13.4",
     "tsdown": "^0.20.3",
     "typescript": "^5.7.3",

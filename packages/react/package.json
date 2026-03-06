@@ -3,8 +3,19 @@
   "version": "0.1.0",
   "type": "module",
   "description": "React hooks and context for the SweeFi s402 payment flow",
-  "keywords": ["s402", "http-402", "payment", "web3", "react", "ai-agent", "micropayments"],
-  "homepage": "https://github.com/sweeinc/sweefi#readme",
+  "keywords": [
+    "sui",
+    "s402",
+    "http-402",
+    "payment",
+    "web3",
+    "ai-agent",
+    "defi",
+    "micropayments",
+    "agentic-commerce",
+    "react"
+  ],
+  "homepage": "https://sweefi.xyz",
   "license": "Apache-2.0",
   "author": "Danny Devs",
   "main": "./dist/index.mjs",
@@ -29,7 +40,11 @@
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "pnpm run build && pnpm run typecheck && pnpm run test"
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/sweeinc/sweefi.git",
@@ -40,7 +55,7 @@
   },
   "dependencies": {
     "@sweefi/ui-core": "workspace:^",
-    "s402": "^0.1.0"
+    "s402": "^0.2.0"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0"

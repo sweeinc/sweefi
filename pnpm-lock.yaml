@@ -24,8 +24,8 @@ importers:
         specifier: ^1.14.0
         version: 1.19.9(hono@4.11.9)
       '@mysten/sui':
-        specifier: ^2.0.0
-        version: 2.4.0(typescript@5.9.3)
+        specifier: ^2.6.0
+        version: 2.6.0(typescript@5.9.3)
       '@sweefi/sui':
         specifier: workspace:*
         version: link:../../packages/sui
@@ -34,7 +34,35 @@ importers:
         version: 4.11.9
       s402:
         specifier: ^0.1.0
-        version: 0.1.2
+        version: 0.1.8
+    devDependencies:
+      tsx:
+        specifier: ^4.7.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
+
+  demos/facilitator-settlement:
+    dependencies:
+      '@hono/node-server':
+        specifier: ^1.14.0
+        version: 1.19.9(hono@4.11.9)
+      '@mysten/sui':
+        specifier: ^2.6.0
+        version: 2.6.0(typescript@5.9.3)
+      '@sweefi/server':
+        specifier: workspace:*
+        version: link:../../packages/server
+      '@sweefi/sui':
+        specifier: workspace:*
+        version: link:../../packages/sui
+      hono:
+        specifier: ^4.7.0
+        version: 4.11.9
+      s402:
+        specifier: ^0.2.0
+        version: 0.2.0
     devDependencies:
       tsx:
         specifier: ^4.7.0
@@ -47,10 +75,10 @@ importers:
     dependencies:
       '@mysten/seal':
         specifier: ^1.0.0
-        version: 1.0.1(@mysten/sui@2.4.0(typescript@5.9.3))
+        version: 1.1.0(@mysten/sui@2.6.0(typescript@5.9.3))
       '@mysten/sui':
-        specifier: ^2.0.0
-        version: 2.4.0(typescript@5.9.3)
+        specifier: ^2.6.0
+        version: 2.6.0(typescript@5.9.3)
       '@sweefi/sui':
         specifier: workspace:*
         version: link:../../packages/sui
@@ -68,15 +96,15 @@ importers:
         specifier: workspace:^
         version: link:../sui
       s402:
-        specifier: ^0.1.0
-        version: 0.1.2
+        specifier: ^0.2.0
+        version: 0.2.0
       zod:
         specifier: ^3.22.0
         version: 3.25.76
     devDependencies:
       '@mysten/sui':
-        specifier: ^2.4.0
-        version: 2.4.0(typescript@5.9.3)
+        specifier: ^2.6.0
+        version: 2.6.0(typescript@5.9.3)
       '@types/node':
         specifier: ^22.13.4
         version: 22.19.11
@@ -99,14 +127,14 @@ importers:
   packages/cli:
     dependencies:
       '@mysten/sui':
-        specifier: ^2.0.0
-        version: 2.4.0(typescript@5.9.3)
+        specifier: ^2.6.0
+        version: 2.6.0(typescript@5.9.3)
       '@sweefi/sui':
         specifier: workspace:^
         version: link:../sui
       s402:
-        specifier: ^0.1.0
-        version: 0.1.2
+        specifier: ^0.2.0
+        version: 0.2.0
     devDependencies:
       tsdown:
         specifier: ^0.20.3
@@ -124,8 +152,8 @@ importers:
         specifier: ^1.8.0
         version: 1.19.9(hono@4.11.9)
       '@mysten/sui':
-        specifier: ^2.0.0
-        version: 2.4.0(typescript@5.9.3)
+        specifier: ^2.6.0
+        version: 2.6.0(typescript@5.9.3)
       '@sweefi/sui':
         specifier: workspace:^
         version: link:../sui
@@ -133,8 +161,11 @@ importers:
         specifier: ^4.0.0
         version: 4.11.9
       s402:
-        specifier: ^0.1.0
-        version: 0.1.2
+        specifier: ^0.2.0
+        version: 0.2.0
+      sui-gas-station:
+        specifier: file:/Users/dannydevs/repos/danny/projects/sui-gas-station-project/sui-gas-station
+        version: file:../../sui-gas-station-project/sui-gas-station(@mysten/sui@2.6.0(typescript@5.9.3))
       zod:
         specifier: ^3.22.0
         version: 3.25.76
@@ -174,8 +205,8 @@ importers:
         version: 3.25.76
     devDependencies:
       '@mysten/sui':
-        specifier: ^2.4.0
-        version: 2.4.0(typescript@5.9.3)
+        specifier: ^2.6.0
+        version: 2.6.0(typescript@5.9.3)
       '@types/node':
         specifier: ^22.13.4
         version: 22.19.11
@@ -204,8 +235,8 @@ importers:
         specifier: workspace:^
         version: link:../ui-core
       s402:
-        specifier: ^0.1.0
-        version: 0.1.2
+        specifier: ^0.2.0
+        version: 0.2.0
     devDependencies:
       '@testing-library/dom':
         specifier: ^10.4.0
@@ -238,8 +269,8 @@ importers:
   packages/server:
     dependencies:
       s402:
-        specifier: ^0.1.0
-        version: 0.1.2
+        specifier: ^0.2.0
+        version: 0.2.0
     devDependencies:
       '@types/node':
         specifier: ^22.13.4
@@ -269,8 +300,8 @@ importers:
         specifier: workspace:^
         version: link:../ui-core
       s402:
-        specifier: ^0.1.0
-        version: 0.1.2
+        specifier: ^0.2.0
+        version: 0.2.0
     devDependencies:
       '@solana/spl-token':
         specifier: ^0.4.0
@@ -294,12 +325,12 @@ importers:
         specifier: workspace:^
         version: link:../ui-core
       s402:
-        specifier: ^0.1.0
-        version: 0.1.2
+        specifier: ^0.2.0
+        version: 0.2.0
     devDependencies:
       '@mysten/sui':
-        specifier: ^2.4.0
-        version: 2.4.0(typescript@5.9.3)
+        specifier: ^2.6.0
+        version: 2.6.0(typescript@5.9.3)
       '@sweefi/server':
         specifier: workspace:^
         version: link:../server
@@ -325,8 +356,8 @@ importers:
   packages/ui-core:
     dependencies:
       s402:
-        specifier: ^0.1.0
-        version: 0.1.2
+        specifier: ^0.2.0
+        version: 0.2.0
     devDependencies:
       '@types/node':
         specifier: ^22.13.4
@@ -350,8 +381,8 @@ importers:
         specifier: workspace:^
         version: link:../ui-core
       s402:
-        specifier: ^0.1.0
-        version: 0.1.2
+        specifier: ^0.2.0
+        version: 0.2.0
     devDependencies:
       '@vue/test-utils':
         specifier: ^2.4.6
@@ -1165,13 +1196,13 @@ packages:
   '@mysten/bcs@2.0.2':
     resolution: {integrity: sha512-c/nVRPJEV1fRZdKXhysVsy/yCPdiFt7jn6A4/7W2LH1ZPSVPzRkxtLY362D0zaLuBnyT5Y9d9nFLm3ixI8Goug==}
 
-  '@mysten/seal@1.0.1':
-    resolution: {integrity: sha512-7dWlJvqb5jbdq1DLwHw080/PNOat9K9Z/vGR5LqiywXA1Zdky0gvhPGm/KFSoON2qFP3YRwK1ar4olAC8EAddQ==}
+  '@mysten/seal@1.1.0':
+    resolution: {integrity: sha512-EXNBRCApmfhI2KPnYIUI8AxYzg/RAv49yzZZ1BX0CzAIKeXUfqd1Bj1sK7/VNem2/gPaYJYRFsUfVvEZXIp1lw==}
     peerDependencies:
-      '@mysten/sui': ^2.3.2
+      '@mysten/sui': ^2.5.0
 
-  '@mysten/sui@2.4.0':
-    resolution: {integrity: sha512-2EG5+lTypWMgU3lWyKlcjopQ++Ae9BkoROOBVcJ6mYwM5o1IcKnoc7rFqr94KQClYmBFV2aFz5+aKm5okatoBw==}
+  '@mysten/sui@2.6.0':
+    resolution: {integrity: sha512-Dp3z7mDuUCXGgldQ3/AtC1iDiK48XTuAi//fPrHdxEaMl+f5VLjbYtB+mlKNC1SVYLKOUjTeF/RA9qfEBY++pA==}
     engines: {node: '>=22'}
 
   '@mysten/utils@0.3.1':
@@ -2321,8 +2352,8 @@ packages:
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
 
-  graphql@16.12.0:
-    resolution: {integrity: sha512-DKKrynuQRne0PNpEbzuEdHlYOMksHSUI8Zc9Unei5gTsMNA2/vMpoMz/yKba50pejK56qj98qM0SjYxAKi13gQ==}
+  graphql@16.13.1:
+    resolution: {integrity: sha512-gGgrVCoDKlIZ8fIqXBBb0pPKqDgki0Z/FSKNiQzSGj2uEYHr1tq5wmBegGwJx6QB5S5cM0khSBpi/JFHMCvsmQ==}
     engines: {node: ^12.22.0 || ^14.16.0 || ^16.0.0 || >=17.0.0}
 
   has-symbols@1.1.0:
@@ -2902,8 +2933,12 @@ packages:
   run-parallel@1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
 
-  s402@0.1.2:
-    resolution: {integrity: sha512-IRxk03FzMVffYf5Zx0b/Bp9oZOBOFjgHq4iRPykDtQPS3mxstI6xXXRhFw3/ffwem4Hl1MguwLEi1VACjhOU0w==}
+  s402@0.1.8:
+    resolution: {integrity: sha512-AUH/R0Wr/mgflDpNCp0KBDhMiYd4S0fgseshrVj/MMeD0IfocS3xAvGjdmzpestLLjt3Rs597TDmtgmXgBWCMw==}
+    engines: {node: '>=18'}
+
+  s402@0.2.0:
+    resolution: {integrity: sha512-+6fUSMwhdTwvfqN9clHzRv0kNtyofJ84MThlrSXtaeO3jaPAQ7yZlOwPrwGcLUFBeASrqxlLT4WC9yJfHLGpvg==}
     engines: {node: '>=18'}
 
   safe-buffer@5.2.1:
@@ -3031,6 +3066,12 @@ packages:
 
   strip-literal@3.1.0:
     resolution: {integrity: sha512-8r3mkIM/2+PpjHoOtiAW8Rg3jJLHaV7xPwG+YRGrv6FP0wwk/toTpATxWYOW0BKdWwl82VT2tFYi5DlROa0Mxg==}
+
+  sui-gas-station@file:../../sui-gas-station-project/sui-gas-station:
+    resolution: {directory: ../../sui-gas-station-project/sui-gas-station, type: directory}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@mysten/sui': ^2.0.0
 
   superjson@2.2.6:
     resolution: {integrity: sha512-H+ue8Zo4vJmV2nRjpx86P35lzwDT3nItnIsocgumgr0hHMQ+ZGq5vrERg9kJBo5AWGmxZDhzDo+WVIJqkB0cGA==}
@@ -3460,14 +3501,14 @@ packages:
 
 snapshots:
 
-  '@0no-co/graphql.web@1.2.0(graphql@16.12.0)':
+  '@0no-co/graphql.web@1.2.0(graphql@16.13.1)':
     optionalDependencies:
-      graphql: 16.12.0
+      graphql: 16.13.1
 
-  '@0no-co/graphqlsp@1.15.2(graphql@16.12.0)(typescript@5.9.3)':
+  '@0no-co/graphqlsp@1.15.2(graphql@16.13.1)(typescript@5.9.3)':
     dependencies:
-      '@gql.tada/internal': 1.0.8(graphql@16.12.0)(typescript@5.9.3)
-      graphql: 16.12.0
+      '@gql.tada/internal': 1.0.8(graphql@16.13.1)(typescript@5.9.3)
+      graphql: 16.13.1
       typescript: 5.9.3
 
   '@algolia/abtesting@1.15.0':
@@ -4059,22 +4100,22 @@ snapshots:
   '@esbuild/win32-x64@0.27.3':
     optional: true
 
-  '@gql.tada/cli-utils@1.7.2(graphql@16.12.0)(typescript@5.9.3)':
+  '@gql.tada/cli-utils@1.7.2(graphql@16.13.1)(typescript@5.9.3)':
     dependencies:
-      '@0no-co/graphqlsp': 1.15.2(graphql@16.12.0)(typescript@5.9.3)
-      '@gql.tada/internal': 1.0.8(graphql@16.12.0)(typescript@5.9.3)
-      graphql: 16.12.0
+      '@0no-co/graphqlsp': 1.15.2(graphql@16.13.1)(typescript@5.9.3)
+      '@gql.tada/internal': 1.0.8(graphql@16.13.1)(typescript@5.9.3)
+      graphql: 16.13.1
       typescript: 5.9.3
 
-  '@gql.tada/internal@1.0.8(graphql@16.12.0)(typescript@5.9.3)':
+  '@gql.tada/internal@1.0.8(graphql@16.13.1)(typescript@5.9.3)':
     dependencies:
-      '@0no-co/graphql.web': 1.2.0(graphql@16.12.0)
-      graphql: 16.12.0
+      '@0no-co/graphql.web': 1.2.0(graphql@16.13.1)
+      graphql: 16.13.1
       typescript: 5.9.3
 
-  '@graphql-typed-document-node/core@3.2.0(graphql@16.12.0)':
+  '@graphql-typed-document-node/core@3.2.0(graphql@16.13.1)':
     dependencies:
-      graphql: 16.12.0
+      graphql: 16.13.1
 
   '@hono/node-server@1.19.9(hono@4.11.9)':
     dependencies:
@@ -4159,16 +4200,16 @@ snapshots:
       '@mysten/utils': 0.3.1
       '@scure/base': 2.0.0
 
-  '@mysten/seal@1.0.1(@mysten/sui@2.4.0(typescript@5.9.3))':
+  '@mysten/seal@1.1.0(@mysten/sui@2.6.0(typescript@5.9.3))':
     dependencies:
       '@mysten/bcs': 2.0.2
-      '@mysten/sui': 2.4.0(typescript@5.9.3)
+      '@mysten/sui': 2.6.0(typescript@5.9.3)
       '@noble/curves': 2.0.1
       '@noble/hashes': 2.0.1
 
-  '@mysten/sui@2.4.0(typescript@5.9.3)':
+  '@mysten/sui@2.6.0(typescript@5.9.3)':
     dependencies:
-      '@graphql-typed-document-node/core': 3.2.0(graphql@16.12.0)
+      '@graphql-typed-document-node/core': 3.2.0(graphql@16.13.1)
       '@mysten/bcs': 2.0.2
       '@mysten/utils': 0.3.1
       '@noble/curves': 2.0.1
@@ -4179,8 +4220,8 @@ snapshots:
       '@scure/base': 2.0.0
       '@scure/bip32': 2.0.1
       '@scure/bip39': 2.0.1
-      gql.tada: 1.9.0(graphql@16.12.0)(typescript@5.9.3)
-      graphql: 16.12.0
+      gql.tada: 1.9.0(graphql@16.13.1)(typescript@5.9.3)
+      graphql: 16.13.1
       poseidon-lite: 0.2.1
       valibot: 1.2.0(typescript@5.9.3)
     transitivePeerDependencies:
@@ -5410,12 +5451,12 @@ snapshots:
 
   gopd@1.2.0: {}
 
-  gql.tada@1.9.0(graphql@16.12.0)(typescript@5.9.3):
+  gql.tada@1.9.0(graphql@16.13.1)(typescript@5.9.3):
     dependencies:
-      '@0no-co/graphql.web': 1.2.0(graphql@16.12.0)
-      '@0no-co/graphqlsp': 1.15.2(graphql@16.12.0)(typescript@5.9.3)
-      '@gql.tada/cli-utils': 1.7.2(graphql@16.12.0)(typescript@5.9.3)
-      '@gql.tada/internal': 1.0.8(graphql@16.12.0)(typescript@5.9.3)
+      '@0no-co/graphql.web': 1.2.0(graphql@16.13.1)
+      '@0no-co/graphqlsp': 1.15.2(graphql@16.13.1)(typescript@5.9.3)
+      '@gql.tada/cli-utils': 1.7.2(graphql@16.13.1)(typescript@5.9.3)
+      '@gql.tada/internal': 1.0.8(graphql@16.13.1)(typescript@5.9.3)
       typescript: 5.9.3
     transitivePeerDependencies:
       - '@gql.tada/svelte-support'
@@ -5424,7 +5465,7 @@ snapshots:
 
   graceful-fs@4.2.11: {}
 
-  graphql@16.12.0: {}
+  graphql@16.13.1: {}
 
   has-symbols@1.1.0: {}
 
@@ -6009,7 +6050,9 @@ snapshots:
     dependencies:
       queue-microtask: 1.2.3
 
-  s402@0.1.2: {}
+  s402@0.1.8: {}
+
+  s402@0.2.0: {}
 
   safe-buffer@5.2.1: {}
 
@@ -6156,6 +6199,10 @@ snapshots:
   strip-literal@3.1.0:
     dependencies:
       js-tokens: 9.0.1
+
+  sui-gas-station@file:../../sui-gas-station-project/sui-gas-station(@mysten/sui@2.6.0(typescript@5.9.3)):
+    dependencies:
+      '@mysten/sui': 2.6.0(typescript@5.9.3)
 
   superjson@2.2.6:
     dependencies:

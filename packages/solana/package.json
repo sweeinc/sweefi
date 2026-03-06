@@ -3,8 +3,19 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Solana-native s402 protocol implementation for SweeFi",
-  "keywords": ["solana", "s402", "http-402", "payment", "web3", "ai-agent", "defi", "micropayments"],
-  "homepage": "https://github.com/sweeinc/sweefi#readme",
+  "keywords": [
+    "sui",
+    "s402",
+    "http-402",
+    "payment",
+    "web3",
+    "ai-agent",
+    "defi",
+    "micropayments",
+    "agentic-commerce",
+    "solana"
+  ],
+  "homepage": "https://sweefi.xyz",
   "license": "Apache-2.0",
   "author": "Danny Devs",
   "main": "./dist/index.mjs",
@@ -30,7 +41,11 @@
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "pnpm run build && pnpm run typecheck && pnpm run test"
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/sweeinc/sweefi.git",
@@ -40,12 +55,12 @@
     "access": "public"
   },
   "dependencies": {
-    "s402": "^0.1.0",
-    "@sweefi/ui-core": "workspace:^"
+    "@sweefi/ui-core": "workspace:^",
+    "s402": "^0.2.0"
   },
   "peerDependencies": {
-    "@solana/web3.js": "^1.95.0",
-    "@solana/spl-token": "^0.4.0"
+    "@solana/spl-token": "^0.4.0",
+    "@solana/web3.js": "^1.95.0"
   },
   "devDependencies": {
     "@solana/spl-token": "^0.4.0",

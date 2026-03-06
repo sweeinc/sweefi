@@ -33,14 +33,16 @@ const controller = createPaymentController(adapter);
 // 3. Subscribe to state changes
 const unsubscribe = controller.subscribe((state) => {
   console.log('Payment state:', state.status);
-  // idle → awaiting_signature → broadcasting → settled | failed
+  // idle → fetching_requirements → simulating → ready → awaiting_signature → broadcasting → settled | error
 });
 
-// 4. Trigger payment
-await controller.pay({
-  url: 'https://api.example.com/premium',
-  requirements: paymentRequirements,
-});
+// 4. Trigger payment (fetches requirements from 402 response automatically)
+await controller.pay('https://api.example.com/premium');
+// Or provide requirements directly:
+// await controller.pay('https://api.example.com/premium', { requirements: paymentRequirements });
+
+// 5. Once state reaches "ready", confirm to sign and broadcast
+await controller.confirm();
 
 unsubscribe();
 ```
@@ -54,10 +56,13 @@ The `PaymentController` drives a deterministic state machine:
 | Status | Meaning |
 |--------|---------|
 | `idle` | No payment in progress |
+| `fetching_requirements` | GET request sent, awaiting 402 response with payment requirements |
+| `simulating` | Dry-running the transaction to estimate gas |
+| `ready` | Simulation passed — call `confirm()` to sign and broadcast |
 | `awaiting_signature` | Waiting for wallet to sign the transaction |
 | `broadcasting` | Signed transaction submitted to chain |
 | `settled` | Payment confirmed on-chain, receipt available |
-| `failed` | Payment failed (error available on state) |
+| `error` | Payment failed (error string available on state) |
 
 ---
 
@@ -79,7 +84,9 @@ The `PaymentController` drives a deterministic state machine:
 import type { PaymentAdapter, SimulationResult } from '@sweefi/ui-core';
 
 class MyChainAdapter implements PaymentAdapter {
-  async simulate(requirements): Promise<SimulationResult> { ... }
+  readonly network = 'mychain:mainnet';
+  getAddress(): string | null { return '0x...'; }
+  async simulate(reqs: s402PaymentRequirements): Promise<SimulationResult> { ... }
   async signAndBroadcast(reqs: s402PaymentRequirements): Promise<{ txId: string }> { ... }
 }
 ```
