@@ -19,13 +19,23 @@ import type {
   s402SettleResponse,
   s402ExactPayload,
 } from 's402';
+import { Transaction } from '@mysten/sui/transactions';
 import type { FacilitatorSuiSigner } from '../../signer.js';
 import { coinTypesEqual } from '../../utils.js';
 
+/** Default max gas budget a sponsor will co-sign (0.01 SUI = 10M MIST) */
+export const DEFAULT_MAX_SPONSOR_GAS_BUDGET = 10_000_000n;
+
 export class ExactSuiFacilitatorScheme implements s402FacilitatorScheme {
   readonly scheme = 'exact' as const;
+  private readonly maxSponsorGasBudget: bigint;
 
-  constructor(private readonly signer: FacilitatorSuiSigner) {}
+  constructor(
+    private readonly signer: FacilitatorSuiSigner,
+    maxSponsorGasBudget?: bigint,
+  ) {
+    this.maxSponsorGasBudget = maxSponsorGasBudget ?? DEFAULT_MAX_SPONSOR_GAS_BUDGET;
+  }
 
   async verify(
     payload: s402PaymentPayload,
@@ -58,20 +68,51 @@ export class ExactSuiFacilitatorScheme implements s402FacilitatorScheme {
         };
       }
 
-      // Verify balance changes
+      // Verify balance changes — two-branch logic for fee splits (F02 fix)
       const balanceChanges = dryRunResult.balanceChanges ?? [];
-      const recipientChange = balanceChanges.find(
-        bc =>
-          extractAddress(bc.owner) === requirements.payTo &&
-          coinTypesEqual(bc.coinType, requirements.asset),
-      );
+      const { protocolFeeBps, protocolFeeAddress } = requirements;
 
-      if (!recipientChange) {
-        return { valid: false, invalidReason: 'Recipient did not receive expected coin type', payerAddress };
+      // Defense-in-depth: reject invalid feeBps from untrusted requirements
+      if (protocolFeeBps !== undefined && (!Number.isInteger(protocolFeeBps) || protocolFeeBps < 0 || protocolFeeBps > 10000)) {
+        return { valid: false, invalidReason: `protocolFeeBps out of range: ${protocolFeeBps}`, payerAddress };
       }
 
-      if (BigInt(recipientChange.amount) < BigInt(requirements.amount)) {
-        return { valid: false, invalidReason: 'Amount insufficient', payerAddress };
+      if (protocolFeeBps && protocolFeeBps > 0 && protocolFeeAddress && protocolFeeAddress !== requirements.payTo) {
+        // FEE SPLIT MODE: merchant gets (amount - fee), fee address gets fee
+        const totalAmount = BigInt(requirements.amount);
+        const feeAmount = (totalAmount * BigInt(protocolFeeBps)) / 10000n;
+        const merchantAmount = totalAmount - feeAmount;
+
+        const merchantChange = balanceChanges.find(
+          bc => extractAddress(bc.owner) === requirements.payTo &&
+                coinTypesEqual(bc.coinType, requirements.asset),
+        );
+        if (!merchantChange || BigInt(merchantChange.amount) < merchantAmount) {
+          return { valid: false, invalidReason: 'Merchant amount insufficient', payerAddress };
+        }
+
+        // Check fee recipient received enough (skip when fee rounds to zero)
+        if (feeAmount > 0n) {
+          const feeChange = balanceChanges.find(
+            bc => extractAddress(bc.owner) === protocolFeeAddress &&
+                  coinTypesEqual(bc.coinType, requirements.asset),
+          );
+          if (!feeChange || BigInt(feeChange.amount) < feeAmount) {
+            return { valid: false, invalidReason: 'Protocol fee insufficient', payerAddress };
+          }
+        }
+      } else {
+        // NO FEE SPLIT: payTo gets full amount (fee address absent, same as payTo, or feeBps=0)
+        const recipientChange = balanceChanges.find(
+          bc => extractAddress(bc.owner) === requirements.payTo &&
+                coinTypesEqual(bc.coinType, requirements.asset),
+        );
+        if (!recipientChange) {
+          return { valid: false, invalidReason: 'Recipient did not receive expected coin type', payerAddress };
+        }
+        if (BigInt(recipientChange.amount) < BigInt(requirements.amount)) {
+          return { valid: false, invalidReason: 'Amount insufficient', payerAddress };
+        }
       }
 
       return { valid: true, payerAddress };
@@ -94,14 +135,57 @@ export class ExactSuiFacilitatorScheme implements s402FacilitatorScheme {
     }
 
     const exactPayload = payload as s402ExactPayload;
+    const { transaction, signature: clientSig } = exactPayload.payload;
 
     try {
       const startMs = Date.now();
 
+      // Determine signatures: single (standard) or dual (gas-sponsored)
+      let signatures: string | string[] = clientSig;
+      let gasSponsored = false;
+
+      if (this.signer.sponsorSign) {
+        const sponsorAddresses = this.signer.getAddresses();
+        if (sponsorAddresses.length > 0) {
+          // Deserialize to inspect gasData.owner
+          const tx = Transaction.from(transaction);
+          const gasOwner = tx.getData().gasData.owner;
+
+          if (gasOwner && sponsorAddresses.includes(gasOwner)) {
+            // Drain prevention: reject transactions whose commands reference
+            // GasCoin. Without this, a client can craft SplitCoins(GasCoin, [amt])
+            // to extract value from the sponsor's gas coin beyond gas fees.
+            // Mirrors sui-gas-station's assertNoGasCoinUsage (policy.ts).
+            if (commandsReferenceGasCoin(tx.getData().commands)) {
+              return {
+                success: false,
+                error: 'Transaction commands reference GasCoin — gas coin manipulation is not allowed in sponsored transactions',
+              };
+            }
+
+            // Enforce gas budget: reject zero (undefined budget bypass) and over-cap
+            const gasBudget = BigInt(tx.getData().gasData.budget ?? 0);
+            if (gasBudget === 0n || gasBudget > this.maxSponsorGasBudget) {
+              return {
+                success: false,
+                error: gasBudget === 0n
+                  ? 'Gas budget is zero or missing — sponsor requires a declared budget'
+                  : `Gas budget ${gasBudget} exceeds sponsor limit ${this.maxSponsorGasBudget}`,
+              };
+            }
+
+            // Co-sign as gas sponsor
+            const sponsorSig = await this.signer.sponsorSign(transaction);
+            signatures = [clientSig, sponsorSig];
+            gasSponsored = true;
+          }
+        }
+      }
+
       // Execute on-chain
       const txDigest = await this.signer.executeTransaction(
-        exactPayload.payload.transaction,
-        exactPayload.payload.signature,
+        transaction,
+        signatures,
         requirements.network,
       );
 
@@ -114,13 +198,54 @@ export class ExactSuiFacilitatorScheme implements s402FacilitatorScheme {
         success: true,
         txDigest,
         finalityMs,
-      };
+        gasSponsored,
+      } as s402SettleResponse;
     } catch (error) {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Settlement failed',
       };
     }
+  }
+}
+
+/**
+ * Check if any PTB command references the GasCoin input.
+ * Prevents drain attacks where a malicious sender crafts kind bytes with
+ * SplitCoins(GasCoin, [amount]) + TransferObjects to extract value from
+ * the sponsor's gas coin beyond gas fees.
+ */
+function commandsReferenceGasCoin(
+  commands: ReturnType<Transaction['getData']>['commands'],
+): boolean {
+  for (const command of commands) {
+    const args = getCommandArguments(command);
+    if (args.some((a) => a.$kind === 'GasCoin')) return true;
+  }
+  return false;
+}
+
+/** Extract all arguments from a PTB command for GasCoin inspection. */
+function getCommandArguments(
+  command: ReturnType<Transaction['getData']>['commands'][number],
+): Array<{ $kind: string }> {
+  switch (command.$kind) {
+    case 'SplitCoins':
+      return [command.SplitCoins.coin, ...command.SplitCoins.amounts];
+    case 'TransferObjects':
+      return [...command.TransferObjects.objects, command.TransferObjects.address];
+    case 'MergeCoins':
+      return [command.MergeCoins.destination, ...command.MergeCoins.sources];
+    case 'MoveCall':
+      return command.MoveCall.arguments;
+    case 'MakeMoveVec':
+      return command.MakeMoveVec.elements;
+    case 'Upgrade':
+      return [command.Upgrade.ticket];
+    case 'Publish':
+      return [];
+    default:
+      return [];
   }
 }
 
