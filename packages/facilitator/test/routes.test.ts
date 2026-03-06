@@ -198,6 +198,145 @@ describe("routes", () => {
     });
   });
 
+  describe("POST /sponsor", () => {
+    function createMockGasSponsorService(overrides: Partial<{
+      initialized: boolean;
+      address: string;
+      sponsor: ReturnType<typeof vi.fn>;
+    }> = {}) {
+      return {
+        initialized: overrides.initialized ?? true,
+        address: overrides.address ?? "0x" + "c".repeat(64),
+        sponsor: overrides.sponsor ?? vi.fn().mockResolvedValue({
+          transactionBytes: "mock-tx-bytes-base64",
+          sponsorSignature: "mock-sponsor-sig-base64",
+          gasBudget: 10_000_000n,
+          gasPrice: 750n,
+          reservation: { objectId: "0x" + "d".repeat(64), reservedAt: Date.now() },
+        }),
+        reportSettlement: vi.fn().mockResolvedValue(undefined),
+        getStats: vi.fn().mockReturnValue({ totalCoins: 10, availableCoins: 8 }),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+    }
+
+    it("returns 503 when gas sponsorship is not configured", async () => {
+      const facilitator = createMockFacilitator();
+      const tracker = new UsageTracker();
+      // No gasSponsorService passed (7th arg = undefined)
+      const app = createRoutes(facilitator as any, tracker, 50);
+
+      const res = await app.request("/sponsor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sender: "0x" + "a".repeat(64),
+          transactionKindBytes: "AQIDBA==",
+          network: "sui:testnet",
+        }),
+      });
+
+      expect(res.status).toBe(503);
+      const body = await res.json();
+      expect(body.error).toContain("not enabled");
+    });
+
+    it("returns 503 when gas sponsor is still initializing", async () => {
+      const facilitator = createMockFacilitator();
+      const tracker = new UsageTracker();
+      const gasSponsor = createMockGasSponsorService({ initialized: false });
+      const app = createRoutes(facilitator as any, tracker, 50, undefined, undefined, undefined, gasSponsor as any);
+
+      const res = await app.request("/sponsor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sender: "0x" + "a".repeat(64),
+          transactionKindBytes: "AQIDBA==",
+          network: "sui:testnet",
+        }),
+      });
+
+      expect(res.status).toBe(503);
+      const body = await res.json();
+      expect(body.error).toContain("initializing");
+    });
+
+    it("validates sender address format", async () => {
+      const facilitator = createMockFacilitator();
+      const tracker = new UsageTracker();
+      const gasSponsor = createMockGasSponsorService();
+      const app = createRoutes(facilitator as any, tracker, 50, undefined, undefined, undefined, gasSponsor as any);
+
+      const res = await app.request("/sponsor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sender: "bad-address",
+          transactionKindBytes: "AQIDBA==",
+          network: "sui:testnet",
+        }),
+      });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("valid Sui address");
+    });
+
+    it("sponsors a transaction and returns bytes + signature", async () => {
+      const facilitator = createMockFacilitator();
+      const tracker = new UsageTracker();
+      const gasSponsor = createMockGasSponsorService();
+      const app = createRoutes(facilitator as any, tracker, 50, undefined, undefined, undefined, gasSponsor as any);
+
+      const res = await app.request("/sponsor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sender: "0x" + "a".repeat(64),
+          transactionKindBytes: "AQIDBA==",
+          network: "sui:testnet",
+        }),
+      });
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.transactionBytes).toBe("mock-tx-bytes-base64");
+      expect(body.sponsorSignature).toBe("mock-sponsor-sig-base64");
+      expect(body.gasBudget).toBe("10000000");
+      expect(body.gasPrice).toBe("750");
+      expect(body.sponsorAddress).toBe("0x" + "c".repeat(64));
+      expect(gasSponsor.sponsor).toHaveBeenCalledWith(
+        "0x" + "a".repeat(64),
+        "AQIDBA==",
+        "sui:testnet",
+      );
+    });
+  });
+
+  describe("GET /.well-known/s402.json (gas sponsorship)", () => {
+    it("reports gasSponsorship: true when gas service is configured", async () => {
+      const facilitator = createMockFacilitator();
+      const tracker = new UsageTracker();
+      const gasSponsor = { initialized: true, address: "0x" + "c".repeat(64) } as any;
+      const app = createRoutes(facilitator as any, tracker, 50, undefined, undefined, undefined, gasSponsor);
+
+      const res = await app.request("/.well-known/s402.json");
+      const body = await res.json();
+      expect(body.gasSponsorship).toBe(true);
+    });
+
+    it("reports gasSponsorship: false when gas service is not configured", async () => {
+      const facilitator = createMockFacilitator();
+      const tracker = new UsageTracker();
+      const app = createRoutes(facilitator as any, tracker, 50);
+
+      const res = await app.request("/.well-known/s402.json");
+      const body = await res.json();
+      expect(body.gasSponsorship).toBe(false);
+    });
+  });
+
   describe("GET /settlements", () => {
     /**
      * Wire apiKey into context so the route can identify the calling key.

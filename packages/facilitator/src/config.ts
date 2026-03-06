@@ -28,6 +28,12 @@ const envSchema = z.object({
   /** Sui address that receives protocol fees (used in /.well-known/s402-facilitator) */
   FEE_RECIPIENT: z.string().optional(),
 
+  /** Max gas budget (in MIST) the sponsor will co-sign per transaction (default: 10M = 0.01 SUI) */
+  MAX_SPONSOR_GAS_MIST: z.coerce.number().min(1_000_000).default(10_000_000),
+
+  /** Max sponsored transactions per key per hour (default: 100, 0 = disabled) */
+  GAS_SPONSOR_MAX_PER_HOUR: z.coerce.number().min(0).default(100),
+
   /** Rate limiter: max tokens per key (default: 100 requests per window) */
   RATE_LIMIT_MAX_TOKENS: z.coerce.number().min(1).default(100),
 

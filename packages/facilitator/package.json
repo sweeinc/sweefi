@@ -4,8 +4,18 @@
   "private": true,
   "type": "module",
   "description": "Self-hostable payment verification and settlement service for SweeFi",
-  "keywords": ["sui", "s402", "http-402", "payment", "web3", "facilitator", "settlement"],
-  "homepage": "https://github.com/sweeinc/sweefi#readme",
+  "keywords": [
+    "sui",
+    "s402",
+    "http-402",
+    "payment",
+    "web3",
+    "ai-agent",
+    "defi",
+    "micropayments",
+    "agentic-commerce"
+  ],
+  "homepage": "https://sweefi.xyz",
   "license": "Apache-2.0",
   "author": "Danny Devs",
   "repository": {
@@ -26,10 +36,11 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.8.0",
-    "@mysten/sui": "^2.0.0",
-    "s402": "^0.1.0",
+    "@mysten/sui": "^2.6.0",
     "@sweefi/sui": "workspace:^",
     "hono": "^4.0.0",
+    "s402": "^0.2.0",
+    "sui-gas-station": "file:/Users/dannydevs/repos/danny/projects/sui-gas-station-project/sui-gas-station",
     "zod": "^3.22.0"
   },
   "devDependencies": {

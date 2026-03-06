@@ -3,8 +3,11 @@ import type { Context } from "hono";
 import type { s402Facilitator } from "s402";
 import { S402_VERSION, isValidAmount } from "s402";
 import { pickRequirementsFields } from "s402/http";
+import { Transaction } from "@mysten/sui/transactions";
 import { recordSettlement } from "./metering/hooks";
 import type { UsageTracker } from "./metering/usage-tracker";
+import type { IGasSponsorTracker } from "./metering/gas-sponsor-tracker";
+import type { GasSponsorService } from "./gas-service";
 
 /** Extract API key set by auth middleware. */
 function getApiKey(c: Context): string | undefined {
@@ -76,6 +79,8 @@ export function createRoutes(
   feeMicroPercent: number,
   feeRecipient?: string,
   serverStartTime: Date = new Date(),
+  gasSponsorTracker?: IGasSponsorTracker,
+  gasSponsorService?: GasSponsorService,
 ) {
   const app = new Hono();
 
@@ -150,6 +155,20 @@ export function createRoutes(
         if (apiKey) {
           recordSettlement(usageTracker, apiKey, body.paymentRequirements, result, feeMicroPercent);
         }
+
+        // Gas sponsor rate tracking — record after successful sponsored settlement.
+        // Design: post-record only (no pre-check). The scheme inspects tx bytes to
+        // detect sponsorship, so the route handler can't know in advance. Race window
+        // is bounded by per-tx gas cap (10M MIST ≈ $0.01) — worst case ~$1 burst.
+        // Phase 2: inject tracker into scheme for atomic pre-check + co-sign.
+        if ((result as any).gasSponsored && gasSponsorTracker && apiKey) {
+          await gasSponsorTracker.recordSponsored(apiKey);
+        }
+
+        // Recycle gas coin after sponsored settlement (fire-and-forget)
+        if ((result as any).gasSponsored && result.txDigest) {
+          reportSponsoredSettlement(result.txDigest, body.paymentPayload.payload.transaction);
+        }
       }
 
       return c.json(result);
@@ -190,6 +209,16 @@ export function createRoutes(
         if (apiKey) {
           recordSettlement(usageTracker, apiKey, body.paymentRequirements, result, feeMicroPercent);
         }
+
+        // Gas sponsor rate tracking (see /settle comment for design rationale)
+        if ((result as any).gasSponsored && gasSponsorTracker && apiKey) {
+          await gasSponsorTracker.recordSponsored(apiKey);
+        }
+
+        // Recycle gas coin after sponsored settlement (fire-and-forget)
+        if ((result as any).gasSponsored && result.txDigest) {
+          reportSponsoredSettlement(result.txDigest, body.paymentPayload.payload.transaction);
+        }
       }
 
       return c.json(result);
@@ -198,6 +227,139 @@ export function createRoutes(
       return c.json({ error: message }, 500);
     }
   });
+
+  // ══════════════════════════════════════════════════════════════
+  // Gas sponsorship endpoint (kind-bytes workflow)
+  // ══════════════════════════════════════════════════════════════
+
+  /**
+   * Sponsor a transaction's gas costs.
+   *
+   * The client builds a PTB with `tx.build({ onlyTransactionKind: true })` and
+   * sends the kind bytes here. The facilitator:
+   *   1. Validates policy (no gas coin drain, budget cap)
+   *   2. Reserves a gas coin from the pool
+   *   3. Reconstructs the full transaction with gas data
+   *   4. Signs as gas sponsor
+   *   5. Returns transaction bytes + sponsor signature
+   *
+   * The client then signs the returned bytes and submits via the normal s402
+   * payment flow (x-payment header with dual signatures).
+   *
+   * Rate-limited by the GAS_SPONSOR_MAX_PER_HOUR setting per API key.
+   */
+  app.post("/sponsor", async (c) => {
+    if (!gasSponsorService) {
+      return c.json(
+        { error: "Gas sponsorship is not enabled on this facilitator" },
+        503,
+      );
+    }
+    if (!gasSponsorService.initialized) {
+      return c.json(
+        { error: "Gas sponsor pool is initializing — try again shortly" },
+        503,
+      );
+    }
+
+    // Rate limit gas sponsorship per API key
+    const apiKey = getApiKey(c);
+    if (apiKey && gasSponsorTracker) {
+      const allowed = await gasSponsorTracker.canSponsor(apiKey);
+      if (!allowed) {
+        return c.json(
+          { error: "Gas sponsorship rate limit exceeded" },
+          429,
+        );
+      }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let body: any;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "Invalid JSON body" }, 400);
+    }
+
+    const { sender, transactionKindBytes, network } = body;
+
+    if (typeof sender !== "string" || !/^0x[a-fA-F0-9]{64}$/.test(sender)) {
+      return c.json(
+        { error: "sender must be a valid Sui address (0x + 64 hex chars)" },
+        400,
+      );
+    }
+    if (typeof transactionKindBytes !== "string" || transactionKindBytes.length === 0) {
+      return c.json(
+        { error: "transactionKindBytes must be a non-empty base64 string" },
+        400,
+      );
+    }
+    if (typeof network !== "string" || !network.startsWith("sui:")) {
+      return c.json(
+        { error: 'network must be a CAIP-2 Sui network (e.g., "sui:testnet")' },
+        400,
+      );
+    }
+
+    try {
+      const result = await gasSponsorService.sponsor(
+        sender,
+        transactionKindBytes,
+        network,
+      );
+
+      // Record sponsorship in rate tracker
+      if (apiKey && gasSponsorTracker) {
+        await gasSponsorTracker.recordSponsored(apiKey);
+      }
+
+      return c.json({
+        transactionBytes: result.transactionBytes,
+        sponsorSignature: result.sponsorSignature,
+        gasBudget: result.gasBudget.toString(),
+        gasPrice: result.gasPrice.toString(),
+        sponsorAddress: gasSponsorService.address,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Sponsorship failed";
+      // Pool exhaustion is temporary — 503 so clients can retry
+      const status = message.includes("POOL_EXHAUSTED") ? 503 : 400;
+      return c.json({ error: message }, status);
+    }
+  });
+
+  /**
+   * After a sponsored settlement succeeds, report execution to the gas sponsor
+   * for coin recycling. Fire-and-forget — errors are logged but don't affect
+   * the settlement response.
+   */
+  function reportSponsoredSettlement(
+    txDigest: string,
+    transactionBytes: string,
+  ): void {
+    if (!gasSponsorService) return;
+
+    try {
+      const tx = Transaction.from(transactionBytes);
+      const gasPayment = tx.getData().gasData.payment;
+      const gasObjectId = gasPayment?.[0]?.objectId;
+
+      if (gasObjectId) {
+        gasSponsorService
+          .reportSettlement(txDigest, gasObjectId)
+          .catch((err) => {
+            console.error(
+              `[gas-service] Failed to report settlement for ${txDigest}:`,
+              err,
+            );
+          });
+      }
+    } catch {
+      // Transaction deserialization failed — can't recycle, coin will timeout
+    }
+  }
 
   /**
    * Facilitator identity endpoint — signed fee schedule.
@@ -227,6 +389,13 @@ export function createRoutes(
     // so clients can verify authenticity via the facilitator's public key.
     const validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
+    // Advertise gas sponsorship when available
+    const gasStation = gasSponsorService?.initialized
+      ? { sponsorAddress: gasSponsorService.address, status: "active" }
+      : gasSponsorService
+        ? { status: "initializing" }
+        : undefined;
+
     return c.json({
       version: "1",
       feeMicroPercent,
@@ -234,6 +403,7 @@ export function createRoutes(
       minFeeUsd: "0.001",
       supportedSchemes: [...schemes],
       supportedNetworks: networks,
+      ...(gasStation ? { gasStation } : {}),
       validUntil,
       // signature: "<ed25519 signature over canonical JSON — added when keypair is wired>"
     });
@@ -258,6 +428,7 @@ export function createRoutes(
       assets: [],
       directSettlement: true,
       mandateSupport: false,
+      gasSponsorship: !!gasSponsorService,
       protocolFeeMicroPercent: feeMicroPercent,
     });
   });

@@ -7,8 +7,28 @@ import { RateLimiter } from "./middleware/rate-limiter";
 import { requestLogger } from "./middleware/logger";
 import { payloadDedup } from "./middleware/dedup";
 import { UsageTracker } from "./metering/usage-tracker";
+import { InMemoryGasSponsorTracker } from "./metering/gas-sponsor-tracker";
 import { meteringContext } from "./metering/hooks";
+import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
+import { decodeSuiPrivateKey } from "@mysten/sui/cryptography";
 import type { Config } from "./config";
+
+/**
+ * Decode a facilitator keypair from bech32 (suiprivkey1...) or raw base64.
+ * Returns undefined if the value is falsy or unparseable.
+ */
+function decodeKeypair(raw: string | undefined): Ed25519Keypair | undefined {
+  if (!raw) return undefined;
+  try {
+    return Ed25519Keypair.fromSecretKey(decodeSuiPrivateKey(raw).secretKey);
+  } catch {
+    try {
+      return Ed25519Keypair.fromSecretKey(raw);
+    } catch {
+      return undefined;
+    }
+  }
+}
 
 /** Default Sui RPC URLs used when custom ones are not configured in env. */
 const DEFAULT_RPC_URLS: Record<string, string> = {
@@ -48,8 +68,9 @@ async function pingRpc(url: string): Promise<"ok" | "timeout" | "error"> {
  * Separated from index.ts for testability.
  */
 export function createApp(config: Config) {
-  const facilitator = createFacilitator(config);
+  const { facilitator, gasSponsorService } = createFacilitator(config);
   const usageTracker = new UsageTracker();
+  const gasSponsorTracker = new InMemoryGasSponsorTracker(config.GAS_SPONSOR_MAX_PER_HOUR);
   const serverStartTime = new Date();
 
   const app = new Hono();
@@ -113,6 +134,88 @@ export function createApp(config: Config) {
     return c.json(result, ready ? 200 : 503);
   });
 
+  /**
+   * Fee schedule discovery endpoint (RFC 8615 well-known URI).
+   *
+   * Returns the facilitator's current fee schedule so API servers can
+   * auto-discover payment terms before routing clients here. Clients MUST:
+   *
+   *   1. Use HTTPS only — never trust this over plaintext.
+   *   2. Verify `issuer` matches the URL they fetched from (RFC 8414 pattern —
+   *      prevents a MITM from returning a valid-looking response with a different
+   *      `feeRecipient` address).
+   *   3. Respect `validUntil` — stop trusting a cached schedule after it expires.
+   *   4. If `signature` is present: verify it. Sign input is the canonical JSON
+   *      of this document (keys sorted lexicographically, no whitespace) minus
+   *      the `signature` and `publicKey` fields, using the facilitator's
+   *      Ed25519 keypair. The `publicKey` field is the base64-encoded public key.
+   *
+   * Cache-Control: public, max-age=3600 — clients may cache for ≤1 hour.
+   * `validUntil` is the authoritative expiry; the HTTP cache is a performance
+   * layer only and must not be trusted past `validUntil`.
+   *
+   * References:
+   *   RFC 8615 — Well-Known Uniform Resource Identifiers
+   *   RFC 8414 — OAuth 2.0 Authorization Server Metadata (`issuer` pattern)
+   *   IANA provisional registration: s402-facilitator (pending)
+   *
+   * Upgrade path: replace raw Ed25519 signature with JWS compact serialization
+   * (panva/jose, RFC 7515) for `alg: EdDSA` standard compliance.
+   */
+  app.get("/.well-known/s402-facilitator", async (c) => {
+    const now = Date.now();
+    const origin = new URL(c.req.url).origin;
+
+    // supportedSchemes per network — gather both testnet and mainnet
+    const supportedNetworks: Record<string, string[]> = {};
+    for (const network of ["sui:testnet", "sui:mainnet"]) {
+      const schemes = facilitator.supportedSchemes(network);
+      if (schemes.length > 0) supportedNetworks[network] = schemes;
+    }
+
+    const schedule: Record<string, unknown> = {
+      version: "1",
+      // SECURITY: Clients MUST verify issuer === URL they fetched from (RFC 8414 §3).
+      issuer: origin,
+      // feeBps is the industry-standard representation (0–10 000; 10 000 = 100%).
+      // Derived from FEE_MICRO_PERCENT (0–1 000 000) by dividing by 100.
+      feeBps: Math.round(config.FEE_MICRO_PERCENT / 100),
+      // feeMicroPercent is the native s402 on-chain unit. Exposed for integrators
+      // building PTBs directly — avoids a unit conversion on the hot path.
+      feeMicroPercent: config.FEE_MICRO_PERCENT,
+      feeRecipient: config.FEE_RECIPIENT ?? null,
+      supportedNetworks,
+      // validFrom + validUntil bracket the schedule window. Clients SHOULD
+      // re-fetch after validUntil. Cache-Control max-age ensures CDN eviction
+      // within 1 hour even if validUntil is farther in the future.
+      validFrom: new Date(now).toISOString(),
+      validUntil: new Date(now + 24 * 60 * 60 * 1000).toISOString(), // 24 h
+      docsUrl: "https://sweefi.xyz/docs/facilitator",
+    };
+
+    // Optional Ed25519 signature over the canonical schedule.
+    // Canonical form: JSON.stringify with sorted keys, no whitespace, excluding
+    // `signature` and `publicKey`. Clients verify using `publicKey` below.
+    const keypair = decodeKeypair(config.FACILITATOR_KEYPAIR);
+    if (keypair) {
+      try {
+        const canonical = JSON.stringify(
+          schedule,
+          Object.keys(schedule).sort(),
+        );
+        const sigBytes = await keypair.sign(new TextEncoder().encode(canonical));
+        schedule.signature = Buffer.from(sigBytes).toString("base64");
+        schedule.publicKey = keypair.getPublicKey().toBase64();
+      } catch {
+        // Signing failure must not block fee schedule delivery.
+        // Operators can diagnose via LOG_LEVEL=debug.
+      }
+    }
+
+    c.header("Cache-Control", "public, max-age=3600, must-revalidate");
+    return c.json(schedule);
+  });
+
   // ── Protected routes ─────────────────────────────────────────────────────────
   const validKeys = new Set(config.API_KEYS.split(",").map((k) => k.trim()).filter((k) => k.length > 0));
   const rateLimiter = new RateLimiter(
@@ -125,6 +228,7 @@ export function createApp(config: Config) {
   app.use("/supported", apiKeyAuth(validKeys));
   app.use("/settlements", apiKeyAuth(validKeys));
   app.use("/s402/*", apiKeyAuth(validKeys));
+  app.use("/sponsor", apiKeyAuth(validKeys));
 
   // Metering context propagates API key for inline metering in route handlers.
   // Must be AFTER auth (needs apiKey) and BEFORE routes.
@@ -139,9 +243,9 @@ export function createApp(config: Config) {
 
   app.use("*", rateLimiter.middleware());
 
-  // Mount facilitator routes (verify, settle, supported, s402/process, settlements)
-  const routes = createRoutes(facilitator, usageTracker, config.FEE_MICRO_PERCENT, config.FEE_RECIPIENT, serverStartTime);
+  // Mount facilitator routes (verify, settle, supported, s402/process, settlements, sponsor)
+  const routes = createRoutes(facilitator, usageTracker, config.FEE_MICRO_PERCENT, config.FEE_RECIPIENT, serverStartTime, gasSponsorTracker, gasSponsorService);
   app.route("/", routes);
 
-  return { app, usageTracker };
+  return { app, usageTracker, gasSponsorService };
 }
