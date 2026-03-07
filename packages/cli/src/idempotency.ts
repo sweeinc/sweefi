@@ -99,8 +99,9 @@ export async function checkIdempotencyKey(
     });
 
     for (const obj of page.data) {
-      const content = obj.data?.content;
-      if (content?.dataType !== "moveObject") continue;
+      const data = obj.data;
+      const content = data?.content;
+      if (!data || content?.dataType !== "moveObject") continue;
 
       const fields = content.fields as Record<string, unknown>;
       // Move memo is vector<u8> → RPC returns Base64. Decode to UTF-8.
@@ -110,8 +111,8 @@ export async function checkIdempotencyKey(
       // Using includes() would cause "key1" to match "key10" — split on delimiter instead.
       if (memo && memoContainsKey(memo, memoNeedle)) {
         const receipt: ExistingReceipt = {
-          receiptId: obj.data!.objectId,
-          txDigest: obj.data!.previousTransaction ?? undefined,
+          receiptId: data.objectId,
+          txDigest: data.previousTransaction ?? undefined,
           recipient: typeof fields.recipient === "string" ? fields.recipient : undefined,
           amount: typeof fields.amount === "string" ? fields.amount : String(fields.amount ?? ""),
           memo,

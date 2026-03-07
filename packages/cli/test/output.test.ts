@@ -69,21 +69,24 @@ describe("computeGas", () => {
 });
 
 describe("outputSuccess", () => {
-  let writeSpy: ReturnType<typeof vi.spyOn>;
+  let calls: string[];
 
   beforeEach(() => {
-    writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    calls = [];
+    vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
+      calls.push(typeof chunk === "string" ? chunk : chunk.toString());
+      return true;
+    });
   });
 
   afterEach(() => {
-    writeSpy.mockRestore();
+    vi.restoreAllMocks();
   });
 
   it("outputs valid JSON envelope with meta block", () => {
     const reqCtx = createRequestContext("testnet");
     outputSuccess("test", { foo: "bar" }, false, reqCtx);
-    const output = writeSpy.mock.calls[0][0] as string;
-    const parsed = JSON.parse(output);
+    const parsed = JSON.parse(calls[0]);
     expect(parsed.ok).toBe(true);
     expect(parsed.command).toBe("test");
     expect(parsed.version).toBe(VERSION);
@@ -99,8 +102,7 @@ describe("outputSuccess", () => {
   it("includes gas in meta when provided", () => {
     const reqCtx = createRequestContext("testnet");
     outputSuccess("pay", { txDigest: "abc" }, false, reqCtx, { mist: 1420000, display: "0.001420 SUI" });
-    const output = writeSpy.mock.calls[0][0] as string;
-    const parsed = JSON.parse(output);
+    const parsed = JSON.parse(calls[0]);
     expect(parsed.meta.gasCostMist).toBe(1420000);
     expect(parsed.meta.gasCostDisplay).toBe("0.001420 SUI");
   });
@@ -108,28 +110,30 @@ describe("outputSuccess", () => {
   it("outputs human-readable format", () => {
     const reqCtx = createRequestContext("testnet");
     outputSuccess("test", { key: "value" }, true, reqCtx);
-    const output = writeSpy.mock.calls[0][0] as string;
-    expect(output).toContain("test successful");
-    expect(output).toContain("value");
+    expect(calls[0]).toContain("test successful");
+    expect(calls[0]).toContain("value");
   });
 });
 
 describe("outputError", () => {
-  let writeSpy: ReturnType<typeof vi.spyOn>;
+  let calls: string[];
 
   beforeEach(() => {
-    writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    calls = [];
+    vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
+      calls.push(typeof chunk === "string" ? chunk : chunk.toString());
+      return true;
+    });
   });
 
   afterEach(() => {
-    writeSpy.mockRestore();
+    vi.restoreAllMocks();
   });
 
   it("outputs structured error JSON with meta", () => {
     const reqCtx = createRequestContext("testnet");
     outputError("pay", "NO_WALLET", "No wallet configured", false, "Set SUI_PRIVATE_KEY", false, reqCtx);
-    const output = writeSpy.mock.calls[0][0] as string;
-    const parsed = JSON.parse(output);
+    const parsed = JSON.parse(calls[0]);
     expect(parsed.ok).toBe(false);
     expect(parsed.error.code).toBe("NO_WALLET");
     expect(parsed.error.suggestedAction).toBe("Set SUI_PRIVATE_KEY");
@@ -140,17 +144,293 @@ describe("outputError", () => {
   it("includes retryAfterMs when provided", () => {
     const reqCtx = createRequestContext("testnet");
     outputError("pay", "NETWORK_ERROR", "RPC unreachable", true, "Retry later", false, reqCtx, 30000);
-    const output = writeSpy.mock.calls[0][0] as string;
-    const parsed = JSON.parse(output);
+    const parsed = JSON.parse(calls[0]);
     expect(parsed.error.retryable).toBe(true);
     expect(parsed.error.retryAfterMs).toBe(30000);
   });
 
   it("works without reqCtx (fallback meta)", () => {
     outputError("pay", "NO_WALLET", "No wallet configured");
-    const output = writeSpy.mock.calls[0][0] as string;
-    const parsed = JSON.parse(output);
+    const parsed = JSON.parse(calls[0]);
     expect(parsed.meta).toBeDefined();
     expect(parsed.meta.network).toBe("unknown");
+  });
+});
+
+// ─── A2: Envelope contract assertions ───────────────────────────
+
+describe("A2: Output envelope contract — success", () => {
+  let calls: string[];
+
+  beforeEach(() => {
+    calls = [];
+    vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
+      calls.push(typeof chunk === "string" ? chunk : chunk.toString());
+      return true;
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("envelope always has ok, command, version, data, meta at top level", () => {
+    const reqCtx = createRequestContext("mainnet");
+    outputSuccess("balance", { address: "0x1", balance: "100" }, false, reqCtx);
+    const env = JSON.parse(calls[0]);
+    expect(env).toHaveProperty("ok", true);
+    expect(env).toHaveProperty("command", "balance");
+    expect(env).toHaveProperty("version", VERSION);
+    expect(env).toHaveProperty("data");
+    expect(env).toHaveProperty("meta");
+  });
+
+  it("meta always has network, durationMs, cliVersion, requestId", () => {
+    const reqCtx = createRequestContext("mainnet");
+    outputSuccess("receipt", { receiptId: "0xabc" }, false, reqCtx);
+    const env = JSON.parse(calls[0]);
+    expect(typeof env.meta.network).toBe("string");
+    expect(env.meta.network).toBe("mainnet");
+    expect(typeof env.meta.durationMs).toBe("number");
+    expect(env.meta.cliVersion).toBe(VERSION);
+    expect(env.meta.requestId).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it("meta.gasCostMist and meta.gasCostDisplay absent when no gas provided", () => {
+    const reqCtx = createRequestContext("testnet");
+    outputSuccess("balance", { balance: "0" }, false, reqCtx);
+    const env = JSON.parse(calls[0]);
+    expect(env.meta.gasCostMist).toBeUndefined();
+    expect(env.meta.gasCostDisplay).toBeUndefined();
+  });
+
+  it("meta.gasCostMist and meta.gasCostDisplay present when gas provided", () => {
+    const reqCtx = createRequestContext("testnet");
+    outputSuccess("pay", { txDigest: "abc" }, false, reqCtx, { mist: 500000, display: "0.000500 SUI" });
+    const env = JSON.parse(calls[0]);
+    expect(env.meta.gasCostMist).toBe(500000);
+    expect(env.meta.gasCostDisplay).toBe("0.000500 SUI");
+  });
+
+  it("command field in envelope matches the command name string exactly", () => {
+    const commands = ["pay", "pay-402", "balance", "receipt", "doctor",
+      "wallet generate", "mandate create", "mandate check", "mandate list",
+      "prepaid deposit", "prepaid status", "prepaid list", "schema"];
+    const reqCtx = createRequestContext("testnet");
+
+    for (const cmd of commands) {
+      calls.length = 0;
+      outputSuccess(cmd, { ok: true }, false, reqCtx);
+      const env = JSON.parse(calls[0]);
+      expect(env.command).toBe(cmd);
+    }
+  });
+});
+
+describe("A2: Output envelope contract — error", () => {
+  let calls: string[];
+
+  beforeEach(() => {
+    calls = [];
+    vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
+      calls.push(typeof chunk === "string" ? chunk : chunk.toString());
+      return true;
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("error envelope has ok:false, command, version, error, meta at top level", () => {
+    const reqCtx = createRequestContext("testnet");
+    outputError("pay", "NO_WALLET", "No wallet configured", false, undefined, false, reqCtx);
+    const env = JSON.parse(calls[0]);
+    expect(env.ok).toBe(false);
+    expect(env.command).toBe("pay");
+    expect(env.version).toBe(VERSION);
+    expect(env).toHaveProperty("error");
+    expect(env).toHaveProperty("meta");
+  });
+
+  it("error.code, error.message, error.retryable always present", () => {
+    outputError("balance", "NETWORK_ERROR", "RPC unreachable", true);
+    const env = JSON.parse(calls[0]);
+    expect(typeof env.error.code).toBe("string");
+    expect(typeof env.error.message).toBe("string");
+    expect(typeof env.error.retryable).toBe("boolean");
+  });
+
+  it("error envelope meta has network, durationMs, cliVersion, requestId", () => {
+    const reqCtx = createRequestContext("devnet");
+    outputError("doctor", "TIMEOUT", "RPC timed out", true, undefined, false, reqCtx);
+    const env = JSON.parse(calls[0]);
+    expect(env.meta.network).toBe("devnet");
+    expect(typeof env.meta.durationMs).toBe("number");
+    expect(env.meta.cliVersion).toBe(VERSION);
+    expect(env.meta.requestId).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it("requiresHumanAction only present when true (not emitted as false)", () => {
+    const reqCtx = createRequestContext("testnet");
+    outputError("pay", "MANDATE_EXPIRED", "expired", false, undefined, true, reqCtx);
+    const env = JSON.parse(calls[0]);
+    expect(env.error.requiresHumanAction).toBe(true);
+
+    calls.length = 0;
+    outputError("pay", "MISSING_ARGS", "missing", false, undefined, false, reqCtx);
+    const env2 = JSON.parse(calls[0]);
+    // false → should not be present in JSON (omitted via spread)
+    expect(env2.error.requiresHumanAction).toBeUndefined();
+  });
+});
+
+// ─── A5: printHuman — no [object Object] ────────────────────────
+
+describe("A5: printHuman — flattenForHuman handles all data shapes", () => {
+  let output: string;
+
+  beforeEach(() => {
+    output = "";
+    vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
+      output += typeof chunk === "string" ? chunk : chunk.toString();
+      return true;
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("pay success (flat data) — no [object Object]", () => {
+    const reqCtx = createRequestContext("testnet");
+    outputSuccess("pay", {
+      txDigest: "7P8wDGJ7aRd6",
+      recipient: "0x0000000000000000000000000000000000000000000000000000000000000001",
+      amount: "1500000000",
+      amountFormatted: "1.5 SUI",
+      coin: "0x2::sui::SUI",
+      receiptId: "0xreceipt123",
+      gasCostSui: "0.001234",
+      network: "testnet",
+    }, true, reqCtx);
+    expect(output).not.toContain("[object Object]");
+    expect(output).toContain("pay successful");
+    expect(output).toContain("7P8wDGJ7aRd6");
+  });
+
+  it("pay dry-run (nested currentBalance, nullable shortfall) — no [object Object]", () => {
+    const reqCtx = createRequestContext("testnet");
+    outputSuccess("pay", {
+      dryRun: true,
+      recipient: "0x0000000000000000000000000000000000000000000000000000000000000001",
+      amount: "1500000000",
+      affordable: false,
+      currentBalance: {
+        payment: "1.0 SUI",
+        gas: "0.5 SUI",
+      },
+      shortfall: {
+        payment: "0.5 SUI",
+      },
+    }, true, reqCtx);
+    expect(output).not.toContain("[object Object]");
+    expect(output).toContain("currentBalance.payment");
+    expect(output).toContain("shortfall.payment");
+  });
+
+  it("pay-402 success (nested payment, requirements) — no [object Object]", () => {
+    const reqCtx = createRequestContext("testnet");
+    outputSuccess("pay-402", {
+      url: "https://api.example.com",
+      httpStatus: 200,
+      paymentRequired: true,
+      requirements: { amount: "1000000", asset: "0x2::sui::SUI", scheme: "sui-direct" },
+      payment: {
+        txDigest: "abc123",
+        receiptId: "0xreceipt",
+        amountPaid: "1000000",
+        coin: "0x2::sui::SUI",
+      },
+    }, true, reqCtx);
+    expect(output).not.toContain("[object Object]");
+    expect(output).toContain("requirements.amount");
+    expect(output).toContain("payment.txDigest");
+  });
+
+  it("mandate list (nested mandates array of objects) — no [object Object]", () => {
+    const reqCtx = createRequestContext("testnet");
+    outputSuccess("mandate list", {
+      address: "0x0000000000000000000000000000000000000000000000000000000000000001",
+      count: 2,
+      mandates: [
+        {
+          objectId: "0xmandate1",
+          type: "0xTEST::mandate::Mandate",
+          fields: { delegate: "0xagent", max_per_tx: "1000000000" },
+        },
+        {
+          objectId: "0xmandate2",
+          type: "0xTEST::mandate::Mandate",
+          fields: { delegate: "0xagent2", max_per_tx: "2000000000" },
+        },
+      ],
+      network: "testnet",
+    }, true, reqCtx);
+    expect(output).not.toContain("[object Object]");
+    expect(output).toContain("mandates[0].objectId");
+    expect(output).toContain("mandates[1].objectId");
+    expect(output).toContain("0xmandate1");
+    expect(output).toContain("0xmandate2");
+  });
+
+  it("prepaid list (nested balances array of objects) — no [object Object]", () => {
+    const reqCtx = createRequestContext("testnet");
+    outputSuccess("prepaid list", {
+      address: "0x0000000000000000000000000000000000000000000000000000000000000001",
+      count: 1,
+      balances: [
+        {
+          objectId: "0xbalance1",
+          type: "0xTEST::prepaid::PrepaidBalance",
+          fields: { amount: "5000000000", provider: "0xprovider" },
+        },
+      ],
+    }, true, reqCtx);
+    expect(output).not.toContain("[object Object]");
+    expect(output).toContain("balances[0].objectId");
+    expect(output).toContain("0xbalance1");
+  });
+
+  it("empty arrays render as (empty) not [object Object]", () => {
+    const reqCtx = createRequestContext("testnet");
+    outputSuccess("mandate list", {
+      address: "0x0000000000000000000000000000000000000000000000000000000000000001",
+      count: 0,
+      mandates: [],
+    }, true, reqCtx);
+    expect(output).not.toContain("[object Object]");
+    expect(output).toContain("(empty)");
+  });
+
+  it("arrays of primitives render correctly (comma-separated per element)", () => {
+    const reqCtx = createRequestContext("testnet");
+    outputSuccess("test", { tags: ["alpha", "beta", "gamma"] }, true, reqCtx);
+    expect(output).not.toContain("[object Object]");
+    expect(output).toContain("alpha");
+    expect(output).toContain("beta");
+    expect(output).toContain("gamma");
+  });
+
+  it("null and undefined values are skipped", () => {
+    const reqCtx = createRequestContext("testnet");
+    outputSuccess("pay", {
+      txDigest: "abc",
+      mandateId: undefined,
+      shortfall: null,
+    } as Record<string, unknown>, true, reqCtx);
+    expect(output).toContain("txDigest");
+    expect(output).not.toContain("mandateId");
+    expect(output).not.toContain("shortfall");
   });
 });

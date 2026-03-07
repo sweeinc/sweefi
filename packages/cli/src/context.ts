@@ -130,3 +130,17 @@ export class CliError extends Error {
     this.name = "CliError";
   }
 }
+
+/** Strip anything that could be key material from error messages before output. */
+export function sanitize(msg: string): string {
+  return msg
+    .replace(/suiprivkey1[a-z0-9]{50,}/gi, "[REDACTED]")
+    .replace(/[A-Za-z0-9+/]{60,}={0,2}/g, "[REDACTED]");
+}
+
+/** Detect network/RPC errors from the Sui client — these are retryable. */
+export function isNetworkError(err: unknown): boolean {
+  if (err instanceof TypeError && (err.message.includes("fetch") || err.message.includes("network"))) return true;
+  const msg = err instanceof Error ? err.message : String(err);
+  return /ECONNREFUSED|ETIMEDOUT|ENOTFOUND|socket hang up|fetch failed|NetworkError/i.test(msg);
+}

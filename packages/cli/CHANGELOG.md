@@ -5,6 +5,20 @@ All notable changes to `@sweefi/cli` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Idempotent receipt hit now includes `txDigest` (populated via `showPreviousTransaction`)
+- Idempotency key matching uses exact segment comparison (prevents substring collisions with short keys)
+- pay-402 paid-fetch timeout/failure marked `retryable: false` (TX may already be on-chain)
+- `printHuman` flattens nested objects with dot notation (fixes `[object Object]` display)
+- `_pendingMemo` cleared on s402 scheme dispatch failure (prevents cross-fetch memo leak)
+- Warning emitted when memo provided without `packageId` in `@sweefi/sui` client
+
+### Added
+- pay-402 `--dry-run` returns 402 requirements without executing payment
+- `dry-run` flag in pay-402 schema manifest
+
 ## [0.3.0] - 2026-03-07
 
 ### Added

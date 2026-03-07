@@ -237,7 +237,7 @@ function buildSchema(): Schema {
       { code: "OBJECT_NOT_FOUND", retryable: false, description: "Object ID not found on-chain" },
       // pay-402 specific
       { code: "UNKNOWN_402", retryable: false, description: "Server returned 402 without s402 headers" },
-      { code: "PAYMENT_FAILED", retryable: true, description: "s402 paid fetch failed" },
+      { code: "PAYMENT_FAILED", retryable: false, description: "s402 paid fetch failed — payment may have been submitted; check balance before retrying" },
       // System
       { code: "UNKNOWN_COMMAND", retryable: false, description: "Command not recognized" },
       { code: "INTERNAL_ERROR", retryable: false, description: "Unexpected error (bug)" },

@@ -25,6 +25,17 @@ describe("resolveCoinType", () => {
     const custom = "0xabc::token::TOKEN";
     expect(resolveCoinType(custom)).toBe(custom);
   });
+
+  // B3: resolveCoinType edge cases
+  it("handles mixed-case shorthands (Sui, UsD, Usdc)", () => {
+    expect(resolveCoinType("Sui")).toBe(COIN_TYPES.SUI);
+    expect(resolveCoinType("Usdc", "mainnet")).toBe(COIN_TYPES.USDC);
+  });
+
+  it("passes through unknown coin types as-is", () => {
+    expect(resolveCoinType("UNKNOWN_COIN")).toBe("UNKNOWN_COIN");
+    expect(resolveCoinType("0xdeadbeef::token::FOO")).toBe("0xdeadbeef::token::FOO");
+  });
 });
 
 describe("parseAmount", () => {
@@ -80,6 +91,39 @@ describe("parseAmount", () => {
     // 1 MIST = 0.000000001 SUI (9 decimal places)
     expect(parseAmount("0.000000001", SUI)).toBe(1n);
   });
+
+  // B3: parseAmount edge cases
+  it("rejects zero", () => {
+    expect(() => parseAmount("0", SUI)).toThrow(CliError);
+    expect(() => parseAmount("0.0", SUI)).toThrow(CliError);
+  });
+
+  it("rejects NaN literal", () => {
+    expect(() => parseAmount("NaN", SUI)).toThrow(CliError);
+  });
+
+  it("rejects whitespace-only string", () => {
+    expect(() => parseAmount("   ", SUI)).toThrow(CliError);
+  });
+
+  it("passes through huge integers (>10 digits, non-zero)", () => {
+    // Agents compute base units themselves — pass through directly
+    expect(parseAmount("99999999999999999999", SUI)).toBe(99999999999999999999n);
+  });
+
+  it("truncates excess decimals that still yield non-zero result", () => {
+    // "1.1234567891" with 9 decimals — the 10th decimal is dropped, not an error
+    expect(parseAmount("1.1234567891", SUI)).toBe(1_123_456_789n);
+  });
+
+  it("rejects excess decimals that truncate to zero (silent zero-amount)", () => {
+    // 10 decimal places for a 9-decimal coin — whole part is 0, fraction rounds to 0
+    expect(() => parseAmount("0.0000000001", SUI)).toThrow(CliError);
+  });
+
+  it("handles trailing dot as 1.0", () => {
+    expect(parseAmount("1.", SUI)).toBe(1_000_000_000n);
+  });
 });
 
 describe("parseDuration", () => {
@@ -114,6 +158,18 @@ describe("parseDuration", () => {
   it("rejects negative durations", () => {
     expect(() => parseDuration("-1h")).toThrow(CliError);
   });
+
+  // B3: parseDuration edge cases
+  it("accepts fractional durations (0.5d = 12h)", () => {
+    expect(parseDuration("0.5d")).toBe(43_200_000n);
+  });
+
+  it("handles very large durations without overflow (BigInt is unbounded)", () => {
+    // 999999999 days = huge but valid BigInt — no overflow
+    const result = parseDuration("999999999d");
+    expect(result).toBeGreaterThan(0n);
+    expect(typeof result).toBe("bigint");
+  });
 });
 
 describe("validateAddress", () => {
@@ -126,6 +182,29 @@ describe("validateAddress", () => {
   it("rejects invalid addresses", () => {
     expect(() => validateAddress("0x123", "Test")).toThrow(CliError);
     expect(() => validateAddress("not-an-address", "Test")).toThrow(CliError);
+  });
+
+  // B3: validateAddress edge cases
+  it("rejects 0x + 63 hex chars (one short)", () => {
+    expect(() => validateAddress("0x" + "a".repeat(63), "Test")).toThrow(CliError);
+  });
+
+  it("rejects 0x + 65 hex chars (one long)", () => {
+    expect(() => validateAddress("0x" + "a".repeat(65), "Test")).toThrow(CliError);
+  });
+
+  it("accepts mixed-case hex addresses (a-f A-F)", () => {
+    // "aAbBcCdD" = 8 chars, repeat(8) = 64 hex chars total — all valid [a-fA-F0-9]
+    const mixedCase = "0x" + "aAbBcCdD".repeat(8);
+    expect(validateAddress(mixedCase, "Test")).toBe(mixedCase);
+  });
+
+  it("rejects 0X prefix (uppercase X is not valid)", () => {
+    expect(() => validateAddress("0X" + "a".repeat(64), "Test")).toThrow(CliError);
+  });
+
+  it("rejects empty string", () => {
+    expect(() => validateAddress("", "Test")).toThrow(CliError);
   });
 });
 

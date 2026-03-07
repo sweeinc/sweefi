@@ -10,6 +10,19 @@ import type { CliContext } from "../src/context";
 import { CliError } from "../src/context";
 import { createRequestContext } from "../src/output";
 
+// Mock PTB builders so unit tests don't need valid package IDs or network access.
+// signAndExecuteTransaction is already mocked in each test; the tx object itself is irrelevant.
+vi.mock("@sweefi/sui/ptb", async (importOriginal) => {
+  const mod = await importOriginal<Record<string, unknown>>();
+  return {
+    ...mod,
+    buildPayTx: vi.fn(() => ({})),
+    buildMandatedPayTx: vi.fn(() => ({})),
+    buildCreateMandateTx: vi.fn(() => ({})),
+    buildPrepaidDepositTx: vi.fn(() => ({})),
+  };
+});
+
 // ─── Test helpers ───────────────────────────────────────────────
 
 function createMockContext(overrides?: Partial<CliContext>): CliContext {
@@ -557,6 +570,430 @@ describe("debug", () => {
 
     const output = stderrSpy.mock.calls[0][0] as string;
     expect(output).toContain('"key":"value"');
+  });
+});
+
+// ─── mandate create ─────────────────────────────────────────────
+
+describe("mandate create command", () => {
+  let stdout: ReturnType<typeof captureStdout>;
+
+  beforeEach(() => { stdout = captureStdout(); });
+  afterEach(() => { stdout.restore(); });
+
+  it("throws on missing arguments (needs 4)", async () => {
+    const { mandateCreate } = await import("../src/commands/mandate");
+    const ctx = createMockContext();
+    const reqCtx = createRequestContext("testnet");
+
+    await expect(mandateCreate(ctx, [VALID_ADDRESS, "1", "50"], {}, reqCtx)).rejects.toMatchObject({
+      code: "MISSING_ARGS",
+    });
+  });
+
+  it("throws when max-per-tx exceeds max-total", async () => {
+    const { mandateCreate } = await import("../src/commands/mandate");
+    const { Ed25519Keypair } = await import("@mysten/sui/keypairs/ed25519");
+    const ctx = createMockContext({ signer: new Ed25519Keypair() });
+    const reqCtx = createRequestContext("testnet");
+
+    try {
+      await mandateCreate(ctx, [VALID_ADDRESS, "100", "10", "7d"], {}, reqCtx);
+      expect.unreachable("should have thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(CliError);
+      expect((e as CliError).code).toBe("INVALID_MANDATE");
+    }
+  });
+
+  it("throws NO_WALLET when signer is missing", async () => {
+    const { mandateCreate } = await import("../src/commands/mandate");
+    const ctx = createMockContext(); // signer: null
+    const reqCtx = createRequestContext("testnet");
+
+    await expect(mandateCreate(ctx, [VALID_ADDRESS, "1", "50", "7d"], {}, reqCtx)).rejects.toMatchObject({
+      code: "NO_WALLET",
+    });
+  });
+
+  it("returns dry-run output with gas estimate", async () => {
+    const { mandateCreate } = await import("../src/commands/mandate");
+    const { Ed25519Keypair } = await import("@mysten/sui/keypairs/ed25519");
+    const signer = new Ed25519Keypair();
+    const ctx = createMockContext({ signer });
+
+    (ctx.suiClient.devInspectTransactionBlock as ReturnType<typeof vi.fn>).mockResolvedValue({
+      effects: {
+        status: { status: "success" },
+        gasUsed: { computationCost: "1000000", storageCost: "2000000", storageRebate: "1500000" },
+      },
+    });
+
+    const reqCtx = createRequestContext("testnet");
+    await mandateCreate(ctx, [VALID_ADDRESS, "1", "50", "7d"], { dryRun: true }, reqCtx);
+
+    const env = stdout.getEnvelope();
+    expect(env.ok).toBe(true);
+    expect(env.command).toBe("mandate create");
+    expect(env.data.dryRun).toBe(true);
+    expect(env.data.agent).toBe(VALID_ADDRESS);
+    expect(env.data.status).toBe("success");
+  });
+
+  it("happy path: creates mandate and returns txDigest + mandateId", async () => {
+    const { mandateCreate } = await import("../src/commands/mandate");
+    const { Ed25519Keypair } = await import("@mysten/sui/keypairs/ed25519");
+    const signer = new Ed25519Keypair();
+    const ctx = createMockContext({ signer });
+
+    (ctx.suiClient.signAndExecuteTransaction as ReturnType<typeof vi.fn>).mockResolvedValue({
+      digest: "0xMANDATE_TX_DIGEST",
+      effects: {
+        status: { status: "success" },
+        gasUsed: { computationCost: "1000000", storageCost: "2000000", storageRebate: "1500000" },
+      },
+      objectChanges: [
+        { type: "created", objectId: "0xNEW_MANDATE", objectType: "0xTEST_PACKAGE::mandate::Mandate" },
+      ],
+    });
+
+    const reqCtx = createRequestContext("testnet");
+    await mandateCreate(ctx, [VALID_ADDRESS, "1", "50", "7d"], {}, reqCtx);
+
+    const env = stdout.getEnvelope();
+    expect(env.ok).toBe(true);
+    expect(env.command).toBe("mandate create");
+    expect(env.data.txDigest).toBe("0xMANDATE_TX_DIGEST");
+    expect(env.data.mandateId).toBe("0xNEW_MANDATE");
+    expect(env.data.agent).toBe(VALID_ADDRESS);
+    expect(env.meta.network).toBe("testnet");
+  });
+});
+
+// ─── mandate list (NO_ADDRESS) ───────────────────────────────────
+
+describe("mandate list NO_ADDRESS", () => {
+  it("throws NO_ADDRESS when no address arg and no wallet", async () => {
+    const { mandateList } = await import("../src/commands/mandate");
+    const ctx = createMockContext(); // signer: null
+    const reqCtx = createRequestContext("testnet");
+
+    try {
+      await mandateList(ctx, [], {}, reqCtx);
+      expect.unreachable("should have thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(CliError);
+      expect((e as CliError).code).toBe("NO_ADDRESS");
+    }
+  });
+});
+
+// ─── prepaid deposit ─────────────────────────────────────────────
+
+describe("prepaid deposit command", () => {
+  let stdout: ReturnType<typeof captureStdout>;
+
+  beforeEach(() => { stdout = captureStdout(); });
+  afterEach(() => { stdout.restore(); });
+
+  it("throws on missing arguments (needs provider + amount)", async () => {
+    const { prepaidDeposit } = await import("../src/commands/prepaid");
+    const ctx = createMockContext();
+    const reqCtx = createRequestContext("testnet");
+
+    await expect(prepaidDeposit(ctx, [VALID_ADDRESS], {}, reqCtx)).rejects.toMatchObject({
+      code: "MISSING_ARGS",
+    });
+  });
+
+  it("throws NO_WALLET when signer is missing", async () => {
+    const { prepaidDeposit } = await import("../src/commands/prepaid");
+    const ctx = createMockContext();
+    const reqCtx = createRequestContext("testnet");
+
+    await expect(prepaidDeposit(ctx, [VALID_ADDRESS, "10"], {}, reqCtx)).rejects.toMatchObject({
+      code: "NO_WALLET",
+    });
+  });
+
+  it("returns dry-run output", async () => {
+    const { prepaidDeposit } = await import("../src/commands/prepaid");
+    const { Ed25519Keypair } = await import("@mysten/sui/keypairs/ed25519");
+    const signer = new Ed25519Keypair();
+    const ctx = createMockContext({ signer });
+
+    (ctx.suiClient.devInspectTransactionBlock as ReturnType<typeof vi.fn>).mockResolvedValue({
+      effects: {
+        status: { status: "success" },
+        gasUsed: { computationCost: "1000000", storageCost: "2000000", storageRebate: "1500000" },
+      },
+    });
+
+    const reqCtx = createRequestContext("testnet");
+    await prepaidDeposit(ctx, [VALID_ADDRESS, "10"], { dryRun: true }, reqCtx);
+
+    const env = stdout.getEnvelope();
+    expect(env.ok).toBe(true);
+    expect(env.command).toBe("prepaid deposit");
+    expect(env.data.dryRun).toBe(true);
+    expect(env.data.provider).toBe(VALID_ADDRESS);
+  });
+
+  it("happy path: creates prepaid balance and returns txDigest + balanceId", async () => {
+    const { prepaidDeposit } = await import("../src/commands/prepaid");
+    const { Ed25519Keypair } = await import("@mysten/sui/keypairs/ed25519");
+    const signer = new Ed25519Keypair();
+    const ctx = createMockContext({ signer });
+
+    (ctx.suiClient.signAndExecuteTransaction as ReturnType<typeof vi.fn>).mockResolvedValue({
+      digest: "0xPREPAID_TX_DIGEST",
+      effects: {
+        status: { status: "success" },
+        gasUsed: { computationCost: "1000000", storageCost: "2000000", storageRebate: "1500000" },
+      },
+      objectChanges: [
+        { type: "created", objectId: "0xNEW_BALANCE", objectType: "0xTEST_PACKAGE::prepaid::PrepaidBalance<0x2::sui::SUI>" },
+      ],
+    });
+
+    const reqCtx = createRequestContext("testnet");
+    await prepaidDeposit(ctx, [VALID_ADDRESS, "10"], {}, reqCtx);
+
+    const env = stdout.getEnvelope();
+    expect(env.ok).toBe(true);
+    expect(env.command).toBe("prepaid deposit");
+    expect(env.data.txDigest).toBe("0xPREPAID_TX_DIGEST");
+    expect(env.data.balanceId).toBe("0xNEW_BALANCE");
+    expect(env.data.provider).toBe(VALID_ADDRESS);
+  });
+});
+
+// ─── prepaid list (NO_ADDRESS) ───────────────────────────────────
+
+describe("prepaid list NO_ADDRESS", () => {
+  it("throws NO_ADDRESS when no address arg and no wallet", async () => {
+    const { prepaidList } = await import("../src/commands/prepaid");
+    const ctx = createMockContext(); // signer: null
+    const reqCtx = createRequestContext("testnet");
+
+    try {
+      await prepaidList(ctx, [], {}, reqCtx);
+      expect.unreachable("should have thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(CliError);
+      expect((e as CliError).code).toBe("NO_ADDRESS");
+    }
+  });
+});
+
+// ─── prepaid status (not-found) ──────────────────────────────────
+
+describe("prepaid status not-found", () => {
+  it("throws OBJECT_NOT_FOUND when balance doesn't exist", async () => {
+    const { prepaidStatus } = await import("../src/commands/prepaid");
+    const ctx = createMockContext();
+    (ctx.suiClient.getObject as ReturnType<typeof vi.fn>).mockResolvedValue({
+      error: { code: "notExists" },
+    });
+    const reqCtx = createRequestContext("testnet");
+
+    try {
+      await prepaidStatus(ctx, ["0xdeadbeef"], {}, reqCtx);
+      expect.unreachable("should have thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(CliError);
+      expect((e as CliError).code).toBe("OBJECT_NOT_FOUND");
+    }
+  });
+});
+
+// ─── pay happy path ──────────────────────────────────────────────
+
+describe("pay command (happy paths)", () => {
+  let stdout: ReturnType<typeof captureStdout>;
+
+  beforeEach(() => { stdout = captureStdout(); });
+  afterEach(() => { stdout.restore(); });
+
+  it("executes payment and returns txDigest + receiptId", async () => {
+    const { pay } = await import("../src/commands/pay");
+    const { Ed25519Keypair } = await import("@mysten/sui/keypairs/ed25519");
+    const signer = new Ed25519Keypair();
+    const ctx = createMockContext({ signer });
+
+    // No existing receipt
+    (ctx.suiClient.getOwnedObjects as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: [], hasNextPage: false, nextCursor: null,
+    });
+
+    (ctx.suiClient.signAndExecuteTransaction as ReturnType<typeof vi.fn>).mockResolvedValue({
+      digest: "0xPAY_TX_DIGEST",
+      effects: {
+        status: { status: "success" },
+        gasUsed: { computationCost: "1000000", storageCost: "2000000", storageRebate: "1500000" },
+      },
+      objectChanges: [
+        { type: "created", objectId: "0xNEW_RECEIPT", objectType: "0xTEST_PACKAGE::payment::PaymentReceipt" },
+      ],
+    });
+
+    const reqCtx = createRequestContext("testnet");
+    await pay(ctx, [VALID_ADDRESS, "1.5"], { idempotencyKey: "test-uuid-pay" }, reqCtx);
+
+    const env = stdout.getEnvelope();
+    expect(env.ok).toBe(true);
+    expect(env.command).toBe("pay");
+    expect(env.data.txDigest).toBe("0xPAY_TX_DIGEST");
+    expect(env.data.receiptId).toBe("0xNEW_RECEIPT");
+    expect(env.data.recipient).toBe(VALID_ADDRESS);
+    expect(env.data.idempotencyKey).toBe("test-uuid-pay");
+  });
+
+  it("returns idempotent receipt with txDigest when key already exists (B6 regression)", async () => {
+    const { pay } = await import("../src/commands/pay");
+    const { Ed25519Keypair } = await import("@mysten/sui/keypairs/ed25519");
+    const signer = new Ed25519Keypair();
+    const ctx = createMockContext({ signer });
+
+    // Existing receipt with matching memo
+    (ctx.suiClient.getOwnedObjects as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: [
+        {
+          data: {
+            objectId: "0xEXISTING_RECEIPT",
+            previousTransaction: "0xORIGINAL_TX",
+            content: {
+              dataType: "moveObject",
+              fields: {
+                recipient: VALID_ADDRESS,
+                amount: "1500000000",
+                memo: Buffer.from("swee:idempotency:idem-key-pay").toString("base64"),
+              },
+            },
+          },
+        },
+      ],
+      hasNextPage: false,
+      nextCursor: null,
+    });
+
+    const reqCtx = createRequestContext("testnet");
+    await pay(ctx, [VALID_ADDRESS, "1.5"], { idempotencyKey: "idem-key-pay" }, reqCtx);
+
+    const env = stdout.getEnvelope();
+    expect(env.ok).toBe(true);
+    expect(env.data.idempotent).toBe(true);
+    expect(env.data.receiptId).toBe("0xEXISTING_RECEIPT");
+    // B6: txDigest must be present on idempotent hit
+    expect(env.data.txDigest).toBe("0xORIGINAL_TX");
+  });
+});
+
+// ─── pay-402 (happy paths) ───────────────────────────────────────
+
+describe("pay-402 command (happy paths)", () => {
+  let stdout: ReturnType<typeof captureStdout>;
+
+  beforeEach(() => { stdout = captureStdout(); });
+  afterEach(() => {
+    stdout.restore();
+    vi.unstubAllGlobals();
+  });
+
+  it("returns free resource when server responds with non-402", async () => {
+    const { pay402 } = await import("../src/commands/pay-402");
+    const { Ed25519Keypair } = await import("@mysten/sui/keypairs/ed25519");
+    const signer = new Ed25519Keypair();
+    const ctx = createMockContext({ signer });
+
+    // In JSON mode with idempotency key: first check for existing receipt (empty), then probe
+    (ctx.suiClient.getOwnedObjects as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: [], hasNextPage: false, nextCursor: null,
+    });
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      status: 200,
+      headers: { get: vi.fn().mockReturnValue(null) },
+      text: vi.fn().mockResolvedValue('{"result": "free content"}'),
+    }));
+
+    const reqCtx = createRequestContext("testnet");
+    await pay402(ctx, [], {
+      url: "https://example.com/free",
+      idempotencyKey: "free-resource-key",
+    }, reqCtx);
+
+    const env = stdout.getEnvelope();
+    expect(env.ok).toBe(true);
+    expect(env.command).toBe("pay-402");
+    expect(env.data.paymentRequired).toBe(false);
+    expect(env.data.httpStatus).toBe(200);
+    expect(env.data.body).toContain("free content");
+  });
+
+  it("returns dry-run requirements when 402 is received", async () => {
+    const { pay402 } = await import("../src/commands/pay-402");
+    const { Ed25519Keypair } = await import("@mysten/sui/keypairs/ed25519");
+    const { S402_HEADERS } = await import("s402");
+    const signer = new Ed25519Keypair();
+    const ctx = createMockContext({ signer });
+
+    const fakeHeader = "fake-requirements-header";
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      status: 402,
+      headers: { get: vi.fn().mockImplementation((h: string) =>
+        h === S402_HEADERS.PAYMENT_REQUIRED ? fakeHeader : null
+      )},
+    }));
+
+    const reqCtx = createRequestContext("testnet");
+    await pay402(ctx, [], { url: "https://api.example.com/paid", dryRun: true }, reqCtx);
+
+    const env = stdout.getEnvelope();
+    expect(env.ok).toBe(true);
+    expect(env.data.dryRun).toBe(true);
+    expect(env.data.paymentRequired).toBe(true);
+    expect(env.data.httpStatus).toBe(402);
+    expect(env.data.protocol).toBe("s402");
+  });
+
+  it("throws UNKNOWN_402 when 402 lacks s402 header", async () => {
+    const { pay402 } = await import("../src/commands/pay-402");
+    const { Ed25519Keypair } = await import("@mysten/sui/keypairs/ed25519");
+    const signer = new Ed25519Keypair();
+    const ctx = createMockContext({ signer });
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      status: 402,
+      headers: { get: vi.fn().mockReturnValue(null) }, // no s402 header
+    }));
+
+    const reqCtx = createRequestContext("testnet");
+    try {
+      await pay402(ctx, [], { url: "https://api.example.com/paid", human: true }, reqCtx);
+      expect.unreachable("should have thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(CliError);
+      expect((e as CliError).code).toBe("UNKNOWN_402");
+    }
+  });
+
+  it("throws NETWORK_ERROR when fetch fails", async () => {
+    const { pay402 } = await import("../src/commands/pay-402");
+    const { Ed25519Keypair } = await import("@mysten/sui/keypairs/ed25519");
+    const signer = new Ed25519Keypair();
+    const ctx = createMockContext({ signer });
+
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("fetch failed: connection refused")));
+
+    const reqCtx = createRequestContext("testnet");
+    try {
+      await pay402(ctx, [], { url: "https://api.example.com/paid", human: true }, reqCtx);
+      expect.unreachable("should have thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(CliError);
+      expect((e as CliError).code).toBe("NETWORK_ERROR");
+    }
   });
 });
 

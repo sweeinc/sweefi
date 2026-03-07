@@ -33,7 +33,7 @@
 
 import { parseArgs } from "node:util";
 import { randomUUID } from "node:crypto";
-import { createContext, CliError, debug } from "./context.js";
+import { createContext, CliError, debug, sanitize, isNetworkError } from "./context.js";
 import { VERSION, outputError, createRequestContext } from "./output.js";
 import { validateIdempotencyKey } from "./idempotency.js";
 import { pay } from "./commands/pay.js";
@@ -234,20 +234,6 @@ Examples:
   sweefi doctor
   sweefi schema
 `);
-}
-
-/** Strip anything that could be key material from error messages. */
-function sanitize(msg: string): string {
-  return msg
-    .replace(/suiprivkey1[a-z0-9]{50,}/gi, "[REDACTED]")
-    .replace(/[A-Za-z0-9+/]{60,}={0,2}/g, "[REDACTED]");
-}
-
-/** Detect network/RPC errors from Sui client. */
-function isNetworkError(err: unknown): boolean {
-  if (err instanceof TypeError && (err.message.includes("fetch") || err.message.includes("network"))) return true;
-  const msg = err instanceof Error ? err.message : String(err);
-  return /ECONNREFUSED|ETIMEDOUT|ENOTFOUND|socket hang up|fetch failed|NetworkError/i.test(msg);
 }
 
 main().catch((err) => {

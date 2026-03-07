@@ -178,7 +178,20 @@ function flattenForHuman(data: Record<string, unknown>, prefix = ""): [string, s
   for (const [key, value] of Object.entries(data)) {
     if (value === undefined || value === null) continue;
     const fullKey = prefix ? `${prefix}.${key}` : key;
-    if (typeof value === "object" && !Array.isArray(value)) {
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        entries.push([fullKey, "(empty)"]);
+      } else {
+        for (let i = 0; i < value.length; i++) {
+          const item = value[i];
+          if (typeof item === "object" && item !== null) {
+            entries.push(...flattenForHuman(item as Record<string, unknown>, `${fullKey}[${i}]`));
+          } else {
+            entries.push([`${fullKey}[${i}]`, String(item)]);
+          }
+        }
+      }
+    } else if (typeof value === "object") {
       entries.push(...flattenForHuman(value as Record<string, unknown>, fullKey));
     } else {
       entries.push([fullKey, String(value)]);

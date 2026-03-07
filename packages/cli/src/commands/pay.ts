@@ -71,6 +71,7 @@ export async function pay(
       outputSuccess("pay", {
         idempotent: true,
         receiptId: existing.receiptId,
+        txDigest: existing.txDigest,
         recipient,
         amount: amount.toString(),
         amountFormatted: formatBalance(amount, coinType),
