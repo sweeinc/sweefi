@@ -26,6 +26,7 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
       - run: pnpm -r typecheck
 
   test:
@@ -80,12 +81,17 @@ jobs:
         run: |
           curl -sSfL https://raw.githubusercontent.com/MystenLabs/suiup/main/install.sh | sh
           echo "$HOME/.local/bin" >> $GITHUB_PATH
+          echo "$HOME/.sui/bin" >> $GITHUB_PATH
 
       - name: Install Sui
-        run: suiup install sui
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          suiup install sui
 
       - name: Verify Sui installation
-        run: sui --version
+        run: |
+          export PATH="$HOME/.sui/bin:$PATH"
+          sui --version
 
       - name: Run Move tests
         working-directory: contracts
