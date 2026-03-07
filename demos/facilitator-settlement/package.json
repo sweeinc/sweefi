@@ -20,6 +20,7 @@
     "s402": "^0.2.0"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "tsx": "^4.7.0",
     "typescript": "^5.5.0"
   }
