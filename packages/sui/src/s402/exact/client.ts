@@ -108,7 +108,10 @@ export class ExactSuiClientScheme implements s402ClientScheme {
 
     // When a memo is provided AND we have a packageId, use payment::pay_and_keep
     // to create an on-chain PaymentReceipt with the memo in its vector<u8> field.
-    // Without packageId, fall back to raw transferObjects (no receipt, no memo).
+    // Without packageId, the memo cannot be written on-chain — warn the caller.
+    if (memo && !effectivePackageId) {
+      console.warn("[sweefi/sui] Warning: memo provided but packageId not configured — memo will not be written on-chain. Idempotency keys require packageId.");
+    }
     if (memo && effectivePackageId) {
       const memoBytes = new TextEncoder().encode(memo);
 

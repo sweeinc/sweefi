@@ -96,6 +96,7 @@ function buildSchema(): Schema {
           { name: "body", type: "string", description: "Request body" },
           { name: "header", type: "string[]", description: "Request headers (K: V format, repeatable)" },
           { name: "idempotency-key", type: "string", required: false, requiredWhen: "JSON output mode (default). Auto-generated in --human mode.", description: "UUID for dedup — prevents double-spend on crash/retry" },
+          { name: "dry-run", type: "boolean", default: false, description: "Probe URL and show payment requirements without executing payment" },
         ],
       },
       {
@@ -210,7 +211,7 @@ function buildSchema(): Schema {
       { code: "NO_WALLET", retryable: false, description: "SUI_PRIVATE_KEY not set or unreadable" },
       { code: "NO_ADDRESS", retryable: false, description: "No address provided and no wallet configured" },
       // Idempotency
-      { code: "IDEMPOTENCY_KEY_REQUIRED", retryable: false, description: "JSON mode requires --idempotency-key for pay" },
+      { code: "IDEMPOTENCY_KEY_REQUIRED", retryable: false, description: "JSON mode requires --idempotency-key for pay and pay-402" },
       { code: "IDEMPOTENCY_CONFLICT", retryable: false, description: "Key already used with different recipient/amount" },
       // Transaction execution
       { code: "TX_OUT_OF_GAS", retryable: true, description: "Transaction ran out of gas" },

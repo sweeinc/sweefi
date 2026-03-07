@@ -22,7 +22,7 @@ import type { S402PaymentMetadata } from "@sweefi/sui";
 import { S402_HEADERS, decodePaymentRequired } from "s402";
 import type { CliContext } from "../context.js";
 import { requireSigner, CliError, debug } from "../context.js";
-import { outputSuccess, explorerUrl } from "../output.js";
+import { outputSuccess, explorerUrl, formatBalance } from "../output.js";
 import type { RequestContext } from "../output.js";
 import { checkIdempotencyKey, buildIdempotencyMemo } from "../idempotency.js";
 
@@ -163,6 +163,20 @@ export async function pay402(
     // Best-effort — proceed with payment even if we can't decode requirements
   }
 
+  // Dry-run: show what would be paid without executing
+  if (flags.dryRun) {
+    outputSuccess("pay-402", {
+      dryRun: true,
+      url: flags.url,
+      httpStatus: 402,
+      paymentRequired: true,
+      protocol: "s402",
+      requirements,
+      network: ctx.network,
+    }, flags.human ?? false, reqCtx);
+    return;
+  }
+
   // Build memo for idempotency tracking
   const memo = flags.idempotencyKey
     ? buildIdempotencyMemo(flags.idempotencyKey)
@@ -190,9 +204,11 @@ export async function pay402(
   } catch (e) {
     clearTimeout(paidTimer);
     if (e instanceof DOMException && e.name === "AbortError") {
-      throw new CliError("TIMEOUT", `Paid request timed out after ${ctx.timeoutMs}ms`, true, "The payment may have been submitted — check your balance. Increase --timeout for slow endpoints.");
+      // NOT retryable — the payment TX may already be on-chain. Retrying could double-spend.
+      throw new CliError("TIMEOUT", `Paid request timed out after ${ctx.timeoutMs}ms`, false, "The payment may have been submitted — check your balance before retrying. Increase --timeout for slow endpoints.");
     }
-    throw new CliError("PAYMENT_FAILED", `Paid fetch failed: ${e instanceof Error ? e.message : String(e)}`, true, "Check the URL and try again");
+    // PAYMENT_FAILED is also not safely retryable — the TX may have been signed and broadcast
+    throw new CliError("PAYMENT_FAILED", `Paid fetch failed: ${e instanceof Error ? e.message : String(e)}`, false, "The payment may have been submitted — check your balance before retrying");
   }
   clearTimeout(paidTimer);
 
@@ -214,10 +230,13 @@ export async function pay402(
 
   // Add payment metadata if available from the s402 client's extended Response
   if (paymentMeta?.txDigest) {
+    const coin = (requirements.asset as string) ?? "0x2::sui::SUI";
     data.payment = {
       txDigest: paymentMeta.txDigest,
       receiptId: paymentMeta.receiptId,
       amountPaid: paymentMeta.amount,
+      amountPaidFormatted: paymentMeta.amount ? formatBalance(paymentMeta.amount, coin) : undefined,
+      coin,
       gasCostSui: paymentMeta.gasCostMist ? (paymentMeta.gasCostMist / 1e9).toFixed(6) : undefined,
       scheme: paymentMeta.scheme,
     };

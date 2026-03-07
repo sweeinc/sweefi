@@ -52,6 +52,16 @@ describe("schema command", () => {
     expect(idempotencyFlag.requiredWhen).toBeDefined();
   });
 
+  it("pay-402 command has idempotency-key flag", () => {
+    schema();
+    const parsed = JSON.parse(writeSpy.mock.calls[0][0] as string);
+    const pay402 = parsed.commands.find((c: { name: string }) => c.name === "pay-402");
+    const idempotencyFlag = pay402.flags.find((f: { name: string }) => f.name === "idempotency-key");
+    expect(idempotencyFlag).toBeDefined();
+    expect(idempotencyFlag.required).toBe(false);
+    expect(idempotencyFlag.requiredWhen).toBeDefined();
+  });
+
   it("every command has name and description", () => {
     schema();
     const parsed = JSON.parse(writeSpy.mock.calls[0][0] as string);

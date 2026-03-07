@@ -161,14 +161,28 @@ export function gasUsedSui(result: { effects?: { gasUsed?: { computationCost: st
   return gas ? (gas.mist / 1e9).toFixed(6) : "unknown";
 }
 
-/** Pretty-print for --human mode. */
+/** Pretty-print for --human mode. Flattens nested objects with dot notation. */
 function printHuman(command: string, data: Record<string, unknown>): void {
+  const flat = flattenForHuman(data);
   const lines: string[] = [`${command} successful\n`];
-  const maxKeyLen = Math.max(...Object.keys(data).map((k) => k.length));
-  for (const [key, value] of Object.entries(data)) {
-    if (value !== undefined && value !== null) {
-      lines.push(`  ${key.padEnd(maxKeyLen + 2)}${value}`);
-    }
+  const maxKeyLen = Math.max(...flat.map(([k]) => k.length));
+  for (const [key, value] of flat) {
+    lines.push(`  ${key.padEnd(maxKeyLen + 2)}${value}`);
   }
   process.stdout.write(lines.join("\n") + "\n");
+}
+
+/** Flatten nested objects into dot-notation key-value pairs for human display. */
+function flattenForHuman(data: Record<string, unknown>, prefix = ""): [string, string][] {
+  const entries: [string, string][] = [];
+  for (const [key, value] of Object.entries(data)) {
+    if (value === undefined || value === null) continue;
+    const fullKey = prefix ? `${prefix}.${key}` : key;
+    if (typeof value === "object" && !Array.isArray(value)) {
+      entries.push(...flattenForHuman(value as Record<string, unknown>, fullKey));
+    } else {
+      entries.push([fullKey, String(value)]);
+    }
+  }
+  return entries;
 }

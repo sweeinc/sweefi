@@ -48,18 +48,28 @@ describe("buildIdempotencyMemo", () => {
     expect(memo).toBe("swee:idempotency:my-key");
   });
 
-  it("memo always contains the idempotency needle", () => {
-    // This is the invariant that makes includes() matching work:
-    // regardless of user memo, the needle "swee:idempotency:<key>" is always present
-    const withMemo = buildIdempotencyMemo("abc", "user text with | pipe chars");
+  it("memo always contains the idempotency needle as an exact segment", () => {
+    // The needle appears as a " | "-delimited segment for exact matching
+    const withMemo = buildIdempotencyMemo("abc", "user text");
     const withoutMemo = buildIdempotencyMemo("abc");
     expect(withMemo).toContain("swee:idempotency:abc");
-    expect(withoutMemo).toContain("swee:idempotency:abc");
+    expect(withoutMemo).toBe("swee:idempotency:abc");
   });
 
   it("user memo with pipe characters doesn't break the needle", () => {
     const memo = buildIdempotencyMemo("key123", "note | with | pipes");
     expect(memo).toBe("note | with | pipes | swee:idempotency:key123");
     expect(memo).toContain("swee:idempotency:key123");
+  });
+
+  it("short key is not a substring of longer key when split on delimiter", () => {
+    // Regression: "abc" must not match memo containing "abc-123"
+    const memoForLongKey = buildIdempotencyMemo("abc-123", "user text");
+    const shortNeedle = "swee:idempotency:abc";
+    // The short needle should NOT appear as an exact segment
+    const segments = memoForLongKey.split(" | ");
+    expect(segments.some((s) => s === shortNeedle)).toBe(false);
+    // But the long needle should
+    expect(segments.some((s) => s === "swee:idempotency:abc-123")).toBe(true);
   });
 });

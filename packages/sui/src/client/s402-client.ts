@@ -182,11 +182,13 @@ export function createS402Client(config: s402ClientConfig) {
       return response;
     }
 
-    // Create payment (this consumes and clears _pendingMemo)
+    // Create payment (this consumes and clears _pendingMemo on success).
+    // On failure, we must clear it here to prevent memo leaking to the next fetch.
     let payload;
     try {
       payload = await client.createPayment(requirements);
     } catch (createError) {
+      exactScheme._pendingMemo = undefined;
       throw createError;
     }
 

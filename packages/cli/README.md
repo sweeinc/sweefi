@@ -127,6 +127,12 @@ Error responses include structured fields for programmatic handling:
 }
 ```
 
+## Known Limitations
+
+- **Facilitator dependency**: `pay-402` routes payments through a facilitator service for settlement. If the facilitator is unreachable, `pay-402` will fail even with a funded wallet. Run `sweefi doctor` to check connectivity.
+- **Double probe**: `pay-402` makes two HTTP requests to the target URL before payment (one from the CLI, one from the s402 client internally). This is a performance issue, not a safety issue.
+- **Idempotency scan**: Uses paginated on-chain receipt scanning. For high-volume senders (1000+ receipts), the check may be slow. A future on-chain registry will provide O(1) lookup.
+
 ## License
 
 Apache 2.0 — [https://github.com/sweeinc/sweefi](https://github.com/sweeinc/sweefi)

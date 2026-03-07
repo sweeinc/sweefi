@@ -49,6 +49,13 @@ function decodeMemo(raw: unknown): string | undefined {
   }
 }
 
+/** Check if a memo contains an exact idempotency segment (not a substring). */
+function memoContainsKey(memo: string, needle: string): boolean {
+  // Memo format: "swee:idempotency:KEY" or "user text | swee:idempotency:KEY"
+  const segments = memo.split(" | ");
+  return segments.some((s) => s === needle);
+}
+
 /**
  * Check if a payment with this idempotency key already exists on-chain.
  * Returns the existing receipt if found, null otherwise.
@@ -87,7 +94,7 @@ export async function checkIdempotencyKey(
     const page = await client.getOwnedObjects({
       owner: senderAddress,
       filter: { MatchAll: [{ StructType: typePrefix }] },
-      options: { showContent: true },
+      options: { showContent: true, showPreviousTransaction: true },
       cursor: cursor ?? undefined,
     });
 
@@ -99,10 +106,12 @@ export async function checkIdempotencyKey(
       // Move memo is vector<u8> → RPC returns Base64. Decode to UTF-8.
       const memo = decodeMemo(fields.memo);
 
-      // Use includes() because the memo may be "user text | swee:idempotency:key"
-      if (memo && memo.includes(memoNeedle)) {
+      // Exact segment match: memo is either exactly the needle, or "user text | <needle>"
+      // Using includes() would cause "key1" to match "key10" — split on delimiter instead.
+      if (memo && memoContainsKey(memo, memoNeedle)) {
         const receipt: ExistingReceipt = {
           receiptId: obj.data!.objectId,
+          txDigest: obj.data!.previousTransaction ?? undefined,
           recipient: typeof fields.recipient === "string" ? fields.recipient : undefined,
           amount: typeof fields.amount === "string" ? fields.amount : String(fields.amount ?? ""),
           memo,

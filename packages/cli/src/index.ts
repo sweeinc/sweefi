@@ -1,5 +1,5 @@
 /**
- * @sweefi/cli v0.2.0 — AI agent payments on Sui.
+ * @sweefi/cli v0.3.0 — AI agent payments on Sui.
  *
  * Design principles:
  *   1. Agents are the primary user — JSON-first output
