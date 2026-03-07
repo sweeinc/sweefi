@@ -6,20 +6,21 @@
  */
 
 import type { CliContext } from "../context.js";
-import { CliError } from "../context.js";
+import { CliError, withTimeout } from "../context.js";
 import { outputSuccess } from "../output.js";
+import type { RequestContext } from "../output.js";
 import { validateObjectId } from "../parse.js";
 
-export async function receipt(ctx: CliContext, args: string[], flags: { human?: boolean }): Promise<void> {
+export async function receipt(ctx: CliContext, args: string[], flags: { human?: boolean }, reqCtx: RequestContext): Promise<void> {
   if (args.length < 1) {
     throw new CliError("MISSING_ARGS", "Usage: sweefi receipt <object-id>", false, "Pass the receipt object ID (0x...)");
   }
 
   const objectId = validateObjectId(args[0], "Receipt ID");
-  const result = await ctx.suiClient.getObject({
+  const result = await withTimeout(ctx, ctx.suiClient.getObject({
     id: objectId,
     options: { showContent: true, showType: true, showOwner: true },
-  });
+  }), "getObject");
 
   if (result.error) {
     throw new CliError(
@@ -40,5 +41,5 @@ export async function receipt(ctx: CliContext, args: string[], flags: { human?: 
     owner: result.data?.owner,
     fields,
     network: ctx.network,
-  }, flags.human ?? false);
+  }, flags.human ?? false, reqCtx);
 }

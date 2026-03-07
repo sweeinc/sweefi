@@ -180,11 +180,18 @@ export function assertTxSuccess(result: { effects?: { status?: { status: string;
       }
     }
 
-    throw new CliError("TX_FAILED", `Transaction failed on-chain: ${error}`, false, "Check the transaction on the explorer for details");
+    // Classify into specific sub-codes for agent retry decisions
+    if (/InsufficientGas|out of gas/i.test(error)) {
+      throw new CliError("TX_OUT_OF_GAS", `Transaction ran out of gas: ${error}`, true, "Retry with a higher gas budget");
+    }
+    if (/ObjectVersionUnavailableForConsumption|SharedObjectLockContentious|concurrency/i.test(error)) {
+      throw new CliError("TX_OBJECT_CONFLICT", `Concurrent object access: ${error}`, true, "This is transient — retry in a few seconds", false);
+    }
+    throw new CliError("TX_EXECUTION_ERROR", `Transaction failed on-chain: ${error}`, false, "Check the transaction on the explorer for details");
   }
 }
 
-/** Calculate gas cost in SUI from transaction effects. */
+/** @deprecated Use gasUsedSui from output.ts instead. Kept only for backward compat if imported externally. */
 export function gasUsedSui(result: { effects?: { gasUsed?: { computationCost: string; storageCost: string; storageRebate: string } } | null }): string {
   const gas = result.effects?.gasUsed;
   if (!gas) return "unknown";

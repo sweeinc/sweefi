@@ -1,5 +1,5 @@
 /**
- * sweefi pay-402 --url <URL> [--method GET|POST] [--body "..."] [--header "K: V"]
+ * sweefi pay-402 --url <URL> [--method GET|POST] [--body "..."] [--header "K: V"] [--idempotency-key <UUID>]
  *
  * The Trojan horse command. When an API responds with HTTP 402 Payment Required,
  * this command handles everything: reads the s402 headers, signs the payment,
@@ -7,21 +7,40 @@
  * blockchains — it just handles a 402 like it would handle a 401.
  *
  * Two-pass flow for full transparency:
- *   1. Fetch the URL → capture 402 requirements (amount, scheme)
- *   2. Create payment via s402 client → retry with X-PAYMENT header
+ *   1. Fetch the URL -> capture 402 requirements (amount, scheme)
+ *   2. Create payment via s402 client -> retry with X-PAYMENT header
  *   3. Return both the API response AND what was paid
+ *
+ * v0.3 additions:
+ *   - --idempotency-key: crash-safe dedup via on-chain memo (REQUIRED in JSON mode)
+ *   - Payment metadata (txDigest, receiptId, gas) in output
+ *   - httpStatus field (renamed from status for clarity)
  */
 
 import { createS402Client } from "@sweefi/sui";
+import type { S402PaymentMetadata } from "@sweefi/sui";
 import { S402_HEADERS, decodePaymentRequired } from "s402";
 import type { CliContext } from "../context.js";
-import { requireSigner, CliError } from "../context.js";
-import { outputSuccess } from "../output.js";
+import { requireSigner, CliError, debug } from "../context.js";
+import { outputSuccess, explorerUrl } from "../output.js";
+import type { RequestContext } from "../output.js";
+import { checkIdempotencyKey, buildIdempotencyMemo } from "../idempotency.js";
+
+export interface Pay402Flags {
+  url?: string;
+  method?: string;
+  body?: string;
+  header?: string[];
+  human?: boolean;
+  idempotencyKey?: string;
+  dryRun?: boolean;
+}
 
 export async function pay402(
   ctx: CliContext,
   _args: string[],
-  flags: { url?: string; method?: string; body?: string; header?: string[]; human?: boolean },
+  flags: Pay402Flags,
+  reqCtx: RequestContext,
 ): Promise<void> {
   if (!flags.url) {
     throw new CliError("MISSING_ARGS", "Usage: sweefi pay-402 --url <URL>", false, "Example: sweefi pay-402 --url https://api.example.com/premium/data");
@@ -38,6 +57,17 @@ export async function pay402(
     throw new CliError("INVALID_URL", `Unsupported URL scheme: "${parsedUrl.protocol}"`, false, "Only http:// and https:// URLs are supported");
   }
 
+  // Require idempotency key in JSON mode (same contract as pay)
+  if (!flags.human && !flags.idempotencyKey && !flags.dryRun) {
+    throw new CliError(
+      "IDEMPOTENCY_KEY_REQUIRED",
+      "pay-402 in JSON mode requires --idempotency-key to prevent double-spend on crash/retry",
+      false,
+      "Add --idempotency-key <UUID>. Example: sweefi pay-402 --url https://api.example.com --idempotency-key $(uuidgen)",
+      false,
+    );
+  }
+
   const signer = requireSigner(ctx);
   const method = flags.method?.toUpperCase() ?? "GET";
   const headers = new Headers();
@@ -50,9 +80,40 @@ export async function pay402(
     }
   }
 
+  // Idempotency check: look for existing receipt with this key before doing anything
+  if (flags.idempotencyKey) {
+    debug(ctx, "pay-402: checking idempotency key:", flags.idempotencyKey);
+    const existing = await checkIdempotencyKey(
+      ctx.suiClient,
+      signer.toSuiAddress(),
+      ctx.config.packageId,
+      flags.idempotencyKey,
+      "", // recipient unknown until 402 probe
+      0n, // amount unknown until 402 probe
+      true, // skipConflictCheck — pay-402 uses key-only matching (see D4 in v0.3 spec)
+    );
+
+    if (existing) {
+      debug(ctx, "pay-402: existing receipt found, skipping payment");
+      outputSuccess("pay-402", {
+        idempotent: true,
+        url: flags.url,
+        payment: {
+          receiptId: existing.receiptId,
+          txDigest: existing.txDigest,
+          memo: existing.memo,
+        },
+        message: "Payment already exists with this idempotency key. No new payment created. Re-fetch the URL directly if you need the content.",
+        network: ctx.network,
+      }, flags.human ?? false, reqCtx);
+      return;
+    }
+  }
+
   // Pass 1: probe the URL to see if it returns 402 + capture requirements
+  debug(ctx, "pay-402: probing", flags.url, "method:", method);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30_000);
+  const probeTimer = setTimeout(() => controller.abort(), ctx.timeoutMs);
   let probeResponse: Response;
   try {
     probeResponse = await fetch(flags.url, {
@@ -62,24 +123,24 @@ export async function pay402(
       signal: controller.signal,
     });
   } catch (e) {
-    clearTimeout(timeout);
+    clearTimeout(probeTimer);
     if (e instanceof DOMException && e.name === "AbortError") {
-      throw new CliError("TIMEOUT", "Request timed out after 30 seconds", true, "Check the URL is reachable or try again");
+      throw new CliError("TIMEOUT", `Request timed out after ${ctx.timeoutMs}ms`, true, "Increase --timeout or check the URL is reachable");
     }
     throw new CliError("NETWORK_ERROR", `Failed to reach ${flags.url}: ${e instanceof Error ? e.message : String(e)}`, true, "Check the URL and your network connection");
   }
-  clearTimeout(timeout);
+  clearTimeout(probeTimer);
 
   // Not a 402 — the resource is free or already authenticated
   if (probeResponse.status !== 402) {
     const body = await probeResponse.text();
     outputSuccess("pay-402", {
       url: flags.url,
-      status: probeResponse.status,
+      httpStatus: probeResponse.status,
       paymentRequired: false,
       body: body.length > 10_000 ? body.slice(0, 10_000) + "...(truncated)" : body,
       network: ctx.network,
-    }, flags.human ?? false);
+    }, flags.human ?? false, reqCtx);
     return;
   }
 
@@ -102,6 +163,11 @@ export async function pay402(
     // Best-effort — proceed with payment even if we can't decode requirements
   }
 
+  // Build memo for idempotency tracking
+  const memo = flags.idempotencyKey
+    ? buildIdempotencyMemo(flags.idempotencyKey)
+    : undefined;
+
   // Pass 2: create s402 client and make paid fetch
   const s402 = createS402Client({
     wallet: signer,
@@ -109,8 +175,9 @@ export async function pay402(
     packageId: ctx.config.packageId,
   });
 
+  debug(ctx, "pay-402: making paid request via s402 client", memo ? `memo: ${memo}` : "");
   const paidController = new AbortController();
-  const paidTimeout = setTimeout(() => paidController.abort(), 30_000);
+  const paidTimer = setTimeout(() => paidController.abort(), ctx.timeoutMs);
   let paidResponse: Response;
   try {
     paidResponse = await s402.fetch(flags.url, {
@@ -118,26 +185,48 @@ export async function pay402(
       headers,
       body: flags.body,
       signal: paidController.signal,
+      ...(memo && { s402: { memo } }),
     });
   } catch (e) {
-    clearTimeout(paidTimeout);
+    clearTimeout(paidTimer);
     if (e instanceof DOMException && e.name === "AbortError") {
-      throw new CliError("TIMEOUT", "Paid request timed out after 30 seconds", true, "The payment may have been submitted — check your balance");
+      throw new CliError("TIMEOUT", `Paid request timed out after ${ctx.timeoutMs}ms`, true, "The payment may have been submitted — check your balance. Increase --timeout for slow endpoints.");
     }
     throw new CliError("PAYMENT_FAILED", `Paid fetch failed: ${e instanceof Error ? e.message : String(e)}`, true, "Check the URL and try again");
   }
-  clearTimeout(paidTimeout);
+  clearTimeout(paidTimer);
 
   const responseBody = await paidResponse.text();
 
-  outputSuccess("pay-402", {
+  // Extract payment metadata from the s402 client's non-enumerable Response property
+  const paymentMeta = (paidResponse as unknown as { s402?: S402PaymentMetadata }).s402;
+
+  const data: Record<string, unknown> = {
     url: flags.url,
-    status: paidResponse.status,
+    httpStatus: paidResponse.status,
     paymentRequired: true,
     protocol: "s402",
     requirements,
     body: responseBody.length > 10_000 ? responseBody.slice(0, 10_000) + "...(truncated)" : responseBody,
     network: ctx.network,
     timestampMs: Date.now(),
-  }, flags.human ?? false);
+  };
+
+  // Add payment metadata if available from the s402 client's extended Response
+  if (paymentMeta?.txDigest) {
+    data.payment = {
+      txDigest: paymentMeta.txDigest,
+      receiptId: paymentMeta.receiptId,
+      amountPaid: paymentMeta.amount,
+      gasCostSui: paymentMeta.gasCostMist ? (paymentMeta.gasCostMist / 1e9).toFixed(6) : undefined,
+      scheme: paymentMeta.scheme,
+    };
+    data.explorerUrl = explorerUrl(ctx.network, paymentMeta.txDigest);
+  }
+
+  if (flags.idempotencyKey) {
+    data.idempotencyKey = flags.idempotencyKey;
+  }
+
+  outputSuccess("pay-402", data, flags.human ?? false, reqCtx);
 }

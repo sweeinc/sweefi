@@ -6,11 +6,12 @@
  */
 
 import type { CliContext } from "../context.js";
-import { CliError } from "../context.js";
+import { CliError, debug, withTimeout } from "../context.js";
 import { outputSuccess, formatBalance } from "../output.js";
+import type { RequestContext } from "../output.js";
 import { resolveCoinType, validateAddress } from "../parse.js";
 
-export async function balance(ctx: CliContext, args: string[], flags: { coin?: string; human?: boolean }): Promise<void> {
+export async function balance(ctx: CliContext, args: string[], flags: { coin?: string; human?: boolean }, reqCtx: RequestContext): Promise<void> {
   const coinType = resolveCoinType(flags.coin, ctx.network);
 
   let address: string;
@@ -30,7 +31,8 @@ export async function balance(ctx: CliContext, args: string[], flags: { coin?: s
     );
   }
 
-  const result = await ctx.suiClient.getBalance({ owner: address, coinType });
+  debug(ctx, "querying balance for", address, "coin:", coinType);
+  const result = await withTimeout(ctx, ctx.suiClient.getBalance({ owner: address, coinType }), "getBalance");
 
   outputSuccess("balance", {
     address,
@@ -39,5 +41,5 @@ export async function balance(ctx: CliContext, args: string[], flags: { coin?: s
     coin: coinType,
     coinObjects: Number(result.coinObjectCount),
     network: ctx.network,
-  }, flags.human ?? false);
+  }, flags.human ?? false, reqCtx);
 }

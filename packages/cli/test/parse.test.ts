@@ -168,13 +168,36 @@ describe("assertTxSuccess", () => {
     expect(() => assertTxSuccess({ effects: { status: { status: "success" } } })).not.toThrow();
   });
 
-  it("throws TX_FAILED for generic failure", () => {
+  it("throws TX_OUT_OF_GAS for gas errors (retryable)", () => {
     try {
       assertTxSuccess({ effects: { status: { status: "failure", error: "InsufficientGas" } } });
       expect.unreachable("should have thrown");
     } catch (e) {
       expect(e).toBeInstanceOf(CliError);
-      expect((e as CliError).code).toBe("TX_FAILED");
+      expect((e as CliError).code).toBe("TX_OUT_OF_GAS");
+      expect((e as CliError).retryable).toBe(true);
+    }
+  });
+
+  it("throws TX_OBJECT_CONFLICT for concurrent access (retryable)", () => {
+    try {
+      assertTxSuccess({ effects: { status: { status: "failure", error: "SharedObjectLockContentious" } } });
+      expect.unreachable("should have thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(CliError);
+      expect((e as CliError).code).toBe("TX_OBJECT_CONFLICT");
+      expect((e as CliError).retryable).toBe(true);
+    }
+  });
+
+  it("throws TX_EXECUTION_ERROR for non-retryable failures", () => {
+    try {
+      assertTxSuccess({ effects: { status: { status: "failure", error: "SomeOtherError" } } });
+      expect.unreachable("should have thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(CliError);
+      expect((e as CliError).code).toBe("TX_EXECUTION_ERROR");
+      expect((e as CliError).retryable).toBe(false);
     }
   });
 
@@ -210,13 +233,13 @@ describe("assertTxSuccess", () => {
     }
   });
 
-  it("falls back to TX_FAILED for unknown abort codes", () => {
+  it("falls back to TX_EXECUTION_ERROR for unknown abort codes", () => {
     try {
       assertTxSuccess({ effects: { status: { status: "failure", error: "MoveAbort(custom, 999)" } } });
       expect.unreachable("should have thrown");
     } catch (e) {
       expect(e).toBeInstanceOf(CliError);
-      expect((e as CliError).code).toBe("TX_FAILED");
+      expect((e as CliError).code).toBe("TX_EXECUTION_ERROR");
     }
   });
 });

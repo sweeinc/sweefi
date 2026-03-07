@@ -22,6 +22,8 @@ export interface CliContext {
   signer: Keypair | null;
   config: SweefiConfig;
   network: SuiNetwork;
+  verbose: boolean;
+  timeoutMs: number;
 }
 
 /**
@@ -30,7 +32,9 @@ export interface CliContext {
  */
 const VALID_NETWORKS = new Set<string>(["testnet", "mainnet", "devnet"]);
 
-export function createContext(overrides?: { network?: string }): CliContext {
+const DEFAULT_TIMEOUT_MS = 30_000;
+
+export function createContext(overrides?: { network?: string; verbose?: boolean; timeout?: number }): CliContext {
   const raw = overrides?.network ?? process.env.SUI_NETWORK ?? "testnet";
   if (!VALID_NETWORKS.has(raw)) {
     throw new CliError("INVALID_NETWORK", `Unknown network: "${raw}"`, false, "Use testnet, mainnet, or devnet");
@@ -65,7 +69,38 @@ export function createContext(overrides?: { network?: string }): CliContext {
     }
   }
 
-  return { suiClient, signer, config, network };
+  const verbose = overrides?.verbose ?? false;
+  const timeoutMs = overrides?.timeout ?? DEFAULT_TIMEOUT_MS;
+
+  return { suiClient, signer, config, network, verbose, timeoutMs };
+}
+
+/**
+ * Write debug output to stderr. Only produces output when --verbose is set.
+ * Uses stderr so stdout JSON stays machine-parseable.
+ */
+export function debug(ctx: CliContext, ...args: unknown[]): void {
+  if (!ctx.verbose) return;
+  const timestamp = new Date().toISOString();
+  const msg = args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" ");
+  process.stderr.write(`[sweefi ${timestamp}] ${msg}\n`);
+}
+
+/**
+ * Wrap a promise with the context's timeout. Throws CliError on timeout.
+ * Use this around any RPC call to enforce --timeout globally.
+ */
+export async function withTimeout<T>(ctx: CliContext, promise: Promise<T>, label = "RPC call"): Promise<T> {
+  if (ctx.timeoutMs <= 0 || ctx.timeoutMs === Infinity) return promise;
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new CliError("TIMEOUT", `${label} timed out after ${ctx.timeoutMs}ms`, true, `Increase --timeout or check RPC connectivity`)), ctx.timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    clearTimeout(timer!);
+  }
 }
 
 /** Require a signer or fail with a clear, actionable error. */

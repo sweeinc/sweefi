@@ -4,38 +4,39 @@ CLI for AI agent payments on Sui — pay, stream, escrow, and manage mandates fr
 
 **Apache 2.0 open source.** Part of the [SweeFi](https://github.com/sweeinc/sweefi) ecosystem — open-source agentic payment infrastructure for Sui.
 
-## Prerequisites
-
-- **Node.js >= 22** (required — uses modern JS features)
-
-## Installation
-
-```bash
-npm install -g @sweefi/cli
-```
-
 ## Quick Start
 
 ```bash
-# Set up your wallet
-export SUI_PRIVATE_KEY=suiprivkey1...
-export SUI_NETWORK=testnet
+# 1. Install
+npm install -g @sweefi/cli
 
-# Make a payment
-sweefi pay 0xRecipient... 1.5 --coin SUI
+# 2. Configure
+export SUI_PRIVATE_KEY="suiprivkey1..."
+export SUI_NETWORK="testnet"
 
-# Handle a paywalled API (HTTP 402)
-sweefi pay-402 --url https://api.example.com/premium
-
-# Check balance
-sweefi balance
-
-# Open a prepaid budget (1,000 API calls = 2 on-chain TXs)
-sweefi prepaid deposit 0xProvider... 10 --rate 10000000
-
-# Authorize agent spending
-sweefi mandate create 0xAgent... 1 50 7d
+# 3. Pay
+sweefi pay 0xRecipient... 1.5 --idempotency-key $(uuidgen)
 ```
+
+**Prerequisites:** Node.js >= 22
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `sweefi pay <recipient> <amount>` | Execute a payment on Sui |
+| `sweefi pay-402 --url <URL>` | Handle HTTP 402 Payment Required automatically |
+| `sweefi balance [address]` | Check wallet balance |
+| `sweefi receipt <object-id>` | Fetch an on-chain payment receipt |
+| `sweefi prepaid deposit <provider> <amount>` | Open a prepaid balance |
+| `sweefi prepaid status <balance-id>` | Check prepaid budget |
+| `sweefi prepaid list [address]` | List prepaid balances |
+| `sweefi mandate create <agent> <per-tx> <total> <expires>` | Set spending caps |
+| `sweefi mandate check <mandate-id>` | Verify mandate status |
+| `sweefi mandate list [address]` | List active mandates |
+| `sweefi wallet generate` | Generate a new keypair |
+| `sweefi doctor` | Run setup diagnostics |
+| `sweefi schema` | Machine-readable command manifest |
 
 ## Output
 
@@ -45,11 +46,83 @@ All commands return JSON by default. Pass `--human` for human-readable output.
 {
   "ok": true,
   "command": "pay",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "data": {
     "txDigest": "...",
+    "recipient": "0x...",
+    "amount": "1500000000",
     "amountFormatted": "1.5 SUI",
-    "gasCostSui": "0.000007"
+    "gasCostSui": "0.001420",
+    "explorerUrl": "https://suiscan.xyz/testnet/tx/..."
+  },
+  "meta": {
+    "network": "testnet",
+    "durationMs": 412,
+    "cliVersion": "0.3.0",
+    "requestId": "a1b2c3d4-..."
+  }
+}
+```
+
+## Idempotent Payments
+
+`--idempotency-key` prevents double-spend when agents crash and retry:
+
+```bash
+# First call — executes payment
+sweefi pay 0xBob... 1.5 --idempotency-key 550e8400-e29b-41d4-a716-446655440000
+
+# Retry with same key — returns existing receipt, no new TX
+sweefi pay 0xBob... 1.5 --idempotency-key 550e8400-e29b-41d4-a716-446655440000
+```
+
+**Required** in JSON mode (default) for both `pay` and `pay-402`. Auto-generated in `--human` mode.
+
+### Limitations
+
+Idempotency uses on-chain memo scanning (paginated `getOwnedObjects`). This protects against **sequential retries** (after Sui's ~400ms finality), not concurrent execution from multiple processes. For high-volume senders with 1000+ receipts, the scan may become slow. A future on-chain IdempotencyRegistry will provide O(1) guaranteed lookup.
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `SUI_PRIVATE_KEY` | Yes (for transactions) | Wallet key (bech32 `suiprivkey1...` or base64) |
+| `SUI_NETWORK` | No | `testnet` (default), `mainnet`, or `devnet` |
+| `SUI_RPC_URL` | No | Custom RPC endpoint |
+| `SUI_PACKAGE_ID` | No | Override deployed contract package ID |
+
+No config files. Environment variables only. Zero stored state = zero drift.
+
+## Global Flags
+
+| Flag | Description |
+|------|-------------|
+| `--network <testnet\|mainnet\|devnet>` | Override `SUI_NETWORK` |
+| `--human` | Human-readable output |
+| `--dry-run` | Simulate without executing |
+| `--idempotency-key <uuid>` | Dedup key for crash-safe payments |
+| `--verbose` | Debug output on stderr |
+| `--timeout <ms>` | RPC timeout (default: 30000) |
+
+## Agent Integration
+
+`sweefi schema` emits a machine-readable JSON manifest for MCP tool registration and LLM function-calling:
+
+```bash
+sweefi schema | jq '.commands[].name'
+```
+
+Error responses include structured fields for programmatic handling:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "TX_OBJECT_CONFLICT",
+    "message": "Concurrent object access",
+    "retryable": true,
+    "suggestedAction": "This is transient — retry in a few seconds",
+    "retryAfterMs": 2000
   }
 }
 ```

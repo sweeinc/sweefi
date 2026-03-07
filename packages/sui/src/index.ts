@@ -27,7 +27,13 @@ export * from "./s402/index";
 
 // Sui s402 client (high-level: registers schemes + wraps fetch)
 export { createS402Client } from "./client/s402-client";
-export type { s402ClientConfig, SuiNetwork } from "./client/s402-types";
+export type {
+  s402ClientConfig,
+  SuiNetwork,
+  S402FetchInit,
+  S402FetchRequestOptions,
+  S402PaymentMetadata,
+} from "./client/s402-types";
 
 // PaymentAdapter implementation for @sweefi/ui-core
 export { SuiPaymentAdapter } from "./adapter/SuiPaymentAdapter";

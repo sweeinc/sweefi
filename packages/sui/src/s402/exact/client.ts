@@ -40,15 +40,30 @@ export interface ExactSuiClientSchemeConfig {
 export class ExactSuiClientScheme implements s402ClientScheme {
   readonly scheme = 'exact' as const;
 
+  /**
+   * Per-call memo, set by the s402 client fetch wrapper before createPayment().
+   * Cleared after each createPayment() call to avoid leaking into subsequent requests.
+   * The memo is embedded in the PTB as a MoveCall event (not a Move receipt — that
+   * requires packageId). When packageId is unavailable, the memo is silently skipped.
+   *
+   * @internal Used by createS402Client's fetch wrapper — not part of the public API.
+   */
+  _pendingMemo: string | undefined;
+
   constructor(
     private readonly signer: ClientSuiSigner,
     private readonly mandateConfig?: ExactSuiClientSchemeConfig,
+    private readonly packageId?: string,
   ) {}
 
   async createPayment(
     requirements: s402PaymentRequirements,
   ): Promise<s402ExactPayload> {
     const { amount, asset, payTo, protocolFeeBps, protocolFeeAddress } = requirements;
+
+    // Consume pending memo (cleared after use to prevent leaking into next call)
+    const memo = this._pendingMemo;
+    this._pendingMemo = undefined;
 
     const tx = new Transaction();
     tx.setSender(this.signer.address);
@@ -87,7 +102,36 @@ export class ExactSuiClientScheme implements s402ClientScheme {
 
     const totalAmount = BigInt(amount);
 
-    if (protocolFeeBps && protocolFeeBps > 0) {
+    // Resolve the effective package ID for Move calls (memo-bearing payments
+    // use payment::pay_and_keep which requires the SweeFi package).
+    const effectivePackageId = this.packageId ?? this.mandateConfig?.packageId;
+
+    // When a memo is provided AND we have a packageId, use payment::pay_and_keep
+    // to create an on-chain PaymentReceipt with the memo in its vector<u8> field.
+    // Without packageId, fall back to raw transferObjects (no receipt, no memo).
+    if (memo && effectivePackageId) {
+      const memoBytes = new TextEncoder().encode(memo);
+
+      // Fee computation: convert protocolFeeBps (wire: bps, 10000 = 100%)
+      // to micro-percent (on-chain: 1,000,000 = 100%) per ADR-003.
+      const feeMicroPercent = protocolFeeBps ? protocolFeeBps * 100 : 0;
+      const feeAddress = protocolFeeAddress ?? payTo;
+
+      const coin = coinWithBalance({ type: asset, balance: totalAmount });
+      tx.moveCall({
+        target: `${effectivePackageId}::payment::pay_and_keep`,
+        typeArguments: [asset],
+        arguments: [
+          coin,
+          tx.pure.address(payTo),
+          tx.pure.u64(totalAmount),
+          tx.pure.u64(feeMicroPercent),
+          tx.pure.address(feeAddress),
+          tx.pure.vector('u8', Array.from(memoBytes)),
+          tx.object(SUI_CLOCK),
+        ],
+      });
+    } else if (protocolFeeBps && protocolFeeBps > 0) {
       // Split payment: merchant gets (amount - fee), protocol gets fee
       const feeAmount = (totalAmount * BigInt(protocolFeeBps)) / 10000n;
       const merchantAmount = totalAmount - feeAmount;
