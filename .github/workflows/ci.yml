@@ -77,21 +77,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Sui CLI via suiup
+      - name: Install Sui CLI
         run: |
           curl -sSfL https://raw.githubusercontent.com/MystenLabs/suiup/main/install.sh | sh
+          export PATH="$HOME/.local/bin:$PATH"
+          suiup install sui
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           echo "$HOME/.sui/bin" >> $GITHUB_PATH
 
-      - name: Install Sui
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          suiup install sui
-
       - name: Verify Sui installation
-        run: |
-          export PATH="$HOME/.sui/bin:$PATH"
-          sui --version
+        run: sui --version
 
       - name: Run Move tests
         working-directory: contracts
