@@ -57,6 +57,7 @@
     "s402": "^0.2.0"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "tsdown": "^0.20.3",
     "typescript": "^5.7.3",
     "vitest": "^3.0.5"

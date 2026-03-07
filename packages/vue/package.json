@@ -61,6 +61,7 @@
     "vue": "^3.4.0"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "@vue/test-utils": "^2.4.6",
     "jsdom": "^24.1.0",
     "tsdown": "^0.20.3",

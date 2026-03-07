@@ -78,6 +78,7 @@
   "devDependencies": {
     "@mysten/sui": "^2.6.0",
     "@sweefi/server": "workspace:^",
+    "@types/node": "^22.0.0",
     "tsdown": "^0.20.3",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
