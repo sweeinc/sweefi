@@ -37,20 +37,24 @@ export const TESTNET_PACKAGE_ID_V6 =
   "0xc80485e9182c607c41e16c2606abefa7ce9b7f78d809054e99486a20d62167d5";
 
 /** Sui Testnet v7 — full suite: admin + payment + stream + escrow + seal + mandate + prepaid (2026-02-15) */
-export const TESTNET_PACKAGE_ID =
+export const TESTNET_PACKAGE_ID_V7 =
   "0x242f22b9f8b3d77868f6cde06f294203d7c76afa0cd101f388a6cefa45b54c3d";
+
+/** Sui Testnet v8 — audit hardening: EProtocolPaused, fee_micro_pct, 264 Move tests (2026-03-07) */
+export const TESTNET_PACKAGE_ID =
+  "0x1ded3f5571027e13cbe92699af77b51ce9433c6d012e375563ff7aa15de13236";
 
 /** AdminCap — owned by deployer, required for pause/unpause */
 export const TESTNET_ADMIN_CAP =
-  "0x2094ced6e92ce7632ae40bf1292f272cf4caa7c3ab110f2edbfa9f4fdafd119b";
+  "0x89f15cc0777e6e527347685287e7c9e91e6330bdfa688b382d8cfb92451e0e4f";
 
 /** ProtocolState — shared object for pause guard */
 export const TESTNET_PROTOCOL_STATE =
-  "0xbfe77423523556fe038a3e83ad4e5be2eac03bc28c453f7345eef7636a547b09";
+  "0x00aabd6dea27065b55afbd49efeda555cb2c2db87a1a8e88ac91788093467056";
 
 /** UpgradeCap — owned by deployer, required for contract upgrades */
 export const TESTNET_UPGRADE_CAP =
-  "0x77c484495113c9fbfe9bce9b482f6974e83402ac65853a99c6273de23f9672ad";
+  "0xb42dd9d65c915410600395b081f069441b66a3aaf75fa51b0d022a3affd6d102";
 
 /** Sui Testnet config — ready to use with PTB builders */
 export const testnetConfig: SweefiConfig = {
