@@ -30,6 +30,9 @@ contracts/build/
 contracts/*/build/
 *.bcs
 
+# Key files (Sui keypairs)
+*.key
+
 # Logs
 *.log
 npm-debug.log*
