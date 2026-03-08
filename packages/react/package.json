@@ -16,6 +16,9 @@
     "react"
   ],
   "homepage": "https://sweefi.xyz",
+  "bugs": {
+    "url": "https://github.com/sweeinc/sweefi/issues"
+  },
   "license": "Apache-2.0",
   "author": "Danny Devs",
   "main": "./dist/index.mjs",

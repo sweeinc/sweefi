@@ -11,6 +11,9 @@
     "directory": "packages/ap2-adapter"
   },
   "homepage": "https://sweefi.xyz",
+  "bugs": {
+    "url": "https://github.com/sweeinc/sweefi/issues"
+  },
   "keywords": [
     "sui",
     "s402",

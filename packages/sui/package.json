@@ -71,9 +71,17 @@
     "@sweefi/ui-core": "workspace:^",
     "s402": "^0.2.0"
   },
+  "bugs": {
+    "url": "https://github.com/sweeinc/sweefi/issues"
+  },
   "peerDependencies": {
     "@mysten/sui": "^2.0.0",
     "@sweefi/server": ">=0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@sweefi/server": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@mysten/sui": "^2.6.0",

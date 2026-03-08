@@ -16,6 +16,14 @@
     "cli"
   ],
   "homepage": "https://sweefi.xyz",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sweeinc/sweefi.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/sweeinc/sweefi/issues"
+  },
   "license": "Apache-2.0",
   "author": "Danny Devs",
   "bin": {
