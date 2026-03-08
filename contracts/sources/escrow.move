@@ -479,7 +479,6 @@ module sweefi::escrow {
         // Grace period: ensure arbiter has proportional time to resolve.
         // Without this, a buyer's refund bot can front-run the arbiter's
         // release() the instant the original deadline passes.
-        let now_ms = clock.timestamp_ms();
         let duration = escrow.deadline_ms - escrow.created_at_ms;
         let proportional = ((((duration as u128) * (GRACE_RATIO as u128)) / 1_000_000u128) as u64);
         let grace = if (proportional < GRACE_FLOOR_MS) {

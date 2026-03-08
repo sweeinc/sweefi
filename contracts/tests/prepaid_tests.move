@@ -945,7 +945,7 @@ module sweefi::prepaid_tests {
     // ══════════════════════════════════════════════════════════════
 
     #[test]
-    #[expected_failure(abort_code = admin::EAlreadyPaused)]
+    #[expected_failure(abort_code = admin::EProtocolPaused)]
     fun test_protocol_paused_blocks_deposit() {
         let mut scenario = ts::begin(AGENT);
         let clock = clock::create_for_testing(scenario.ctx());

@@ -1147,7 +1147,7 @@ module sweefi::stream_tests {
     // ══════════════════════════════════════════════════════════════
 
     #[test]
-    #[expected_failure(abort_code = admin::EAlreadyPaused)]
+    #[expected_failure(abort_code = admin::EProtocolPaused)]
     fun test_create_while_paused_fails() {
         let mut scenario = ts::begin(PAYER);
         let clock = clock::create_for_testing(scenario.ctx());
@@ -1167,7 +1167,7 @@ module sweefi::stream_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = admin::EAlreadyPaused)]
+    #[expected_failure(abort_code = admin::EProtocolPaused)]
     fun test_top_up_while_paused_fails() {
         let mut scenario = ts::begin(PAYER);
         let clock = clock::create_for_testing(scenario.ctx());

@@ -108,7 +108,7 @@ module sweefi::admin_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = admin::EAlreadyPaused)]
+    #[expected_failure(abort_code = admin::EProtocolPaused)]
     fun test_assert_not_paused_aborts_when_paused() {
         let mut scenario = ts::begin(ADMIN);
         let (cap, mut state) = admin::create_for_testing(scenario.ctx());

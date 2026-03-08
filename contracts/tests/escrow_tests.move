@@ -847,7 +847,7 @@ module sweefi::escrow_tests {
     // ══════════════════════════════════════════════════════════════
 
     #[test]
-    #[expected_failure(abort_code = admin::EAlreadyPaused)]
+    #[expected_failure(abort_code = admin::EProtocolPaused)]
     fun test_create_escrow_while_paused_fails() {
         let mut scenario = ts::begin(BUYER);
         let clock = clock::create_for_testing(scenario.ctx());
@@ -1323,6 +1323,95 @@ module sweefi::escrow_tests {
         assert!(escrow::escrow_state(&e) == 1); // STATE_DISPUTED
 
         ts::return_shared(e);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // Audit coverage: edge cases from v0.4 Move audit
+    // ══════════════════════════════════════════════════════════════
+
+    #[test]
+    fun test_release_100_percent_fee_destroy_zero() {
+        // 100% fee: entire balance goes to fee_recipient, seller gets zero.
+        // Exercises the destroy_zero branch in release().
+        let mut scenario = ts::begin(BUYER);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, DEADLINE_MS, 1_000_000, FEE_RECIPIENT,
+            b"100pct-fee", &state, &clock, scenario.ctx(),
+        );
+
+        scenario.next_tx(BUYER);
+        let e = scenario.take_shared<escrow::Escrow<SUI>>();
+        let receipt = escrow::release<SUI>(e, &clock, scenario.ctx());
+
+        // Fee = 100% of 1_000_000
+        assert!(escrow::receipt_fee_amount(&receipt) == 1_000_000);
+        assert!(escrow::receipt_amount(&receipt) == 1_000_000);
+
+        transfer::public_transfer(receipt, BUYER);
+
+        // Fee recipient should have the full amount
+        scenario.next_tx(FEE_RECIPIENT);
+        let fee_coin = scenario.take_from_address<coin::Coin<SUI>>(FEE_RECIPIENT);
+        assert!(fee_coin.value() == 1_000_000);
+        ts::return_to_address(FEE_RECIPIENT, fee_coin);
+
+        // Seller should have received nothing (destroy_zero path)
+        scenario.next_tx(SELLER);
+        assert!(!ts::has_most_recent_for_address<coin::Coin<SUI>>(SELLER));
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    #[expected_failure(abort_code = escrow::EZeroAmount)]
+    fun test_create_below_min_deposit_fails() {
+        // MIN_DEPOSIT = 1_000_000. Deposit of 999_999 should fail.
+        // Prevents dust-deposit spam creating near-empty shared escrow objects.
+        let mut scenario = ts::begin(BUYER);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        let deposit = coin::mint_for_testing<SUI>(999_999, scenario.ctx());
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, DEADLINE_MS, 5_000, FEE_RECIPIENT,
+            b"too-small", &state, &clock, scenario.ctx(),
+        );
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    fun test_create_exact_min_deposit_succeeds() {
+        // MIN_DEPOSIT = 1_000_000. Deposit of exactly 1_000_000 should succeed.
+        let mut scenario = ts::begin(BUYER);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, DEADLINE_MS, 5_000, FEE_RECIPIENT,
+            b"min-ok", &state, &clock, scenario.ctx(),
+        );
+
+        scenario.next_tx(BUYER);
+        let e = scenario.take_shared<escrow::Escrow<SUI>>();
+        assert!(escrow::escrow_balance(&e) == 1_000_000);
+        ts::return_shared(e);
+
         admin::destroy_cap_for_testing(_cap);
         admin::destroy_state_for_testing(state);
         clock.destroy_for_testing();

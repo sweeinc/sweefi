@@ -463,4 +463,169 @@ module sweefi::payment_tests {
         clock.destroy_for_testing();
         scenario.end();
     }
+
+    // ══════════════════════════════════════════════════════════════
+    // Audit coverage: edge cases identified in v0.4 Move audit
+    // ══════════════════════════════════════════════════════════════
+
+    #[test]
+    fun test_cancel_invoice() {
+        // cancel_invoice deletes an unpaid Invoice, preventing zombie objects.
+        let mut scenario = ts::begin(MERCHANT);
+
+        let invoice = payment::create_invoice(
+            MERCHANT, 1000, 5_000, FEE_RECIPIENT, scenario.ctx(),
+        );
+        payment::send_invoice(invoice, PAYER);
+
+        // Payer decides not to pay — cancels the invoice
+        scenario.next_tx(PAYER);
+        let invoice = scenario.take_from_address<payment::Invoice>(PAYER);
+        payment::cancel_invoice(invoice);
+
+        // Invoice should be gone
+        scenario.next_tx(PAYER);
+        assert!(!ts::has_most_recent_for_address<payment::Invoice>(PAYER));
+
+        scenario.end();
+    }
+
+    #[test]
+    fun test_destroy_receipt() {
+        // destroy_receipt deletes a PaymentReceipt after it's no longer needed.
+        let mut scenario = ts::begin(PAYER);
+        let clock = clock::create_for_testing(scenario.ctx());
+
+        let payment = coin::mint_for_testing<SUI>(100, scenario.ctx());
+        let receipt = payment::pay<SUI>(
+            payment, MERCHANT, 100, 0, FEE_RECIPIENT, b"destroy-test", &clock, scenario.ctx(),
+        );
+
+        payment::destroy_receipt(receipt);
+
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    fun test_create_and_send_invoice_entry() {
+        // Tests the entry convenience function that creates + transfers in one call.
+        let mut scenario = ts::begin(MERCHANT);
+
+        payment::create_and_send_invoice(
+            MERCHANT, 500, 10_000, FEE_RECIPIENT, PAYER, scenario.ctx(),
+        );
+
+        // Verify invoice arrived at PAYER
+        scenario.next_tx(PAYER);
+        let invoice = scenario.take_from_address<payment::Invoice>(PAYER);
+        assert!(payment::invoice_expected_amount(&invoice) == 500);
+        assert!(payment::invoice_recipient(&invoice) == MERCHANT);
+        assert!(payment::invoice_fee_micro_pct(&invoice) == 10_000);
+
+        payment::cancel_invoice(invoice);
+        scenario.end();
+    }
+
+    #[test]
+    fun test_pay_and_keep_entry() {
+        // Tests the entry wrapper: pay + auto-transfer receipt to payer.
+        let mut scenario = ts::begin(PAYER);
+        let clock = clock::create_for_testing(scenario.ctx());
+
+        let payment = coin::mint_for_testing<SUI>(1000, scenario.ctx());
+        payment::pay_and_keep<SUI>(
+            payment, MERCHANT, 1000, 5_000, FEE_RECIPIENT, b"entry-test", &clock, scenario.ctx(),
+        );
+
+        // Verify receipt was transferred to PAYER
+        scenario.next_tx(PAYER);
+        let receipt = scenario.take_from_address<payment::PaymentReceipt>(PAYER);
+        assert!(payment::receipt_amount(&receipt) == 1000);
+        assert!(payment::receipt_fee_amount(&receipt) == 5);
+        ts::return_to_address(PAYER, receipt);
+
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    fun test_pay_invoice_and_keep_entry() {
+        // Tests the entry wrapper: pay_invoice + auto-transfer receipt to payer.
+        let mut scenario = ts::begin(MERCHANT);
+
+        let invoice = payment::create_invoice(
+            MERCHANT, 1000, 5_000, FEE_RECIPIENT, scenario.ctx(),
+        );
+        payment::send_invoice(invoice, PAYER);
+
+        scenario.next_tx(PAYER);
+        let invoice = scenario.take_from_address<payment::Invoice>(PAYER);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let payment = coin::mint_for_testing<SUI>(1000, scenario.ctx());
+
+        payment::pay_invoice_and_keep<SUI>(invoice, payment, &clock, scenario.ctx());
+
+        // Verify receipt was transferred to PAYER
+        scenario.next_tx(PAYER);
+        let receipt = scenario.take_from_address<payment::PaymentReceipt>(PAYER);
+        assert!(payment::receipt_amount(&receipt) == 1000);
+        assert!(payment::receipt_fee_amount(&receipt) == 5);
+        ts::return_to_address(PAYER, receipt);
+
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    fun test_pay_amount_1_fee_truncates_to_zero() {
+        // Edge case: smallest possible non-zero amount with fee.
+        // 0.5% on 1 = 0.005 → truncates to 0. Merchant gets full amount.
+        let mut scenario = ts::begin(PAYER);
+        let clock = clock::create_for_testing(scenario.ctx());
+
+        let payment = coin::mint_for_testing<SUI>(1, scenario.ctx());
+        let receipt = payment::pay<SUI>(
+            payment, MERCHANT, 1, 5_000, FEE_RECIPIENT, b"dust", &clock, scenario.ctx(),
+        );
+
+        assert!(payment::receipt_amount(&receipt) == 1);
+        assert!(payment::receipt_fee_amount(&receipt) == 0);
+
+        transfer::public_transfer(receipt, PAYER);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    fun test_pay_invoice_100_percent_fee() {
+        // 100% fee: entire amount goes to fee_recipient, merchant gets zero.
+        // Exercises the destroy_zero branch in pay_invoice.
+        let mut scenario = ts::begin(MERCHANT);
+
+        let invoice = payment::create_invoice(
+            MERCHANT, 500, 1_000_000, FEE_RECIPIENT, scenario.ctx(),
+        );
+        payment::send_invoice(invoice, PAYER);
+
+        scenario.next_tx(PAYER);
+        let invoice = scenario.take_from_address<payment::Invoice>(PAYER);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let payment = coin::mint_for_testing<SUI>(500, scenario.ctx());
+
+        let receipt = payment::pay_invoice<SUI>(invoice, payment, &clock, scenario.ctx());
+        assert!(payment::receipt_amount(&receipt) == 500);
+        assert!(payment::receipt_fee_amount(&receipt) == 500); // 100% fee
+
+        transfer::public_transfer(receipt, PAYER);
+
+        // Fee recipient should have 500
+        scenario.next_tx(FEE_RECIPIENT);
+        let fee_coin = scenario.take_from_address<coin::Coin<SUI>>(FEE_RECIPIENT);
+        assert!(fee_coin.value() == 500);
+        ts::return_to_address(FEE_RECIPIENT, fee_coin);
+
+        clock.destroy_for_testing();
+        scenario.end();
+    }
 }

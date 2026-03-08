@@ -30,6 +30,7 @@ module sweefi::admin {
 
     const EAlreadyPaused: u64 = 500;
     const ENotPaused: u64 = 501;
+    const EProtocolPaused: u64 = 502;
 
     // ══════════════════════════════════════════════════════════════
     // Structs
@@ -92,8 +93,10 @@ module sweefi::admin {
     }
 
     /// Convenience: abort if paused. One-liner guard for guarded functions.
+    /// Uses EProtocolPaused (502), distinct from EAlreadyPaused (500) which is
+    /// for the admin's double-pause attempt in pause().
     public fun assert_not_paused(state: &ProtocolState) {
-        assert!(!state.paused, EAlreadyPaused);
+        assert!(!state.paused, EProtocolPaused);
     }
 
     // ══════════════════════════════════════════════════════════════

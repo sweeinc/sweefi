@@ -432,7 +432,7 @@ module sweefi::identity_tests {
     // ══════════════════════════════════════════════════════════════
 
     #[test]
-    #[expected_failure(abort_code = admin::EAlreadyPaused)]
+    #[expected_failure(abort_code = admin::EProtocolPaused)]
     /// Identity creation blocked when protocol is paused
     fun test_create_while_paused_fails() {
         let mut scenario = ts::begin(AGENT);

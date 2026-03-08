@@ -894,6 +894,137 @@ module sweefi::agent_mandate_tests {
         ts::end(scenario);
     }
 
+    // ══════════════════════════════════════════════════════════════
+    // Audit coverage: F-06 update_caps guards + wrong registry
+    // ══════════════════════════════════════════════════════════════
+
+    #[test]
+    #[expected_failure(abort_code = agent_mandate::EDailyLimitExceeded)]
+    fun test_update_caps_daily_below_spent_fails() {
+        // F-06: Cannot set daily_limit below what's already spent in current period.
+        let mut scenario = ts::begin(DELEGATOR);
+        let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            5_000_000_000, 5_000_000_000, 20_000_000_000, 100_000_000_000,
+            option::some(1_000_000), &clock, ctx,
+        );
+
+        // Delegate spends 3 SUI
+        ts::next_tx(&mut scenario, DELEGATE);
+        let ctx = ts::ctx(&mut scenario);
+        agent_mandate::validate_and_spend(&mut m, 3_000_000_000, &registry, &clock, ctx);
+
+        // Delegator tries to set daily limit to 2 SUI (below 3 SUI already spent)
+        ts::next_tx(&mut scenario, DELEGATOR);
+        let ctx = ts::ctx(&mut scenario);
+        agent_mandate::update_caps(&mut m, 5_000_000_000, 2_000_000_000, 20_000_000_000, 100_000_000_000, ctx);
+
+        agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = agent_mandate::EWeeklyLimitExceeded)]
+    fun test_update_caps_weekly_below_spent_fails() {
+        // F-06: Cannot set weekly_limit below what's already spent.
+        let mut scenario = ts::begin(DELEGATOR);
+        let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            5_000_000_000, 0, 20_000_000_000, 100_000_000_000,
+            option::some(1_000_000), &clock, ctx,
+        );
+
+        // Delegate spends 10 SUI
+        ts::next_tx(&mut scenario, DELEGATE);
+        let ctx = ts::ctx(&mut scenario);
+        agent_mandate::validate_and_spend(&mut m, 5_000_000_000, &registry, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 5_000_000_000, &registry, &clock, ctx);
+
+        // Delegator tries to set weekly limit to 8 SUI (below 10 already spent)
+        ts::next_tx(&mut scenario, DELEGATOR);
+        let ctx = ts::ctx(&mut scenario);
+        agent_mandate::update_caps(&mut m, 5_000_000_000, 0, 8_000_000_000, 100_000_000_000, ctx);
+
+        agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = agent_mandate::ETotalLimitExceeded)]
+    fun test_update_caps_total_below_spent_fails() {
+        // F-06: Cannot set max_total below cumulative total_spent.
+        let mut scenario = ts::begin(DELEGATOR);
+        let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            5_000_000_000, 0, 0, 100_000_000_000,
+            option::some(1_000_000), &clock, ctx,
+        );
+
+        // Delegate spends 50 SUI total
+        ts::next_tx(&mut scenario, DELEGATE);
+        let ctx = ts::ctx(&mut scenario);
+        let mut i = 0;
+        while (i < 10) {
+            agent_mandate::validate_and_spend(&mut m, 5_000_000_000, &registry, &clock, ctx);
+            i = i + 1;
+        };
+
+        // Delegator tries to set max_total to 40 SUI (below 50 already spent)
+        ts::next_tx(&mut scenario, DELEGATOR);
+        let ctx = ts::ctx(&mut scenario);
+        agent_mandate::update_caps(&mut m, 5_000_000_000, 0, 0, 40_000_000_000, ctx);
+
+        agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = agent_mandate::ENotDelegator)]
+    fun test_wrong_registry_owner_rejected() {
+        // H-1 equivalent: validate_and_spend checks registry_owner == delegator.
+        // A rogue delegate passing their own empty registry must be rejected.
+        let mut scenario = ts::begin(DELEGATOR);
+        let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            5_000_000_000, 5_000_000_000, 20_000_000_000, 100_000_000_000,
+            option::some(1_000_000), &clock, ctx,
+        );
+
+        // Delegate creates their OWN registry (different owner than delegator)
+        ts::next_tx(&mut scenario, DELEGATE);
+        let rogue_registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        // Spend using rogue registry — should fail with ENotDelegator
+        agent_mandate::validate_and_spend(&mut m, 100_000_000, &rogue_registry, &clock, ctx);
+
+        agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(rogue_registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
     #[test]
     #[expected_failure(abort_code = agent_mandate::ERevoked)]
     fun test_no_expiry_agent_mandate_revocation_still_works() {

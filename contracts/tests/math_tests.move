@@ -89,4 +89,36 @@ module sweefi::math_tests {
         // 1% on 100_000 = 1_000, min_fee = 1_000
         assert!(math::calculate_fee_min(100_000, 10_000, 1_000) == 1_000);
     }
+
+    // ══════════════════════════════════════════════════════════════
+    // Audit coverage: edge cases identified in v0.4 Move audit
+    // ══════════════════════════════════════════════════════════════
+
+    #[test]
+    fun test_calculate_fee_u64_max() {
+        // 100% fee on u64::MAX should return u64::MAX
+        assert!(math::calculate_fee(0xFFFFFFFFFFFFFFFF, 1_000_000) == 0xFFFFFFFFFFFFFFFF);
+    }
+
+    #[test]
+    fun test_calculate_fee_amount_1_with_fee() {
+        // Minimum non-zero amount with fee: 0.5% on 1 = 0 (truncated)
+        assert!(math::calculate_fee(1, 5_000) == 0);
+    }
+
+    #[test]
+    fun test_calculate_fee_amount_1_at_100_percent() {
+        // 100% fee on 1 = 1
+        assert!(math::calculate_fee(1, 1_000_000) == 1);
+    }
+
+    #[test]
+    fun test_fee_min_exceeds_amount() {
+        // AUDIT FINDING 1: calculate_fee_min can return fee > amount.
+        // This documents the current behavior. min_fee=1000 on amount=500
+        // returns 1000 (the floor), which is 2x the payment amount.
+        // No current caller uses calculate_fee_min, so this is a latent footgun.
+        assert!(math::calculate_fee_min(500, 1, 1_000) == 1_000);
+        // fee (1000) > amount (500) — callers must validate this themselves
+    }
 }
