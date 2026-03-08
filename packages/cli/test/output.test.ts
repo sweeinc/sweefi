@@ -110,7 +110,8 @@ describe("outputSuccess", () => {
   it("outputs human-readable format", () => {
     const reqCtx = createRequestContext("testnet");
     outputSuccess("test", { key: "value" }, true, reqCtx);
-    expect(calls[0]).toContain("test successful");
+    // New format uses grouped sections with symbols, not "test successful"
+    expect(calls[0]).toContain("test");
     expect(calls[0]).toContain("value");
   });
 });
@@ -285,9 +286,9 @@ describe("A2: Output envelope contract — error", () => {
   });
 });
 
-// ─── A5: printHuman — no [object Object] ────────────────────────
+// ─── A5: Human output — no [object Object], structured display ──
 
-describe("A5: printHuman — flattenForHuman handles all data shapes", () => {
+describe("A5: Human output — structured command formatting", () => {
   let output: string;
 
   beforeEach(() => {
@@ -302,7 +303,7 @@ describe("A5: printHuman — flattenForHuman handles all data shapes", () => {
     vi.restoreAllMocks();
   });
 
-  it("pay success (flat data) — no [object Object]", () => {
+  it("pay success — shows transaction, amount, recipient", () => {
     const reqCtx = createRequestContext("testnet");
     outputSuccess("pay", {
       txDigest: "7P8wDGJ7aRd6",
@@ -315,16 +316,18 @@ describe("A5: printHuman — flattenForHuman handles all data shapes", () => {
       network: "testnet",
     }, true, reqCtx);
     expect(output).not.toContain("[object Object]");
-    expect(output).toContain("pay successful");
+    expect(output).toContain("Payment Confirmed");
     expect(output).toContain("7P8wDGJ7aRd6");
+    expect(output).toContain("1.5 SUI");
   });
 
-  it("pay dry-run (nested currentBalance, nullable shortfall) — no [object Object]", () => {
+  it("pay dry-run — shows balance and shortfall info", () => {
     const reqCtx = createRequestContext("testnet");
     outputSuccess("pay", {
       dryRun: true,
       recipient: "0x0000000000000000000000000000000000000000000000000000000000000001",
       amount: "1500000000",
+      amountFormatted: "1.5 SUI",
       affordable: false,
       currentBalance: {
         payment: "1.0 SUI",
@@ -335,16 +338,18 @@ describe("A5: printHuman — flattenForHuman handles all data shapes", () => {
       },
     }, true, reqCtx);
     expect(output).not.toContain("[object Object]");
-    expect(output).toContain("currentBalance.payment");
-    expect(output).toContain("shortfall.payment");
+    expect(output).toContain("Dry Run");
+    expect(output).toContain("1.0 SUI");
+    expect(output).toContain("0.5 SUI");
   });
 
-  it("pay-402 success (nested payment, requirements) — no [object Object]", () => {
+  it("pay-402 success — shows URL, payment details, transaction", () => {
     const reqCtx = createRequestContext("testnet");
     outputSuccess("pay-402", {
       url: "https://api.example.com",
       httpStatus: 200,
       paymentRequired: true,
+      protocol: "s402",
       requirements: { amount: "1000000", asset: "0x2::sui::SUI", scheme: "sui-direct" },
       payment: {
         txDigest: "abc123",
@@ -354,11 +359,12 @@ describe("A5: printHuman — flattenForHuman handles all data shapes", () => {
       },
     }, true, reqCtx);
     expect(output).not.toContain("[object Object]");
-    expect(output).toContain("requirements.amount");
-    expect(output).toContain("payment.txDigest");
+    expect(output).toContain("402 Payment Complete");
+    expect(output).toContain("abc123");
+    expect(output).toContain("https://api.example.com");
   });
 
-  it("mandate list (nested mandates array of objects) — no [object Object]", () => {
+  it("mandate list — shows items with object IDs and fields", () => {
     const reqCtx = createRequestContext("testnet");
     outputSuccess("mandate list", {
       address: "0x0000000000000000000000000000000000000000000000000000000000000001",
@@ -378,13 +384,12 @@ describe("A5: printHuman — flattenForHuman handles all data shapes", () => {
       network: "testnet",
     }, true, reqCtx);
     expect(output).not.toContain("[object Object]");
-    expect(output).toContain("mandates[0].objectId");
-    expect(output).toContain("mandates[1].objectId");
+    expect(output).toContain("2 Mandates");
     expect(output).toContain("0xmandate1");
     expect(output).toContain("0xmandate2");
   });
 
-  it("prepaid list (nested balances array of objects) — no [object Object]", () => {
+  it("prepaid list — shows items with object IDs", () => {
     const reqCtx = createRequestContext("testnet");
     outputSuccess("prepaid list", {
       address: "0x0000000000000000000000000000000000000000000000000000000000000001",
@@ -398,39 +403,50 @@ describe("A5: printHuman — flattenForHuman handles all data shapes", () => {
       ],
     }, true, reqCtx);
     expect(output).not.toContain("[object Object]");
-    expect(output).toContain("balances[0].objectId");
+    expect(output).toContain("Prepaid Balances");
     expect(output).toContain("0xbalance1");
   });
 
-  it("empty arrays render as (empty) not [object Object]", () => {
+  it("empty list shows 'No ... Found' message", () => {
     const reqCtx = createRequestContext("testnet");
     outputSuccess("mandate list", {
       address: "0x0000000000000000000000000000000000000000000000000000000000000001",
       count: 0,
       mandates: [],
+      message: "No mandates found.",
     }, true, reqCtx);
     expect(output).not.toContain("[object Object]");
-    expect(output).toContain("(empty)");
+    expect(output).toContain("No Mandates Found");
   });
 
-  it("arrays of primitives render correctly (comma-separated per element)", () => {
+  it("generic fallback renders key-value pairs for unknown commands", () => {
     const reqCtx = createRequestContext("testnet");
     outputSuccess("test", { tags: ["alpha", "beta", "gamma"] }, true, reqCtx);
     expect(output).not.toContain("[object Object]");
-    expect(output).toContain("alpha");
-    expect(output).toContain("beta");
-    expect(output).toContain("gamma");
+    expect(output).toContain("test");
+    // Generic fallback shows array count
+    expect(output).toContain("3 items");
   });
 
-  it("null and undefined values are skipped", () => {
+  it("null and undefined values are skipped in pay output", () => {
     const reqCtx = createRequestContext("testnet");
     outputSuccess("pay", {
       txDigest: "abc",
       mandateId: undefined,
       shortfall: null,
     } as Record<string, unknown>, true, reqCtx);
-    expect(output).toContain("txDigest");
+    expect(output).toContain("abc");
     expect(output).not.toContain("mandateId");
     expect(output).not.toContain("shortfall");
+  });
+
+  it("outputError respects human flag", () => {
+    const reqCtx = createRequestContext("testnet");
+    outputError("pay", "NO_WALLET", "No wallet configured", false, "Set SUI_PRIVATE_KEY", false, reqCtx, undefined, true);
+    expect(output).toContain("NO_WALLET");
+    expect(output).toContain("No wallet configured");
+    expect(output).toContain("Set SUI_PRIVATE_KEY");
+    // Should NOT be valid JSON
+    expect(() => JSON.parse(output)).toThrow();
   });
 });

@@ -10,6 +10,7 @@
 
 import { randomUUID } from "node:crypto";
 import { COIN_DECIMALS, COIN_TYPES, TESTNET_COIN_TYPES } from "@sweefi/sui";
+import { formatHumanSuccess, formatHumanError } from "./format.js";
 
 export const VERSION = "0.3.0";
 
@@ -88,7 +89,7 @@ export function outputSuccess(
   const envelope: SuccessEnvelope = { ok: true, command, version: VERSION, data, meta };
 
   if (human) {
-    printHuman(command, data);
+    process.stdout.write(formatHumanSuccess(command, data));
   } else {
     process.stdout.write(JSON.stringify(envelope) + "\n");
   }
@@ -103,7 +104,13 @@ export function outputError(
   requiresHumanAction = false,
   reqCtx?: RequestContext,
   retryAfterMs?: number,
+  human = false,
 ): void {
+  if (human) {
+    process.stdout.write(formatHumanError(command, code, message, retryable, suggestedAction, requiresHumanAction));
+    return;
+  }
+
   const meta = reqCtx
     ? buildMeta(reqCtx)
     : { network: "unknown", durationMs: 0, cliVersion: VERSION, requestId: randomUUID() };
@@ -161,41 +168,3 @@ export function gasUsedSui(result: { effects?: { gasUsed?: { computationCost: st
   return gas ? (gas.mist / 1e9).toFixed(6) : "unknown";
 }
 
-/** Pretty-print for --human mode. Flattens nested objects with dot notation. */
-function printHuman(command: string, data: Record<string, unknown>): void {
-  const flat = flattenForHuman(data);
-  const lines: string[] = [`${command} successful\n`];
-  const maxKeyLen = Math.max(...flat.map(([k]) => k.length));
-  for (const [key, value] of flat) {
-    lines.push(`  ${key.padEnd(maxKeyLen + 2)}${value}`);
-  }
-  process.stdout.write(lines.join("\n") + "\n");
-}
-
-/** Flatten nested objects into dot-notation key-value pairs for human display. */
-function flattenForHuman(data: Record<string, unknown>, prefix = ""): [string, string][] {
-  const entries: [string, string][] = [];
-  for (const [key, value] of Object.entries(data)) {
-    if (value === undefined || value === null) continue;
-    const fullKey = prefix ? `${prefix}.${key}` : key;
-    if (Array.isArray(value)) {
-      if (value.length === 0) {
-        entries.push([fullKey, "(empty)"]);
-      } else {
-        for (let i = 0; i < value.length; i++) {
-          const item = value[i];
-          if (typeof item === "object" && item !== null) {
-            entries.push(...flattenForHuman(item as Record<string, unknown>, `${fullKey}[${i}]`));
-          } else {
-            entries.push([`${fullKey}[${i}]`, String(item)]);
-          }
-        }
-      }
-    } else if (typeof value === "object") {
-      entries.push(...flattenForHuman(value as Record<string, unknown>, fullKey));
-    } else {
-      entries.push([fullKey, String(value)]);
-    }
-  }
-  return entries;
-}

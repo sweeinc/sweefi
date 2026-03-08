@@ -92,21 +92,8 @@ export async function doctor(
 
   const allOk = checks.every((c) => c.status === "OK");
 
-  if (flags.human) {
-    const lines: string[] = ["\nsweefi doctor\n"];
-    for (const check of checks) {
-      const statusStr = check.status === "OK" ? "OK" : "FAIL";
-      const detail = check.detail ? ` (${check.detail})` : "";
-      lines.push(`  ${check.name.padEnd(20)}${check.value.padEnd(20)}${statusStr}${detail}`);
-    }
-    lines.push("");
-    lines.push(allOk ? "All checks passed." : "Some checks failed. Fix the issues above and re-run.");
-    process.stdout.write(lines.join("\n") + "\n");
-    return;
-  }
-
   outputSuccess("doctor", {
     healthy: allOk,
     checks,
-  }, false, reqCtx);
+  }, flags.human ?? false, reqCtx);
 }

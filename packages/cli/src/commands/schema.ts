@@ -60,6 +60,7 @@ function buildSchema(): Schema {
     globalFlags: [
       { name: "network", type: "string", default: "testnet", description: "Sui network (testnet, mainnet, devnet). Overrides SUI_NETWORK env var." },
       { name: "human", type: "boolean", default: false, description: "Human-readable output instead of JSON envelope" },
+      { name: "json", type: "boolean", default: false, description: "Force JSON output (overrides --human)" },
       { name: "timeout", type: "number", default: 30000, description: "RPC timeout in milliseconds" },
       { name: "verbose", type: "boolean", default: false, description: "Debug output on stderr" },
     ],

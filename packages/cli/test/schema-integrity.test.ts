@@ -448,7 +448,7 @@ describe("A4: Global flags consistency", () => {
 
   it("schema globalFlags contains exactly: network, human, timeout, verbose", () => {
     const names = s.globalFlags.map((f) => f.name).sort();
-    expect(names).toEqual(["human", "network", "timeout", "verbose"]);
+    expect(names).toEqual(["human", "json", "network", "timeout", "verbose"]);
   });
 
   it("network global flag: string type, default testnet", () => {
@@ -479,7 +479,7 @@ describe("A4: Global flags consistency", () => {
     // These are the exact options declared in index.ts parseArgs.
     // If parseArgs options change, update this test AND the schema.
     const expectedParseArgsOptions = new Set([
-      "network", "human", "coin", "memo", "dry-run", "idempotency-key",
+      "network", "human", "json", "coin", "memo", "dry-run", "idempotency-key",
       "url", "method", "body", "header", "mandate", "registry",
       "rate", "max-calls", "verbose", "timeout",
     ]);
