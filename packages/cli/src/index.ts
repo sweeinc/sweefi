@@ -34,7 +34,7 @@
 import { parseArgs } from "node:util";
 import { randomUUID } from "node:crypto";
 import { createContext, CliError, debug, sanitize, isNetworkError } from "./context.js";
-import { VERSION, outputError, createRequestContext } from "./output.js";
+import { VERSION, outputError, createRequestContext, type RequestContext } from "./output.js";
 import { validateIdempotencyKey } from "./idempotency.js";
 import { pay } from "./commands/pay.js";
 import { pay402 } from "./commands/pay-402.js";
@@ -45,6 +45,11 @@ import { mandateCreate, mandateCheck, mandateList } from "./commands/mandate.js"
 import { walletGenerate } from "./commands/wallet.js";
 import { doctor } from "./commands/doctor.js";
 import { schema } from "./commands/schema.js";
+
+// Module-level error context — populated as main() progresses, read by the
+// .catch() handler which runs outside main()'s scope and cannot close over its locals.
+let _command: string = process.argv[2] ?? "unknown";
+let _reqCtx: RequestContext | undefined;
 
 async function main(): Promise<void> {
   // Extract command before parseArgs (parseArgs doesn't handle subcommands)
@@ -74,6 +79,7 @@ async function main(): Promise<void> {
     fullCommand = `${command} ${commandArgs[0]}`;
     commandArgs = commandArgs.slice(1);
   }
+  _command = fullCommand;
 
   // Parse global flags from remaining args
   const { values: flags, positionals } = parseArgs({
@@ -115,6 +121,7 @@ async function main(): Promise<void> {
 
   const ctx = createContext({ network: str(flags.network), verbose: bool(flags.verbose), timeout: timeoutMs });
   const reqCtx = createRequestContext(ctx.network);
+  _reqCtx = reqCtx;
 
   // Validate idempotency key if provided
   const rawIdempotencyKey = str(flags["idempotency-key"]);
@@ -237,21 +244,19 @@ Examples:
 }
 
 main().catch((err) => {
-  const command = process.argv[2] ?? "unknown";
-
   if (err instanceof CliError) {
-    outputError(command, err.code, sanitize(err.message), err.retryable, err.suggestedAction, err.requiresHumanAction);
+    outputError(_command, err.code, sanitize(err.message), err.retryable, err.suggestedAction, err.requiresHumanAction, _reqCtx);
     process.exit(1);
   }
 
   // Network/RPC errors — retryable, agent can self-heal
   if (isNetworkError(err)) {
-    outputError(command, "NETWORK_ERROR", "Sui RPC is unreachable or timed out", true, "Retry in 30 seconds. If the issue persists, check SUI_RPC_URL or try a different RPC endpoint.", false, undefined, 30_000);
+    outputError(_command, "NETWORK_ERROR", "Sui RPC is unreachable or timed out", true, "Retry in 30 seconds. If the issue persists, check SUI_RPC_URL or try a different RPC endpoint.", false, _reqCtx, 30_000);
     process.exit(1);
   }
 
   // Unexpected error — sanitize in case a dependency leaks key material
   const msg = sanitize(err instanceof Error ? err.message : String(err));
-  outputError(command, "INTERNAL_ERROR", msg, false, "This is a bug — please report it");
+  outputError(_command, "INTERNAL_ERROR", msg, false, "This is a bug — please report it", false, _reqCtx);
   process.exit(2);
 });

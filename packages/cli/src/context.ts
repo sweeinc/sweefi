@@ -135,7 +135,9 @@ export class CliError extends Error {
 export function sanitize(msg: string): string {
   return msg
     .replace(/suiprivkey1[a-z0-9]{50,}/gi, "[REDACTED]")
-    .replace(/[A-Za-z0-9+/]{60,}={0,2}/g, "[REDACTED]");
+    // 40+ base64 chars covers Ed25519 raw keys (32 bytes → 44 chars) and larger secrets.
+    // Previous threshold of 60 missed Ed25519 base64-encoded private keys entirely.
+    .replace(/[A-Za-z0-9+/]{40,}={0,2}/g, "[REDACTED]");
 }
 
 /** Detect network/RPC errors from the Sui client — these are retryable. */

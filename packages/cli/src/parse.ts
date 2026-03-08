@@ -35,8 +35,9 @@ export function parseAmount(value: string, coinType: string): bigint {
 
   const trimmed = value.trim();
 
-  // Reject scientific notation and Infinity early — they slip past Number() checks
-  if (/[eE]/.test(trimmed) || /^[+-]?Infinity$/.test(trimmed)) {
+  // Reject scientific notation, Infinity, and hex literals — they slip past Number() checks.
+  // Number("0x10") = 16 in JS, which would silently accept addresses as amounts.
+  if (/[eE]/.test(trimmed) || /^[+-]?Infinity$/.test(trimmed) || /^0[xX]/.test(trimmed)) {
     throw new CliError("INVALID_AMOUNT", `Invalid amount: "${value}"`, false, "Use a plain number like '1.5' or '1500000000'");
   }
 
@@ -88,6 +89,12 @@ export function parseDuration(value: string): bigint {
 
   const num = Number(match[1]);
   const unit = match[2] ?? "ms";
+
+  // Guard: astronomically large digit strings overflow Number to Infinity.
+  // BigInt(Math.floor(Infinity)) throws RangeError — catch it here as CliError.
+  if (!Number.isFinite(num)) {
+    throw new CliError("INVALID_DURATION", `Invalid duration: "${value}"`, false, 'Use formats like "7d", "24h", "30m", or "3600000"');
+  }
 
   const multipliers: Record<string, number> = {
     d: 86_400_000,
