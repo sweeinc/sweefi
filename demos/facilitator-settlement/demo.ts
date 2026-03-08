@@ -35,6 +35,7 @@ const SERVER_PORT = 3402;
 const FACILITATOR_API_KEY = process.env.FACILITATOR_API_KEY ?? "demo-facilitator-key-0123456789abcdef";
 const FEE_MICRO_PERCENT = process.env.FEE_MICRO_PERCENT ?? "50000"; // 5%
 const FEE_RECIPIENT = process.env.FEE_RECIPIENT ?? "";
+const SWEEFI_PACKAGE_ID = process.env.SWEEFI_PACKAGE_ID ?? "";
 
 // ══════════════════════════════════════════════════════════════
 // Pretty logging
@@ -82,6 +83,7 @@ function startFacilitator(): Promise<ReturnType<typeof fork>> {
         API_KEYS: FACILITATOR_API_KEY,
         FEE_MICRO_PERCENT: FEE_MICRO_PERCENT,
         ...(FEE_RECIPIENT ? { FEE_RECIPIENT } : {}),
+        ...(SWEEFI_PACKAGE_ID ? { SWEEFI_PACKAGE_ID } : {}),
         LOG_LEVEL: "warn", // Quiet logs for demo — only warnings/errors
         NODE_ENV: "development",
       },
