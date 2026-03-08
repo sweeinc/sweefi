@@ -27,7 +27,7 @@
 | `@sweefi/server` | Beta | Integration-only | Hono middleware |
 | `@sweefi/mcp` | Beta | 124 | 35 AI agent tools |
 | `@sweefi/facilitator` | Beta | 57 | Docker-only, private |
-| `@sweefi/cli` | Beta | 43 | — |
+| `@sweefi/cli` | Beta | 237 | — |
 | `@sweefi/ui-core` | Beta | 13 | Framework-agnostic state machine |
 | `@sweefi/vue` | Alpha | 10 | — |
 | `@sweefi/react` | Alpha | 12 | — |

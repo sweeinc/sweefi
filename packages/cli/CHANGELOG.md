@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
+### Fixed (v0.3 review)
 - Idempotent receipt hit now includes `txDigest` (populated via `showPreviousTransaction`)
 - Idempotency key matching uses exact segment comparison (prevents substring collisions with short keys)
 - pay-402 paid-fetch timeout/failure marked `retryable: false` (TX may already be on-chain)
@@ -15,9 +15,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `_pendingMemo` cleared on s402 scheme dispatch failure (prevents cross-fetch memo leak)
 - Warning emitted when memo provided without `packageId` in `@sweefi/sui` client
 
+### Fixed (v0.4 R1 — schema integrity + output contract)
+- PAYMENT_FAILED error code in schema corrected to `retryable: false` (matches code behavior)
+- `pay` command idempotent hit now includes `txDigest` (same fix as pay-402)
+
+### Fixed (v0.4 R2 — adversarial audit)
+- `parseAmount` rejects hex literals (`0xFF`) that JavaScript's `Number()` silently parses as decimal
+- `parseDuration` guards against `Infinity` overflow before `BigInt()` conversion (prevents RangeError crash)
+- `sanitize()` base64 detection threshold lowered from 60 to 40 chars (covers Ed25519 44-char keys)
+- Error handler now tracks `_command` and `_reqCtx` module-level state for correct error envelope context
+
 ### Added
 - pay-402 `--dry-run` returns 402 requirements without executing payment
 - `dry-run` flag in pay-402 schema manifest
+- 41 schema integrity tests (CI-enforced cross-reference of schema vs actual command behavior)
+- 22 adversarial input tests (hex parsing, duration overflow, key redaction, error handler integration)
+- Full error path + happy path coverage for mandate create, prepaid deposit, pay, pay-402
 
 ## [0.3.0] - 2026-03-07
 
