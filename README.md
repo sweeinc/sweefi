@@ -1,8 +1,8 @@
 # SweeFi
 
-> **s402** — Sui-native HTTP 402 payments for the agentic economy.
+> Give your AI agents a budget, not a blank check.
 
-**AI agents that can pay, stream, escrow, and prove — natively on-chain. No API keys. No subscriptions. Just HTTP 402 + crypto.**
+**Five payment schemes for AI agents on Sui — exact, prepaid, escrow, streaming, and SEAL pay-to-decrypt. 849 tests. 10 packages. Apache 2.0.**
 
 ```typescript
 // 3 lines: AI agent auto-pays for premium data
@@ -15,9 +15,16 @@ const data = await client.fetch('https://api.example.com/premium-data');
 
 ## What Is This?
 
-SweeFi is payment infrastructure purpose-built for the agentic economy. AI agents need to pay for APIs, computing resources, and digital goods — without human intervention, credit cards, or centralized custody.
+SweeFi is an open-source payment SDK for AI agents on Sui. Agents discover pricing via HTTP 402, pay on-chain, and get data back — autonomously. No API keys. No subscriptions. No human clicking "confirm."
 
-SweeFi is the payment layer of the **Swee ecosystem**: **SweeFi** (payments) + **SweeAgent** (agent identity & reputation, `@sweeagent/*`) + **SweeWorld** (geo-location consumer app). This monorepo contains SweeFi — the foundation everything else builds on.
+Unlike raw crypto wallets, SweeFi gives humans control over what agents spend. Unlike Stripe or x402, that control is enforced on-chain — not by a platform:
+
+- **Set a budget**: AP2 mandates with per-transaction, daily, and weekly caps
+- **Four authorization levels**: L0 (single-use) through L3 (autonomous with caps) — no competitor has this
+- **Verify independently**: Every payment produces an on-chain receipt. Sui validators verify — not a platform.
+- **Revoke instantly**: Kill agent access via on-chain registry. Takes effect immediately.
+
+SweeFi is the payment layer of the **Swee ecosystem**: **SweeFi** (payments + authorization) + **SweeAgent** (agent identity & reputation, `@sweeagent/*`) + **SweeWorld** (geo-location consumer app). This monorepo contains SweeFi — the foundation everything else builds on.
 
 **s402** is a Sui-native HTTP 402 protocol that is wire-compatible with [x402](https://x402.org) but architecturally superior:
 
@@ -97,7 +104,20 @@ Agent                    Server                  Sui Testnet
 | **Unlock** | Receipt-gated SEAL decryption | Client scheme exists, facilitator handler planned |
 | **Split** | Multi-party settlement (royalties, affiliates) | Planned |
 
-**Together these enable autonomous digital commerce without platforms.** An AI agent can deposit a budget (prepaid), call APIs (exact), buy goods trustlessly from a stranger (escrow), stream micropayments for inference (stream), and access encrypted content (seal) — all without a human, an API key, or a platform taking 30%. See [SPEC.md](SPEC.md) for the full vision.
+**Together these enable autonomous digital commerce with human control.** A human sets a mandate ("spend up to $10/day on weather APIs"). An AI agent operates within those bounds — calling APIs (exact), depositing budgets (prepaid), trading trustlessly (escrow), streaming micropayments (stream), and decrypting content (seal). Every action produces an on-chain receipt. Mandates expire on schedule and can be revoked instantly. No platform taking 30%. See [SPEC.md](SPEC.md) for the full vision.
+
+### Why This Matters (The Authorization Gap)
+
+Every payment primitive above is backed by the same authorization architecture:
+
+| What you need | How SweeFi does it | What others do |
+|---|---|---|
+| **Set spending intent** | AP2 mandates ("$10/day on these APIs") | Stripe: platform-controlled limits. x402: none. |
+| **Bound what agents can do** | L0-L3 levels + per-tx/daily/weekly caps | No competitor has tiered authorization |
+| **Verify what happened** | On-chain receipts, Sui validators | Off-chain logs (trust the platform) |
+| **Revoke access** | On-chain registry, instant | API key rotation (delayed, error-prone) |
+
+This is what separates SweeFi from raw crypto payments (no controls) and from platform payments (controls, but you trust the platform). SweeFi enforces controls on-chain — the agent literally cannot violate them.
 
 ## Architecture
 

@@ -2,11 +2,11 @@
 layout: home
 hero:
   name: SweeFi
-  text: Your AI agent needs to pay for things.
+  text: Give your AI agents a budget, not a blank check.
   tagline: >-
-    Open-source payment infrastructure for Sui. Five payment schemes.
-    42 PTB builders. From one-shot payments to prepaid agent budgets —
-    built for agents that spend money autonomously.
+    Five payment schemes on Sui with on-chain spending controls.
+    42 PTB builders. AP2 mandates. L0-L3 authorization levels.
+    From one-shot payments to prepaid agent budgets — all open source.
   actions:
     - theme: brand
       text: Quick Start
@@ -40,7 +40,7 @@ features:
 
 ## See It in Action
 
-An AI agent hits a paid API. The server says "pay me." The agent pays and gets the data. Three HTTP round-trips, zero human intervention.
+An AI agent hits a paid API. The server says "pay me." The agent pays within its mandate budget, gets the data, and produces an on-chain receipt. Three HTTP round-trips, zero human intervention.
 
 ```typescript
 import { createS402Client } from '@sweefi/sui';
@@ -54,7 +54,7 @@ const data = await client.fetch('https://api.example.com/premium-data');
 // 402 → auto-sign SUI payment → retry with proof → receive data
 ```
 
-SweeFi handles the s402 negotiation, PTB construction, signing, and settlement. You bring a Sui keypair. The agent handles the rest.
+SweeFi handles the s402 negotiation, PTB construction, signing, and settlement. You bring a Sui keypair and a mandate. The agent operates within your spending bounds.
 
 ---
 
