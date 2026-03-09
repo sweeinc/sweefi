@@ -14,16 +14,16 @@
 
 An AI agent pays a merchant 10,000 MIST with 5% facilitator fee. Single PTB: split coin, pay, get receipt.
 
-**Transaction:** [`7YbMKa4LjsFwxBQtGz92LnJ5XmhzNEvWXahxcnBct9ne`](https://suiscan.xyz/testnet/tx/7YbMKa4LjsFwxBQtGz92LnJ5XmhzNEvWXahxcnBct9ne)
+**Transaction:** [`Gts9F3gXaVVqLfi4M9pSFkkc2WsC6zCJejZmrwi8f1iK`](https://suiscan.xyz/testnet/tx/Gts9F3gXaVVqLfi4M9pSFkkc2WsC6zCJejZmrwi8f1iK)
 
 | Field | Value |
 |-------|-------|
 | Payer | `0xb524...ea4f` |
-| Merchant | `0x...BEEF` |
+| Merchant | `0x...0001` |
 | Amount | 10,000 MIST |
-| Fee (5%) | 500 MIST to `0x...FEE` |
+| Fee (5%) | 500 MIST to `0x...0002` |
 | Net to merchant | 9,500 MIST |
-| PaymentReceipt | `0xaabfaec0ab04d2c7d403dc23a26e1089d3bb9f4291636107abdbb51bf9728e7e` |
+| PaymentReceipt | `0xffd2c8e26ebd0a69ad89802eb6a57ad92da2b5690befd529b2a96d99634db00f` |
 
 **Event emitted:** `PaymentSettled` with receipt ID, payer, recipient, amount, fee, token type, and ms-precision timestamp.
 
@@ -46,13 +46,13 @@ sui client ptb \
 
 A payer opens a streaming payment channel at 300 MIST/second (~$0.0003/sec with USDC decimals). The recipient claims accrued funds at any time. Budget cap prevents runaway spend.
 
-**Live StreamingMeter:** [`0x9edbb545e68c7a99d6eb81acedcb1d88c2f05d6177ae86b693d74daa587b6ce2`](https://suiscan.xyz/testnet/object/0x9edbb545e68c7a99d6eb81acedcb1d88c2f05d6177ae86b693d74daa587b6ce2)
+**Live StreamingMeter:** [`0xbd8da3c7a69d1d10ee4dcada29c39272f1801349fce03fbb679d94ee231f08a3`](https://suiscan.xyz/testnet/object/0xbd8da3c7a69d1d10ee4dcada29c39272f1801349fce03fbb679d94ee231f08a3)
 
 | Field | Value |
 |-------|-------|
 | Rate | 300 MIST/second |
-| Budget Cap | 100,000 MIST |
-| Deposit | 100,000 MIST |
+| Budget Cap | 1,000,000 MIST |
+| Deposit | 1,000,000 MIST |
 | Status | Active (accruing) |
 
 **Stream lifecycle:**
@@ -83,19 +83,19 @@ sui client call --package $PKG --module stream --function claim \
 
 ## 3. Escrow — Trustless Commerce with SEAL Integration
 
-A buyer deposits 50,000 MIST into escrow. The seller delivers off-chain (or encrypts via SEAL). The buyer releases funds, or a deadline triggers automatic refund.
+A buyer deposits 1,000,000 MIST into escrow. The seller delivers off-chain (or encrypts via SEAL). The buyer releases funds, or a deadline triggers automatic refund.
 
-**Transaction:** [`bnB9Lu913jtxZmnz9McFXDwMBVJx5yRTgL9LEhLHgei`](https://suiscan.xyz/testnet/tx/bnB9Lu913jtxZmnz9McFXDwMBVJx5yRTgL9LEhLHgei)
+**Transaction:** [`EcYFG3FTSwxM49UckuBhg2gYBPMzRBTNzmKy5Aq6UbzR`](https://suiscan.xyz/testnet/tx/EcYFG3FTSwxM49UckuBhg2gYBPMzRBTNzmKy5Aq6UbzR)
 
-**Live Escrow:** [`0x7e4447a8574182f880f0bf76d1db9da7d8a14ee867e414525a205a3a34de41ff`](https://suiscan.xyz/testnet/object/0x7e4447a8574182f880f0bf76d1db9da7d8a14ee867e414525a205a3a34de41ff)
+**Live Escrow:** [`0xe1331575df1a93fe11ed1758ee7110c0a581f98d7ff889d40e23b6fa2a67b531`](https://suiscan.xyz/testnet/object/0xe1331575df1a93fe11ed1758ee7110c0a581f98d7ff889d40e23b6fa2a67b531)
 
 | Field | Value |
 |-------|-------|
 | Buyer | `0xb524...ea4f` |
-| Seller | `0x...BEEF` |
-| Arbiter | `0x...DAD` |
-| Deposit | 50,000 MIST |
-| Fee (2%) | 200 bps (charged on release, not refund) |
+| Seller | `0x...0001` |
+| Arbiter | `0x...0003` |
+| Deposit | 1,000,000 MIST |
+| Fee (2%) | 20,000 micro-pct (charged on release, not refund) |
 | Deadline | ~1 hour from creation |
 | Description | "SEAL demo" |
 | State | ACTIVE (0) |
@@ -111,7 +111,7 @@ ACTIVE ─── buyer release() ──────────→ RELEASED (rec
                                   └── deadline passes   → REFUNDED (arbiter griefing protection)
 ```
 
-**SEAL integration point:** The `escrow_id` is known at creation time. The seller encrypts the deliverable with a SEAL policy: "owns EscrowReceipt where escrow_id == 0x7e44...41ff". After the buyer releases, they receive the EscrowReceipt and can decrypt. **Pay-to-decrypt, on-chain.**
+**SEAL integration point:** The `escrow_id` is known at creation time. The seller encrypts the deliverable with a SEAL policy: "owns EscrowReceipt where escrow_id == 0xe133...b531". After the buyer releases, they receive the EscrowReceipt and can decrypt. **Pay-to-decrypt, on-chain.**
 
 ```bash
 # Create escrow
@@ -134,9 +134,9 @@ sui client call --package $PKG --module escrow --function release_and_keep \
 
 | Object | Type | ID |
 |--------|------|----|
-| StreamingMeter | `stream::StreamingMeter<SUI>` | `0x9edbb545...b6ce2` |
-| Escrow | `escrow::Escrow<SUI>` | `0x7e4447a8...e41ff` |
-| PaymentReceipt | `payment::PaymentReceipt` | `0xaabfaec0...8e7e` |
+| StreamingMeter | `stream::StreamingMeter<SUI>` | `0xbd8da3c7...08a3` |
+| Escrow | `escrow::Escrow<SUI>` | `0xe1331575...b531` |
+| PaymentReceipt | `payment::PaymentReceipt` | `0xffd2c8e2...b00f` |
 
 All three primitives are live on Sui Testnet. Verifiable. Open source. 264 Move tests passing.
 

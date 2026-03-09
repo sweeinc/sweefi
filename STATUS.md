@@ -10,10 +10,12 @@
 
 ## What Is Working (Verified on Testnet)
 
-- **Demo 1** (agent-pays-API direct settlement): PASSED on testnet
-  - TX proof: `FdhFb6NKPB5q3VJYNR3JVyAkhz64Asem22CJ4ZrGvpKo` (1K) + `2QrArwjhk3SjHxE1jsvvw5KrtPCdzujgVYjq6RkaDvNv` (5K)
-- **Demo 2** (facilitator settlement with fee split): PASSED on testnet
-  - TX proofs: `72TyN5ZvE4st8EbzAUr1MLr5uWkTiinYQauZNEDLDoYg` (10K) + `3Y9SajrbF8vPS5oW4FnwztZM1jpMjnRq8GKhr667gQVZ` (50K)
+- **Demo 1** (direct payment via `payment::pay`): PASSED on v10
+  - TX: [`Gts9F3gXaVVqLfi4M9pSFkkc2WsC6zCJejZmrwi8f1iK`](https://suiscan.xyz/testnet/tx/Gts9F3gXaVVqLfi4M9pSFkkc2WsC6zCJejZmrwi8f1iK) — 10K MIST + 5% fee, PaymentReceipt minted
+- **Demo 2** (streaming via `stream::create`): PASSED on v10
+  - TX: [`GDo8g5Yu1X1zCdaLTtEVCqxeWJqkDDyoHjdGP5TLvkhf`](https://suiscan.xyz/testnet/tx/GDo8g5Yu1X1zCdaLTtEVCqxeWJqkDDyoHjdGP5TLvkhf) — 1M MIST deposit, 300 MIST/sec, StreamingMeter created
+- **Demo 3** (escrow via `escrow::create`): PASSED on v10
+  - TX: [`EcYFG3FTSwxM49UckuBhg2gYBPMzRBTNzmKy5Aq6UbzR`](https://suiscan.xyz/testnet/tx/EcYFG3FTSwxM49UckuBhg2gYBPMzRBTNzmKy5Aq6UbzR) — 1M MIST escrow, Escrow object created
 - All 10 TS packages build and typecheck
 - **809 TypeScript tests** passing across 10 packages
 - **264 Move test functions** passing (10 modules)

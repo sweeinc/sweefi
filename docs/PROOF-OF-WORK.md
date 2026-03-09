@@ -1,6 +1,6 @@
 # SweeFi Proof of Work
 
-Last verified: 2026-02-21
+Last verified: 2026-03-08
 
 ## Verification Commands
 
@@ -12,49 +12,46 @@ pnpm -r test
 cd contracts && sui move test
 ```
 
-## Verified Test Counts (Current — post V8 audit)
+## Verified Test Counts
 
-- TypeScript tests: **382 passing**
+- TypeScript tests: **809 passing**
+  - `@sweefi/sui`: 257
+  - `@sweefi/cli`: 238
+  - `@sweefi/mcp`: 124
+  - `@sweefi/facilitator`: 63
+  - `@sweefi/ap2-adapter`: 52
+  - `@sweefi/solana`: 40
   - `@sweefi/ui-core`: 13
-  - `@sweefi/server`: 0 (integration-only tests — no offline unit tests)
-  - `@sweefi/sui`: 189
-  - `@sweefi/vue`: 10
   - `@sweefi/react`: 12
-  - `@sweefi/facilitator`: 37
-  - `@sweefi/mcp`: 79
-  - `@sweefi/cli`: 42
-- Move tests: **180 functions** (all passing as of V8 security fixes)
+  - `@sweefi/vue`: 10
+  - `@sweefi/server`: 0 (integration-only tests — no offline unit tests)
+- Move tests: **264 functions** (all passing)
+- **Grand total: 1,073 tests**
 
-> **Note**: V8 Move changes are code-complete locally. V7 (`0x242f...54c3d`) is the current live testnet package. V8 awaits deployment by Danny.
+## Live Testnet Transactions (v10 — current package)
 
-## Live Testnet Transactions
+All transactions below call the v10 Move contracts at `0x04421d...a820ef`.
 
 | Transaction | Type | Explorer Link |
 |------------|------|---------------|
-| Direct payment | `payment::pay` | [`7YbMKa4Ljs...`](https://suiscan.xyz/testnet/tx/7YbMKa4LjsFwxBQtGz92LnJ5XmhzNEvWXahxcnBct9ne) |
-| Escrow creation | `escrow::create` | [`bnB9Lu913j...`](https://suiscan.xyz/testnet/tx/bnB9Lu913jtxZmnz9McFXDwMBVJx5yRTgL9LEhLHgei) |
-| Package upgrade (v4) | `sui::package::upgrade` | [`935ZCd5ezU...`](https://suiscan.xyz/testnet/tx/935ZCd5ezU2Na6vcWi4nkDs2ckXXVNWdC9Xynx5rzxnY) |
-| Package upgrade (v5) | `sui::package::upgrade` | [`FcnWC5vmQQ...`](https://suiscan.xyz/testnet/tx/FcnWC5vmQQfmQG8T3FdTRQSzFtKJacZ1hX8g48vnR5eU) |
-| Atomic pay-and-prove | `payment::pay` + `transferObjects` | [`EX98DsYGdf...`](https://suiscan.xyz/testnet/tx/EX98DsYGdfv5uAeBKkkacvSbrdj2sy4tgqxChCTYi8b1) |
-| Stream create + close | `stream::create` + `stream::close` | [`BLcUBKBpnS...`](https://suiscan.xyz/testnet/tx/BLcUBKBpnSkSn2KTQQ1rq5eCiqxo7xn1VponUX98WzpN) |
+| Direct payment | `payment::pay` | [`Gts9F3gX...`](https://suiscan.xyz/testnet/tx/Gts9F3gXaVVqLfi4M9pSFkkc2WsC6zCJejZmrwi8f1iK) |
+| Stream creation | `stream::create` | [`GDo8g5Yu...`](https://suiscan.xyz/testnet/tx/GDo8g5Yu1X1zCdaLTtEVCqxeWJqkDDyoHjdGP5TLvkhf) |
+| Escrow creation | `escrow::create` | [`EcYFG3FT...`](https://suiscan.xyz/testnet/tx/EcYFG3FTSwxM49UckuBhg2gYBPMzRBTNzmKy5Aq6UbzR) |
 
 ## Live Objects
 
 | Object | Type | Explorer Link |
 |--------|------|---------------|
-| StreamingMeter | `stream::StreamingMeter<SUI>` | [`0x9edbb5...`](https://suiscan.xyz/testnet/object/0x9edbb545e68c7a99d6eb81acedcb1d88c2f05d6177ae86b693d74daa587b6ce2) |
-| Escrow | `escrow::Escrow<SUI>` | [`0x7e4447...`](https://suiscan.xyz/testnet/object/0x7e4447a8574182f880f0bf76d1db9da7d8a14ee867e414525a205a3a34de41ff) |
-| PaymentReceipt | `payment::PaymentReceipt` | [`0xaabfae...`](https://suiscan.xyz/testnet/object/0xaabfaec0ab04d2c7d403dc23a26e1089d3bb9f4291636107abdbb51bf9728e7e) |
+| StreamingMeter | `stream::StreamingMeter<SUI>` | [`0xbd8da3...`](https://suiscan.xyz/testnet/object/0xbd8da3c7a69d1d10ee4dcada29c39272f1801349fce03fbb679d94ee231f08a3) |
+| Escrow | `escrow::Escrow<SUI>` | [`0xe13315...`](https://suiscan.xyz/testnet/object/0xe1331575df1a93fe11ed1758ee7110c0a581f98d7ff889d40e23b6fa2a67b531) |
+| PaymentReceipt | `payment::PaymentReceipt` | [`0xffd2c8...`](https://suiscan.xyz/testnet/object/0xffd2c8e26ebd0a69ad89802eb6a57ad92da2b5690befd529b2a96d99634db00f) |
 
 ## Current Testnet Package
 
-**V7 (live):**
-- Package ID: `0x242f22b9f8b3d77868f6cde06f294203d7c76afa0cd101f388a6cefa45b54c3d`
-- AdminCap: `0x2094ced6e92ce7632ae40bf1292f272cf4caa7c3ab110f2edbfa9f4fdafd119b`
-- ProtocolState: `0xbfe77423523556fe038a3e83ad4e5be2eac03bc28c453f7345eef7636a547b09`
-- UpgradeCap: `0x77c484495113c9fbfe9bce9b482f6974e83402ac65853a99c6273de23f9672ad`
-- Explorer: <https://suiscan.xyz/testnet/object/0x242f22b9f8b3d77868f6cde06f294203d7c76afa0cd101f388a6cefa45b54c3d>
-
-**V8 (pending deploy):**
-- Package ID: **TBD** — Danny runs `sui client publish --gas-budget 500000000` in `contracts/`
-- Includes: 3 HIGH security fixes (revocation bypass, remaining() underflow, ETimeoutTooLong)
+**v10 (live — 10th testnet deploy):**
+- Package ID: `0x04421dc12bdadbc1b7f7652cf2c299e7864571ded5ff4d7f2866de8304a820ef`
+- AdminCap: `0xc54ec6846273170565e3eec1836bb48363413fb4b7b2592ee342cc3d0363f5e5`
+- ProtocolState: `0x9eae2fa9f298927230d8fdf2e525cab0f7894874d94ecedec4df2ae7a4f3df15`
+- UpgradeCap: `0x2472fdc1bbfe8958d776bf80baa7e7e50fcc146f4c4c91cdd61f0e2970ba98e9`
+- Explorer: <https://suiscan.xyz/testnet/object/0x04421dc12bdadbc1b7f7652cf2c299e7864571ded5ff4d7f2866de8304a820ef>
+- Modules: `payment`, `stream`, `escrow`, `seal_policy`, `mandate`, `agent_mandate`, `prepaid`, `admin`, `math`, `identity`
