@@ -2,11 +2,11 @@
 
 > All transactions below are **real**, **on-chain**, and **verifiable** on [Sui Testnet Explorer](https://suiscan.xyz/testnet).
 
-**Package (testnet):** `0xbdbe26305de40e8168daf4b5c3142ebfa1d3e88a96c23d78f0116ad3b59e1833`
+**Package (testnet):** `0x04421dc12bdadbc1b7f7652cf2c299e7864571ded5ff4d7f2866de8304a820ef`
 **Modules:** `payment`, `stream`, `escrow`, `seal_policy`, `mandate`, `agent_mandate`, `prepaid`, `admin`, `math`, `identity`
 **Move tests:** 264 passing
-**TypeScript tests:** 815 passing
-**Total:** 1,079 tests across Move + TypeScript
+**TypeScript tests:** 809 passing
+**Total:** 1,073 tests across Move + TypeScript
 
 ---
 

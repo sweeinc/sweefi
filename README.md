@@ -360,7 +360,7 @@ Deployed on Sui testnet. 10 modules, 264 Move tests, AdminCap + ProtocolState fo
 | `math` | Shared arithmetic utilities (safe division, BPS) |
 | `admin` | AdminCap, ProtocolState, pause/unpause/burn |
 
-Package ID (testnet): `0xbdbe26305de40e8168daf4b5c3142ebfa1d3e88a96c23d78f0116ad3b59e1833`
+Package ID (testnet): `0x04421dc12bdadbc1b7f7652cf2c299e7864571ded5ff4d7f2866de8304a820ef`
 
 Token-gated SEAL (standalone): `0xbf9f9d63cbe53f21ac81af068e25e2c736fa2b0537c7e34d7d2862e330fe4fbc`
 

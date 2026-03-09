@@ -309,8 +309,8 @@ These are hard rules. Do not debate them; read the ADR if you want context.
 
 ## Smart Contracts (Sui Testnet)
 
-Package ID: `0xbdbe26305de40e8168daf4b5c3142ebfa1d3e88a96c23d78f0116ad3b59e1833`
-Contract version: 0.1.0 (pre-mainnet). 9th testnet iteration. Full history in git log.
+Package ID: `0x04421dc12bdadbc1b7f7652cf2c299e7864571ded5ff4d7f2866de8304a820ef`
+Contract version: 0.1.0 (pre-mainnet). 10th testnet iteration (v8-audit hardening). Full history in git log.
 
 10 modules, 264 Move test functions (all passing).
 
