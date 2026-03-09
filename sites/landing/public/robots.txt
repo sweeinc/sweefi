@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://sweefi.xyz/sitemap.xml

@@ -1,0 +1,181 @@
+# SweeFi — Complete Technical Reference for LLMs
+
+> Open-source agentic payment infrastructure for Sui
+> Version: 0.1.0 | License: Apache 2.0 | Protocol: s402
+
+## Overview
+
+SweeFi is a TypeScript SDK and Move smart contract suite enabling autonomous machine-to-machine payments on the Sui blockchain. It implements the s402 protocol — a Sui-native adaptation of HTTP 402 Payment Required.
+
+The core innovation: AI agents can discover, negotiate, and pay for services without human intervention, API keys, or platform accounts. The HTTP endpoint IS the business.
+
+## The s402 Protocol
+
+s402 extends HTTP 402 Payment Required for Sui:
+
+1. Client requests a resource
+2. Server responds 402 with `payment-required` header containing: version, accepted schemes, network, asset, amount, payTo address
+3. Client constructs and signs a Sui Programmable Transaction Block (PTB)
+4. Client retries with `x-payment` header containing the signed transaction
+5. Server executes the transaction on Sui (~400ms finality)
+6. Server returns the resource with `payment-response` header containing the settlement receipt
+
+## Five Payment Schemes
+
+### Exact (scheme: "exact")
+One-shot payments. Compatible with x402 (Coinbase's EVM protocol). Agent signs a single transaction for the exact amount. Server settles atomically.
+
+### Prepaid (scheme: "prepaid")
+Agent deposits a budget on-chain. Server draws from the balance across multiple API calls. ~70x gas savings versus per-call settlement. Balance tracked on-chain via Move objects.
+
+### Escrow (scheme: "escrow")
+Trustless digital commerce. Funds locked in a Move smart contract. Released on delivery confirmation. Refunded on deadline expiry. Optional arbiter for disputes.
+
+### Stream (scheme: "stream")
+Micropayment streams with configurable rate limits and hard budget caps. Agent creates a stream, server draws incrementally. Kill switch for instant termination.
+
+### SEAL (scheme: "seal")
+Pay-to-decrypt using Sui's SEAL threshold encryption. Agent pays → receives on-chain receipt → SEAL key servers release decryption key. No trusted third party. Content is encrypted at rest.
+
+## Package Architecture
+
+### @sweefi/sui (core)
+- 42 PTB (Programmable Transaction Block) builders
+- s402 client with auto-retry on 402 responses
+- SuiPaymentAdapter for wallet integration
+- Constants: ZERO_ADDRESS, fee utilities
+- Supports Ed25519 and Secp256k1 keypairs
+
+### @sweefi/server
+- Hono middleware: `s402Gate()` for gating any endpoint
+- Express/Fastify adapters
+- Settlement verification
+- Fee collection
+
+### @sweefi/mcp
+- 35 MCP (Model Context Protocol) tools for Claude Desktop
+- 30 default + 5 opt-in tools
+- Covers all 5 payment schemes
+- Self-recovery from errors
+
+### @sweefi/cli
+- `sweefi wallet create` — generate or import Sui wallet
+- `sweefi pay <url>` — pay for a 402-gated endpoint
+- `sweefi prepaid deposit/status/withdraw`
+- `sweefi escrow create/release/refund`
+- `sweefi stream create/close`
+- `sweefi mandate create/revoke`
+
+### @sweefi/ui-core
+- Framework-agnostic payment UI logic
+- PaymentController for orchestrating flows
+- PaymentAdapter interface for chain adapters
+
+### @sweefi/react
+- `useSweefiPayment()` hook
+- `<SweefiProvider>` context
+- `<PaymentButton>` component
+
+### @sweefi/vue
+- `useSweefiPayment()` composable
+- `SweefiProvider` component
+- `PaymentButton` component
+
+### @sweefi/solana
+- Solana payment adapter
+- Cross-chain s402 support
+
+### @sweefi/ap2-adapter
+- Google Agent Payment Protocol (AP2) mandate adapter
+- Maps AP2 mandates to SweeFi's L0-L3 mandate levels
+- Push payment support (AP2 V1.x compatibility)
+
+### @sweefi/facilitator
+- Self-hostable settlement verification service
+- Token bucket rate limiting
+- API key authentication
+- Fee schedule identity endpoint
+- Docker + Fly.io deployment ready
+
+## Move Smart Contracts (10 modules)
+
+Deployed on Sui testnet. Modules:
+- `payment` — Exact payment settlement and receipt NFTs
+- `prepaid` — Balance deposits, draws, and settlements
+- `escrow` — Lock, release, refund, and dispute flows
+- `stream` — Micropayment stream creation and management
+- `seal_payment` — SEAL-integrated payment receipts
+- `mandate` — AP2-style spending mandates (L0-L3)
+- `mandate_payment` — Mandated payment execution
+- `config` — Protocol configuration and admin
+- `receipt` — On-chain receipt NFT standard
+- `fee` — Micro-percent fee calculation (1,000,000 = 100%)
+
+Fee model: micro-percent (not basis points). 5,000 micro-percent = 0.5%.
+
+## s402 vs x402 (Coinbase) Comparison
+
+| Feature | x402 (EVM) | s402 (Sui) |
+|---------|-----------|-----------|
+| Settlement | Verify first, settle later | Atomic PTBs |
+| Payment modes | Exact only | 5 schemes |
+| Micro-payment gas | ~$1.00/1K calls (Base L2) | $0.014/1K calls |
+| Agent authorization | None | AP2 Mandates |
+| Content gating | Server-trust | SEAL encryption |
+| Finality | ~12s L1, ~2s L2 | ~400ms |
+| Facilitator | Required | Optional |
+| Receipts | Off-chain | On-chain NFTs |
+
+## Quick Start — AI Agent Client
+
+```typescript
+import { createS402Client } from '@sweefi/sui';
+import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+
+const wallet = Ed25519Keypair.fromSecretKey(myKey);
+const client = createS402Client({ wallet, network: 'sui:testnet' });
+
+// Any fetch to a 402-gated endpoint auto-pays
+const data = await client.fetch('https://api.example.com/premium');
+```
+
+## Quick Start — API Provider Server
+
+```typescript
+import { Hono } from 'hono';
+import { s402Gate } from '@sweefi/server';
+
+const app = new Hono();
+app.use('/premium', s402Gate({
+  price: '1000000',
+  network: 'sui:testnet',
+  payTo: '0xYOUR_ADDRESS',
+  schemes: ['exact'],
+}));
+app.get('/premium', (c) => c.json({ data: 'premium content' }));
+```
+
+## Installation
+
+```bash
+# Core SDK
+npm install @sweefi/sui s402
+
+# Server middleware
+npm install @sweefi/server
+
+# MCP tools for Claude
+npx @sweefi/mcp
+
+# CLI
+npm install -g @sweefi/cli
+```
+
+## Repository
+
+- GitHub: https://github.com/sweeinc/sweefi
+- Documentation: https://docs.sweefi.xyz
+- npm organization: https://www.npmjs.com/org/sweefi
+- Protocol spec: https://s402-protocol.org
+- License: Apache 2.0 (SPDX: Apache-2.0)
+- Author: Danny Devs / Swee Group LLC

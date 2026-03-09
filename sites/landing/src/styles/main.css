@@ -1,0 +1,252 @@
+@import "tailwindcss";
+
+/* ── Design Tokens ── */
+@theme {
+  --color-bg: #0a0a0f;
+  --color-surface: #12121a;
+  --color-text: #e4e4e7;
+  --color-text-muted: #a1a1aa;
+  --color-brand: #4DA2FF;
+  --color-brand-glow: oklch(from #4DA2FF l c h / 0.15);
+  --color-success: #22c55e;
+  --color-code-bg: #1a1b26;
+  --color-border: #27272a;
+
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* ── Base Styles ── */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: oklch(from var(--color-brand) l c h / 0.3);
+}
+
+/* ── Scroll Animations ── */
+.fade-in-up {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.fade-in-up.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Staggered fade-in for children */
+.stagger-children .fade-in-up:nth-child(1) { transition-delay: 0ms; }
+.stagger-children .fade-in-up:nth-child(2) { transition-delay: 80ms; }
+.stagger-children .fade-in-up:nth-child(3) { transition-delay: 160ms; }
+.stagger-children .fade-in-up:nth-child(4) { transition-delay: 240ms; }
+.stagger-children .fade-in-up:nth-child(5) { transition-delay: 320ms; }
+.stagger-children .fade-in-up:nth-child(6) { transition-delay: 400ms; }
+.stagger-children .fade-in-up:nth-child(7) { transition-delay: 480ms; }
+.stagger-children .fade-in-up:nth-child(8) { transition-delay: 560ms; }
+.stagger-children .fade-in-up:nth-child(9) { transition-delay: 640ms; }
+.stagger-children .fade-in-up:nth-child(10) { transition-delay: 720ms; }
+.stagger-children .fade-in-up:nth-child(11) { transition-delay: 800ms; }
+
+/* ── Hero Background Animation ── */
+@keyframes hero-gradient {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.hero-bg {
+  background: linear-gradient(
+    135deg,
+    #0a0a0f 0%,
+    #0d1117 25%,
+    #0a1628 50%,
+    #0d1117 75%,
+    #0a0a0f 100%
+  );
+  background-size: 400% 400%;
+  animation: hero-gradient 20s ease infinite;
+}
+
+/* ── CSS @property Counter Animation ── */
+@property --num-847 {
+  syntax: '<integer>';
+  initial-value: 0;
+  inherits: false;
+}
+@property --num-10a {
+  syntax: '<integer>';
+  initial-value: 0;
+  inherits: false;
+}
+@property --num-10b {
+  syntax: '<integer>';
+  initial-value: 0;
+  inherits: false;
+}
+@property --num-35 {
+  syntax: '<integer>';
+  initial-value: 0;
+  inherits: false;
+}
+@property --num-5 {
+  syntax: '<integer>';
+  initial-value: 0;
+  inherits: false;
+}
+
+@keyframes count-847 { to { --num-847: 847; } }
+@keyframes count-10a { to { --num-10a: 10; } }
+@keyframes count-10b { to { --num-10b: 10; } }
+@keyframes count-35 { to { --num-35: 35; } }
+@keyframes count-5 { to { --num-5: 5; } }
+
+.counter-847,
+.counter-10a,
+.counter-10b,
+.counter-35,
+.counter-5 {
+  font-variant-numeric: tabular-nums;
+}
+
+.counter-847 {
+  counter-reset: num var(--num-847);
+}
+.counter-847::after {
+  content: counter(num);
+}
+.counter-847.counting {
+  animation: count-847 1.8s ease-out forwards;
+}
+
+.counter-10a {
+  counter-reset: num var(--num-10a);
+}
+.counter-10a::after {
+  content: counter(num);
+}
+.counter-10a.counting {
+  animation: count-10a 1.5s ease-out forwards;
+}
+
+.counter-10b {
+  counter-reset: num var(--num-10b);
+}
+.counter-10b::after {
+  content: counter(num);
+}
+.counter-10b.counting {
+  animation: count-10b 1.5s ease-out forwards;
+}
+
+.counter-35 {
+  counter-reset: num var(--num-35);
+}
+.counter-35::after {
+  content: counter(num);
+}
+.counter-35.counting {
+  animation: count-35 1.5s ease-out forwards;
+}
+
+.counter-5 {
+  counter-reset: num var(--num-5);
+}
+.counter-5::after {
+  content: counter(num);
+}
+.counter-5.counting {
+  animation: count-5 1.2s ease-out forwards;
+}
+
+/* ── CTA Glow Pulse ── */
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px oklch(from #4DA2FF l c h / 0.2);
+  }
+  50% {
+    box-shadow: 0 0 30px oklch(from #4DA2FF l c h / 0.4);
+  }
+}
+
+.btn-glow:hover {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+/* ── Code Block Styles ── */
+.shiki {
+  background-color: var(--color-code-bg) !important;
+  padding: 1.25rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+.shiki code {
+  font-family: var(--font-mono);
+}
+
+/* ── Scheme Card Hover ── */
+.scheme-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.scheme-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px oklch(from #4DA2FF l c h / 0.08);
+}
+
+/* ── Numbers Bar Scroll Snap (Mobile) ── */
+@media (max-width: 767px) {
+  .numbers-scroll {
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+  .numbers-scroll > * {
+    scroll-snap-align: center;
+  }
+}
+
+/* ── Comparison Table Scroll (Mobile) ── */
+@media (max-width: 1023px) {
+  .comparison-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .comparison-wrap table {
+    min-width: 700px;
+  }
+  .comparison-wrap th:first-child,
+  .comparison-wrap td:first-child {
+    position: sticky;
+    left: 0;
+    background: var(--color-surface);
+    z-index: 1;
+  }
+}
+
+/* ── Copy Button ── */
+.copy-btn {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.code-block-wrap:hover .copy-btn {
+  opacity: 1;
+}

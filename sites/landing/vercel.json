@@ -1,0 +1,38 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "redirects": [
+    {
+      "source": "/docs/:path*",
+      "destination": "https://docs.sweefi.xyz/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/github",
+      "destination": "https://github.com/sweeinc/sweefi",
+      "permanent": false
+    },
+    {
+      "source": "/npm",
+      "destination": "https://www.npmjs.com/org/sweefi",
+      "permanent": false
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+      ]
+    },
+    {
+      "source": "/llms(.*).txt",
+      "headers": [
+        { "key": "Content-Type", "value": "text/plain; charset=utf-8" },
+        { "key": "Cache-Control", "value": "public, max-age=86400" }
+      ]
+    }
+  ]
+}

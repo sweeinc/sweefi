@@ -1,0 +1,50 @@
+# SweeFi
+
+> Open-source agentic payment infrastructure for Sui
+
+SweeFi is the TypeScript SDK and Move smart contract suite that lets AI agents pay for services autonomously using the s402 protocol (HTTP 402 Payment Required) on the Sui blockchain.
+
+## What SweeFi Does
+
+SweeFi enables machine-to-machine commerce. An AI agent discovers a paid API, the server responds with HTTP 402 and a price, the agent signs a Sui transaction, and the server settles on-chain. No API keys, no subscriptions, no platform fees.
+
+## Five Payment Schemes
+
+- Exact: One-shot payments (x402-compatible)
+- Prepaid: Agent budgets with batch settlement (~70x gas savings)
+- Escrow: Trustless digital commerce with arbiter disputes
+- Stream: Micropayments with rate limits and budget caps
+- SEAL: Pay-to-decrypt via threshold encryption (no trusted third party)
+
+## Packages
+
+- @sweefi/sui: Sui PTB builders, s402 client, wallet adapters
+- @sweefi/server: Hono middleware for s402-gated APIs
+- @sweefi/mcp: 35 MCP tools for Claude Desktop
+- @sweefi/cli: Terminal interface for agent payments
+- @sweefi/ui-core: Framework-agnostic payment UI core
+- @sweefi/react: React hooks and components
+- @sweefi/vue: Vue 3 composables and components
+- @sweefi/solana: Solana adapter (cross-chain)
+- @sweefi/ap2-adapter: Google AP2 mandate adapter
+- @sweefi/facilitator: Self-hostable settlement service
+
+## Links
+
+- Documentation: https://docs.sweefi.xyz
+- GitHub: https://github.com/sweeinc/sweefi
+- npm: https://www.npmjs.com/org/sweefi
+- Protocol: https://s402-protocol.org
+
+## Technical Details
+
+- 847 tests (601 TypeScript + 246 Move)
+- 10 Move smart contract modules
+- Apache 2.0 license with patent grant
+- ~400ms settlement finality on Sui
+- $0.014 per 1,000 API calls (prepaid batching)
+
+## Contact
+
+- Built by Swee Group LLC
+- Creator: Danny Devs (https://dannydevs.com)
