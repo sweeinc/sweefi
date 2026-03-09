@@ -138,7 +138,7 @@ sui client call --package $PKG --module escrow --function release_and_keep \
 | Escrow | `escrow::Escrow<SUI>` | `0x7e4447a8...e41ff` |
 | PaymentReceipt | `payment::PaymentReceipt` | `0xaabfaec0...8e7e` |
 
-All three primitives are live on Sui Testnet. Verifiable. Open source. 208 Move tests passing.
+All three primitives are live on Sui Testnet. Verifiable. Open source. 264 Move tests passing.
 
 ---
 

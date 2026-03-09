@@ -4,7 +4,7 @@
 
 ## Deployment State
 
-- **Sui Testnet**: `0x1ded3f5571027e13cbe92699af77b51ce9433c6d012e375563ff7aa15de13236` (live, deployed)
+- **Sui Testnet**: `0x04421dc12bdadbc1b7f7652cf2c299e7864571ded5ff4d7f2866de8304a820ef` (live, v10 deploy)
 - **Mainnet**: Not yet deployed
 - **SEAL mainnet**: Blocked on Mysten Labs publishing key server addresses
 
@@ -24,9 +24,9 @@
 ## What Is Next
 
 1. **Moonshots DeFi grant submission**: Self-imposed mid-March target
-2. **npm publish chain**: All @sweefi/* packages
-3. **GitHub public flip**: Repository visibility change
-4. **Landing page deploy**: Vercel (sites/landing)
+2. **Marketing launch**: Twitter threads, blog, Discord, HN, Reddit
+3. **Re-run Demo 2 against v10**: Update TX proofs
+4. **Mainnet deployment**: After grant + SEAL key server
 
 ## What Is Blocked
 
