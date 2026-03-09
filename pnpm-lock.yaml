@@ -342,6 +342,9 @@ importers:
 
   packages/sui:
     dependencies:
+      '@sweefi/server':
+        specifier: workspace:^
+        version: link:../server
       '@sweefi/ui-core':
         specifier: workspace:^
         version: link:../ui-core
@@ -352,9 +355,6 @@ importers:
       '@mysten/sui':
         specifier: ^2.6.0
         version: 2.6.0(typescript@5.9.3)
-      '@sweefi/server':
-        specifier: workspace:^
-        version: link:../server
       '@types/node':
         specifier: ^22.0.0
         version: 22.19.11

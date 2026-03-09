@@ -1,6 +1,6 @@
 {
   "name": "@sweefi/sui",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "description": "Sui-native s402 protocol implementation for SweeFi",
   "keywords": [
@@ -68,6 +68,7 @@
     "access": "public"
   },
   "dependencies": {
+    "@sweefi/server": "workspace:^",
     "@sweefi/ui-core": "workspace:^",
     "s402": "^0.2.0"
   },
@@ -75,13 +76,7 @@
     "url": "https://github.com/sweeinc/sweefi/issues"
   },
   "peerDependencies": {
-    "@mysten/sui": "^2.0.0",
-    "@sweefi/server": ">=0.1.0"
-  },
-  "peerDependenciesMeta": {
-    "@sweefi/server": {
-      "optional": true
-    }
+    "@mysten/sui": "^2.0.0"
   },
   "devDependencies": {
     "@mysten/sui": "^2.6.0",
