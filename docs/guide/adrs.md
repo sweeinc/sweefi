@@ -11,7 +11,7 @@ These documents capture the **why** behind SweeFi's key design decisions. Read t
 | [005](/adr/005-permissive-access-receipt-transferability) | Permissive Access & Receipt Transferability | Bearer receipt = access. `seal_approve` must NEVER check `ctx.sender()`. |
 | [006](/adr/006-object-ownership-model) | Object Ownership Model | Receipts are owned (transferable). StreamingMeters are shared. Escrows are shared. |
 | [007](/adr/007-prepaid-trust-model) | Prepaid Trust Model | Provider can freeze balance but agent can always withdraw after deadline. Permissionless recovery. |
-| [008](/adr/008-facilitator-api-gaps) | Facilitator API Surface Gaps | Identified V8 API gaps; led to body validation, field stripping, dedup middleware. |
+| [008](/adr/008-facilitator-api-gaps) | Facilitator API Surface Gaps | Identified API surface gaps; led to body validation, field stripping, dedup middleware. |
 | [009](/adr/009-ap2-agent-mandate-integration) | AP2 Agent Mandate Integration | SweeFi mandates as AP2-compatible payment method. `validate_and_spend` compose pattern. |
 
 ## How to Read ADRs

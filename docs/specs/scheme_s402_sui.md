@@ -3,7 +3,7 @@
 **Status:** Draft
 **Date:** 2026-02-28
 **Protocol Version:** s402 v1
-**npm:** `s402@0.1.7`
+**npm:** `s402@0.2.2`
 
 ## Summary
 
@@ -199,7 +199,7 @@ s402 supports Sui's gas sponsorship protocol. If the facilitator offers sponsors
 
 ## x402 Compatibility
 
-s402@0.1.7 ships a bidirectional x402 compatibility layer (`s402/compat`):
+s402@0.2.2 ships a bidirectional x402 compatibility layer (`s402/compat`):
 
 - `normalizeRequirements()` — auto-detects x402 V1, V2 envelope, or s402 format
 - `fromX402Requirements()` / `toX402Requirements()` — bidirectional conversion
@@ -212,7 +212,7 @@ x402 agents that produce Sui PTBs in x402 format can be processed by s402 server
 | Capability | s402 | x402 |
 |---|---|---|
 | Payment schemes | 5 (exact, prepaid, stream, escrow, unlock) | 1 (exact) |
-| Sui implementation | Shipped (s402@0.1.7) | Spec only (all PRs closed) |
+| Sui implementation | Shipped (s402@0.2.2) | Spec only (all PRs closed) |
 | Settlement | Atomic PTB (no temporal gap) | EVM: temporal gap. Sui: would be atomic but unimplemented. |
 | Spending mandates | Move-enforced (per-tx, daily, weekly, lifetime caps, L0-L3 levels) | Not supported |
 | Revocation | Same-block on-chain (RevocationRegistry) | Not supported |

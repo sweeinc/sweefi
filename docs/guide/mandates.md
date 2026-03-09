@@ -66,7 +66,7 @@ const revokeTx = buildRevokeMandateTx(testnetConfig, {
 });
 ```
 
-**Critical**: `is_id_revoked(registry, id)` does NOT check `registry.owner == mandate.delegator`. All callers must assert ownership BEFORE calling it. This was the V8 H-1 security fix — a rogue delegate could bypass revocation by passing an empty registry they own.
+**Critical**: `is_id_revoked(registry, id)` does NOT check `registry.owner == mandate.delegator`. All callers must assert ownership BEFORE calling it. Without this check, a rogue delegate could bypass revocation by passing an empty registry they own.
 
 ## Agent Mandates (L0–L3)
 

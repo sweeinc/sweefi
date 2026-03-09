@@ -4,7 +4,7 @@ SweeFi's smart contracts are 10 Move modules deployed on Sui testnet. 264 test f
 
 ## Package Info
 
-**Testnet**: `0xbdbe26305de40e8168daf4b5c3142ebfa1d3e88a96c23d78f0116ad3b59e1833`
+**Testnet**: `0x04421dc12bdadbc1b7f7652cf2c299e7864571ded5ff4d7f2866de8304a820ef`
 
 ## Module Map
 
@@ -106,9 +106,9 @@ Receipts (`PaymentReceipt`, `EscrowReceipt`) are bearer credentials. Ownership =
 
 ## Move Test Summary
 
-244 test functions (core 10 modules):
-- ~144 positive (happy path)
-- ~100 expected-failure (error condition coverage)
+264 test functions (core 10 modules):
+- ~160 positive (happy path)
+- ~104 expected-failure (error condition coverage)
 
 Token-gated SEAL (separate package): 5 additional tests.
 

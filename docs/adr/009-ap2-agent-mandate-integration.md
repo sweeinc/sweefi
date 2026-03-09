@@ -115,7 +115,7 @@ The USD → SUI conversion happens ONCE at deposit time:
 - Opens path to institutional adoption via AP2's financial partner network
 
 ### Negative
-- AP2 V0.1 core is pull-only (cards). Crypto settlement exists via x402 (Base, Solana, BNB) and s402 (Sui, Solana). s402 is the superior settlement protocol — atomic, 5 schemes, Move-enforced. Bidirectional x402 compat already shipped in s402@0.1.7 (`compat.ts`).
+- AP2 V0.1 core is pull-only (cards). Crypto settlement exists via x402 (Base, Solana, BNB) and s402 (Sui, Solana). s402 is the superior settlement protocol — atomic, 5 schemes, Move-enforced. Bidirectional x402 compat already shipped in s402@0.2.2 (`compat.ts`).
 - Identity mapping (off-chain AP2 identities → on-chain Sui addresses) adds complexity
 - AP2 spec is still V0.1; may change substantially before V1.x
 

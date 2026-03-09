@@ -56,7 +56,7 @@ Domain-specific terms used across SweeFi's codebase and documentation.
 : Extended mandate with L0–L3 progressive autonomy levels and daily/weekly spending caps. Counters reset lazily at the next spend call rather than on a timer. See [Mandates](/guide/mandates).
 
 **RevocationRegistry**
-: Shared on-chain object owned by a mandate delegator. Stores a dynamic-field set of revoked mandate IDs. The V8 security fix ensures callers assert `registry.owner == mandate.delegator` before checking revocation.
+: Shared on-chain object owned by a mandate delegator. Stores a dynamic-field set of revoked mandate IDs. A pre-publication security fix ensures callers assert `registry.owner == mandate.delegator` before checking revocation.
 
 **s402Gate**
 : Server-side HTTP middleware from `@sweefi/server`. When applied to a route, it returns a 402 with payment requirements if no valid `x-payment` header is present, and verifies payment against the facilitator before allowing the request through.
