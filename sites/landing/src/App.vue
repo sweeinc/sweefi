@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
+import NavBar from './components/NavBar.vue'
 import HeroSection from './components/HeroSection.vue'
 import PainSolution from './components/PainSolution.vue'
 import HowItWorks from './components/HowItWorks.vue'
@@ -29,6 +30,7 @@ onMounted(() => {
 </script>
 
 <template>
+  <NavBar />
   <main>
     <HeroSection />
     <PainSolution />

@@ -12,14 +12,11 @@ function copyCode() {
 </script>
 
 <template>
-  <section class="hero-bg min-h-screen flex items-center relative overflow-hidden">
+  <section class="hero-bg min-h-screen flex items-center relative overflow-hidden pt-16">
     <div class="max-w-[1200px] mx-auto px-6 py-20 w-full">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
         <!-- Left: Copy -->
         <div class="fade-in-up visible">
-          <div class="text-brand font-mono text-sm font-semibold tracking-wider mb-6 uppercase">
-            SweeFi
-          </div>
           <h1 class="text-4xl sm:text-5xl lg:text-[4rem] font-extrabold leading-tight tracking-tight mb-6">
             Your AI agent needs a wallet.<br>
             <span class="text-text-muted">Not an API key.</span>

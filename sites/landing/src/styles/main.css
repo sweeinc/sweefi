@@ -83,12 +83,12 @@ body {
 }
 
 /* ── CSS @property Counter Animation ── */
-@property --num-847 {
+@property --num-1073 {
   syntax: '<integer>';
   initial-value: 0;
   inherits: false;
 }
-@property --num-10a {
+@property --num-7 {
   syntax: '<integer>';
   initial-value: 0;
   inherits: false;
@@ -109,38 +109,38 @@ body {
   inherits: false;
 }
 
-@keyframes count-847 { to { --num-847: 847; } }
-@keyframes count-10a { to { --num-10a: 10; } }
+@keyframes count-1073 { to { --num-1073: 1073; } }
+@keyframes count-7 { to { --num-7: 7; } }
 @keyframes count-10b { to { --num-10b: 10; } }
 @keyframes count-35 { to { --num-35: 35; } }
 @keyframes count-5 { to { --num-5: 5; } }
 
-.counter-847,
-.counter-10a,
+.counter-1073,
+.counter-7,
 .counter-10b,
 .counter-35,
 .counter-5 {
   font-variant-numeric: tabular-nums;
 }
 
-.counter-847 {
-  counter-reset: num var(--num-847);
+.counter-1073 {
+  counter-reset: num var(--num-1073);
 }
-.counter-847::after {
+.counter-1073::after {
   content: counter(num);
 }
-.counter-847.counting {
-  animation: count-847 1.8s ease-out forwards;
+.counter-1073.counting {
+  animation: count-1073 2s ease-out forwards;
 }
 
-.counter-10a {
-  counter-reset: num var(--num-10a);
+.counter-7 {
+  counter-reset: num var(--num-7);
 }
-.counter-10a::after {
+.counter-7::after {
   content: counter(num);
 }
-.counter-10a.counting {
-  animation: count-10a 1.5s ease-out forwards;
+.counter-7.counting {
+  animation: count-7 1.2s ease-out forwards;
 }
 
 .counter-10b {
