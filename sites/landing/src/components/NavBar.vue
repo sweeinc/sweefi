@@ -12,7 +12,7 @@ onMounted(() => window.addEventListener('scroll', onScroll, { passive: true }))
 onUnmounted(() => window.removeEventListener('scroll', onScroll))
 
 const links = [
-  { label: 'Docs', href: 'https://github.com/sweeinc/sweefi/tree/main/docs', external: true },
+  { label: 'Docs', href: 'https://docs.sweefi.xyz', external: true },
   { label: 'GitHub', href: 'https://github.com/sweeinc/sweefi', external: true },
   { label: 'npm', href: 'https://www.npmjs.com/org/sweefi', external: true },
 ]

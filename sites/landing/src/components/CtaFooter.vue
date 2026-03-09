@@ -39,7 +39,7 @@ function copyInstall() {
             View on GitHub
           </a>
           <a
-            href="https://github.com/sweeinc/sweefi/tree/main/docs"
+            href="https://docs.sweefi.xyz"
             class="inline-flex items-center justify-center px-6 py-3 border border-border text-text rounded-lg font-semibold transition-all hover:border-brand hover:text-brand min-h-[44px]"
           >
             Read the Docs
