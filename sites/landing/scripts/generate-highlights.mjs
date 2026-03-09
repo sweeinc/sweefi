@@ -70,7 +70,7 @@ npm install -g @sweefi/cli
 sweefi wallet create
 
 # Pay for a 402-gated endpoint
-sweefi pay https://sweefi-demo.fly.dev/api/forecast
+sweefi pay https://api.example.com/forecast
 
 # Check prepaid balance
 sweefi prepaid status <balance-id>`,

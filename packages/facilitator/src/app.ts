@@ -241,6 +241,11 @@ export function createApp(config: Config) {
   app.use("/settle", payloadDedup());
   app.use("/s402/process", payloadDedup());
 
+  // General rate limiter applies to all authenticated routes including /sponsor.
+  // /sponsor is intentionally double-gated: this general limiter provides DoS
+  // protection (requests/second), while gasSponsorTracker.tryConsume() in the
+  // route handler enforces the gas sponsorship budget (requests/hour per key).
+  // The two limits serve different purposes and should both remain.
   app.use("*", rateLimiter.middleware());
 
   // Mount facilitator routes (verify, settle, supported, s402/process, settlements, sponsor)

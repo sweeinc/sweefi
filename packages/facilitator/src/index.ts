@@ -20,8 +20,14 @@ const server = serve({ fetch: app.fetch, port: config.PORT }, (info) => {
   console.log(`swee-facilitator listening on http://localhost:${info.port}`);
 });
 
-function shutdown() {
+async function shutdown() {
   console.log("swee-facilitator shutting down...");
+  // Release any reserved gas coins back to the pool before closing.
+  // Without this, coins reserved during in-flight /sponsor requests are
+  // abandoned until their 30-second timeout expires (Fly.io SIGTERM budget).
+  if (gasSponsorService) {
+    await gasSponsorService.close();
+  }
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(1), 10_000).unref();
 }

@@ -185,24 +185,7 @@ AI Agent (Claude, GPT, Cursor, etc.)
 
 ## Try It Now
 
-### 1. See a 402 in action (no wallet needed)
-
-```bash
-# Hit the free endpoint — works normally
-curl https://sweefi-demo.fly.dev/api/weather
-
-# Hit the premium endpoint — get a 402 with payment requirements
-curl -i https://sweefi-demo.fly.dev/api/forecast
-# HTTP/1.1 402 Payment Required
-# payment-required: eyJzNDAyVmVyc2lvbiI6IjEiLC...
-# {"error":"Payment Required","price":"1000 MIST"}
-
-# Check what the server accepts
-curl https://sweefi-demo.fly.dev/.well-known/s402.json
-# {"s402Version":"1","schemes":["exact"],"networks":["sui:testnet"],...}
-```
-
-### 2. Full agent demo (needs testnet wallet)
+### 1. Run the demo locally (needs testnet wallet)
 
 ```bash
 # Get testnet SUI: https://faucet.sui.io
@@ -217,6 +200,15 @@ The demo starts a Hono server with free + premium endpoints, then runs an agent 
 3. Gets premium data back with on-chain settlement proof
 
 Cost: ~6,000 MIST (0.000006 SUI) + gas on testnet.
+
+### 2. Verify on-chain (no wallet needed)
+
+View real demo transactions on Sui testnet:
+- [payment::pay](https://suiscan.xyz/testnet/tx/Gts9F3gXaVVqLfi4M9pSFkkc2WsC6zCJejZmrwi8f1iK) — 1,000,000 MIST direct settlement
+- [stream::create](https://suiscan.xyz/testnet/tx/GDo8g5Yu1X1zCdaLTtEVCqxeWJqkDDyoHjdGP5TLvkhf) — streaming micropayment meter
+- [escrow::create](https://suiscan.xyz/testnet/tx/EcYFG3FTSwxM49UckuBhg2gYBPMzRBTNzmKy5Aq6UbzR) — time-locked conditional payment
+
+All three invoke Move contracts on [package v10](https://suiscan.xyz/testnet/object/0x04421dc12bdadbc1b7f7652cf2c299e7864571ded5ff4d7f2866de8304a820ef).
 
 ## Quick Start
 

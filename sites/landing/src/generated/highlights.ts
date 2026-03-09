@@ -88,7 +88,7 @@ export const cliHtml = [
   line(sp(v, 'sweefi'), sp(x, ' wallet create')),
   line(),
   line(sp(c, '# Pay for a 402-gated endpoint')),
-  line(sp(v, 'sweefi'), sp(x, ' pay '), sp(s, 'https://sweefi-demo.fly.dev/api/forecast')),
+  line(sp(v, 'sweefi'), sp(x, ' pay '), sp(s, 'https://api.example.com/forecast')),
   line(),
   line(sp(c, '# Check prepaid balance')),
   line(sp(v, 'sweefi'), sp(x, ' prepaid status '), sp(p, '<'), sp(x, 'balance-id'), sp(p, '>')),
@@ -144,7 +144,7 @@ npm install -g @sweefi/cli
 sweefi wallet create
 
 # Pay for a 402-gated endpoint
-sweefi pay https://sweefi-demo.fly.dev/api/forecast
+sweefi pay https://api.example.com/forecast
 
 # Check prepaid balance
 sweefi prepaid status <balance-id>`

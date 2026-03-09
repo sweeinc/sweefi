@@ -34,7 +34,7 @@
               <div class="flex-1 min-w-0">
                 <p class="text-text font-medium mb-2">Agent requests a paid API endpoint</p>
                 <div class="bg-bg/50 rounded-lg px-4 py-2.5 font-mono text-sm text-brand overflow-x-auto">
-                  <span class="text-text-muted">$</span> curl -i https://sweefi-demo.fly.dev/api/forecast
+                  <span class="text-text-muted">$</span> curl -i https://api.example.com/forecast
                 </div>
               </div>
             </div>

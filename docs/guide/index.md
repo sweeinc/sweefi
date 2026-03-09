@@ -150,24 +150,7 @@ AI Agent (Claude, GPT, Cursor, etc.)
 
 ## Try It Now
 
-### 1. See a 402 in action (no wallet needed)
-
-```bash
-# Hit the free endpoint — works normally
-curl https://sweefi-demo.fly.dev/api/weather
-
-# Hit the premium endpoint — get a 402 with payment requirements
-curl -i https://sweefi-demo.fly.dev/api/forecast
-# HTTP/1.1 402 Payment Required
-# payment-required: eyJzNDAyVmVyc2lvbiI6IjEiLC...
-# {"error":"Payment Required","price":"1000 MIST"}
-
-# Check what the server accepts
-curl https://sweefi-demo.fly.dev/.well-known/s402.json
-# {"s402Version":"1","schemes":["exact"],"networks":["sui:testnet"],...}
-```
-
-### 2. Full agent demo (needs testnet wallet)
+### 1. Run the demo locally (needs testnet wallet)
 
 ```bash
 # Get testnet SUI: https://faucet.sui.io
