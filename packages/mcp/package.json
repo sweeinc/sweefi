@@ -66,6 +66,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@sweefi/sui": "workspace:^",
+    "s402": "^0.2.0",
     "zod": "^3.22.0"
   },
   "peerDependencies": {

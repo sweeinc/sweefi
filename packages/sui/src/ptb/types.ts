@@ -99,7 +99,7 @@ export interface CreateStreamParams {
 }
 
 /**
- * Parameters for stream creation with configurable recipient_close timeout (v6).
+ * Parameters for stream creation with configurable recipient_close timeout.
  * Extends CreateStreamParams with a custom timeout for abandoned stream recovery.
  * Minimum: 86,400,000 ms (1 day). Default if not specified: 604,800,000 ms (7 days).
  */

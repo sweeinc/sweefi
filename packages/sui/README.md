@@ -280,7 +280,7 @@ PTB deployment constants (from `@sweefi/sui/ptb`):
 ```typescript
 import {
   testnetConfig,          // { packageId: TESTNET_PACKAGE_ID, protocolStateId: TESTNET_PROTOCOL_STATE }
-  TESTNET_PACKAGE_ID,     // Latest deployed package (v7 — full suite including mandate + prepaid)
+  TESTNET_PACKAGE_ID,     // Latest deployed package (full suite including mandate + prepaid)
   TESTNET_PROTOCOL_STATE, // Shared ProtocolState object ID (required for stream/escrow create ops)
   TESTNET_ADMIN_CAP,      // AdminCap object ID (deployer-owned)
   TESTNET_UPGRADE_CAP,    // UpgradeCap object ID (deployer-owned)

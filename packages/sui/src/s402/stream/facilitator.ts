@@ -40,22 +40,18 @@ export class StreamSuiFacilitatorScheme implements s402FacilitatorScheme {
 
   /**
    * @param signer - Facilitator signer for signature verification and TX execution
-   * @param packageId - Expected SweeFi Move package ID. When provided, event
-   *   extraction verifies the event originates from this package (prevents event
-   *   spoofing from attacker-deployed contracts). When omitted, falls back to
-   *   suffix matching (less secure, suitable for development/testing).
-   * @param network - Optional network hint (e.g., "sui:mainnet"). When the network
-   *   includes "mainnet" and packageId is not set, construction throws to prevent
-   *   event spoofing attacks in production (V8 audit F-13).
+   * @param packageId - SweeFi Move package ID for event anti-spoofing verification.
+   *   Required on all networks. Without it, an attacker can deploy a contract that
+   *   emits identically-named events and pass facilitator verification.
+   *   (V8 audit F-13, hardened to require on all networks in pre-publication audit.)
    */
   constructor(
     private readonly signer: FacilitatorSuiSigner,
-    private readonly packageId?: string,
-    network?: string,
+    private readonly packageId: string,
   ) {
-    if (!packageId && network?.includes("mainnet")) {
+    if (!packageId) {
       throw new Error(
-        "StreamSuiFacilitatorScheme: packageId is required on mainnet to prevent event spoofing. " +
+        "StreamSuiFacilitatorScheme: packageId is required to prevent event spoofing. " +
         "Set SWEEFI_PACKAGE_ID environment variable."
       );
     }

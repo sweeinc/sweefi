@@ -2,7 +2,7 @@
 
 > Give your AI agents a budget, not a blank check.
 
-**Five payment schemes for AI agents on Sui — exact, prepaid, escrow, streaming, and SEAL pay-to-decrypt. 849 tests. 10 packages. Apache 2.0.**
+**Five payment schemes for AI agents on Sui — exact, prepaid, escrow, streaming, and SEAL pay-to-decrypt. 1,073 tests. 10 packages. Apache 2.0.**
 
 ```typescript
 // 3 lines: AI agent auto-pays for premium data
@@ -85,7 +85,7 @@ Agent                    Server                  Sui Testnet
 
 ## Payment Schemes
 
-### Deployed Schemes (Testnet v7)
+### Deployed Schemes (Sui Testnet)
 
 | Scheme | Use Case | How It Works | Status |
 |--------|----------|-------------|--------|
@@ -147,7 +147,7 @@ AI Agent (Claude, GPT, Cursor, etc.)
     +-- Agent reputation --------> @sweeagent/reputation [FUTURE]
     +-- Agent discovery ---------> @sweeagent/registry   [FUTURE]
                                         |
-                              Sui blockchain (10 Move modules, testnet v7)
+                              Sui blockchain (10 Move modules, testnet)
                                         |
                                  +------+------+
                                  |  payment    | Direct pay + receipts
@@ -169,19 +169,19 @@ AI Agent (Claude, GPT, Cursor, etc.)
 |---------|-------------|-------|
 | [`@sweefi/ui-core`](packages/ui-core) | Framework-agnostic state machine + `PaymentAdapter` interface | 13 |
 | [`@sweefi/server`](packages/server) | Chain-agnostic HTTP: `s402Gate` middleware + `wrapFetchWithS402` | — |
-| [`@sweefi/sui`](packages/sui) | 40 PTB builders + `SuiPaymentAdapter` + s402 client | 252 |
+| [`@sweefi/sui`](packages/sui) | 40 PTB builders + `SuiPaymentAdapter` + s402 client | 257 |
 | [`@sweefi/vue`](packages/vue) | Vue 3 plugin + `useSweefiPayment()` composable | 10 |
 | [`@sweefi/react`](packages/react) | React context + `useSweefiPayment()` hook (`useSyncExternalStore`) | 12 |
-| [`@sweefi/facilitator`](packages/facilitator) | Self-hostable payment verification — Docker/Fly.io (not on npm) | 57 |
-| [`@sweefi/mcp`](packages/mcp) | MCP server with 35 AI agent tools | 123 |
-| [`@sweefi/cli`](packages/cli) | CLI tool — wallet, pay, prepaid, mandates | 42 |
+| [`@sweefi/facilitator`](packages/facilitator) | Self-hostable payment verification — Docker/Fly.io (not on npm) | 63 |
+| [`@sweefi/mcp`](packages/mcp) | MCP server with 35 AI agent tools | 124 |
+| [`@sweefi/cli`](packages/cli) | CLI tool — wallet, pay, prepaid, mandates | 238 |
 | [`@sweefi/solana`](packages/solana) | Solana s402 payment adapter | 40 |
 | [`@sweefi/ap2-adapter`](packages/ap2-adapter) | Google AP2 ↔ SweeFi mandate bridge | 52 |
-| [`sweefi-contracts`](contracts) | 10 Move modules on Sui testnet (v7) | 246 |
+| [`sweefi-contracts`](contracts) | 10 Move modules on Sui testnet | 264 |
 
-**Total: 849 passing tests (603 TypeScript + 246 Move)**
+**Total: 1,073 passing tests (809 TypeScript + 264 Move)**
 
-**External**: [`s402`](https://www.npmjs.com/package/s402) (HTTP 402 protocol, v0.1.2), `@mysten/sui@2.6.0`, `@mysten/seal@1.0.1`
+**External**: [`s402`](https://www.npmjs.com/package/s402) (HTTP 402 protocol, v0.2.2), `@mysten/sui@2.6.0`, `@mysten/seal@1.0.1`
 
 ## Try It Now
 
@@ -345,7 +345,7 @@ No admin keys control user funds.
 
 ## Smart Contracts
 
-Deployed on Sui testnet v8. 10 modules, 246 Move test annotations, AdminCap + ProtocolState for governance.
+Deployed on Sui testnet. 10 modules, 264 Move tests, AdminCap + ProtocolState for governance.
 
 | Module | Purpose |
 |--------|---------|
@@ -360,7 +360,7 @@ Deployed on Sui testnet v8. 10 modules, 246 Move test annotations, AdminCap + Pr
 | `math` | Shared arithmetic utilities (safe division, BPS) |
 | `admin` | AdminCap, ProtocolState, pause/unpause/burn |
 
-Package ID (testnet v7): `0x242f22b9f8b3d77868f6cde06f294203d7c76afa0cd101f388a6cefa45b54c3d`
+Package ID (testnet): `0xbdbe26305de40e8168daf4b5c3142ebfa1d3e88a96c23d78f0116ad3b59e1833`
 
 Token-gated SEAL (standalone): `0xbf9f9d63cbe53f21ac81af068e25e2c736fa2b0537c7e34d7d2862e330fe4fbc`
 
@@ -430,7 +430,7 @@ SweeFi is the payment layer. The broader ecosystem includes:
 |-------|------|--------|
 | **s402** | Open protocol standard (`s402` npm package) | Shipped, Apache 2.0 |
 | **SweeFi** | Open source payment SDK (`@sweefi/*`) | Shipping, Apache 2.0 |
-| **SweeWorld** | Agent marketplace — for-profit product built on SweeFi | Vision |
+| **SweeWorld** | Free agent dashboard — see your agents spend, know they can't overspend | Vision |
 | **SweeCard** | TradFi/crypto bridge card | Phase 3+, backburner |
 
 See [SPEC.md](SPEC.md) for the full vision and roadmap.

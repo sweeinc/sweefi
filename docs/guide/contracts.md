@@ -1,10 +1,10 @@
 # Move Modules Overview
 
-SweeFi's smart contracts are 10 Move modules deployed on Sui testnet. 244 test functions. Core payment functions are `public` (composable in PTBs), with `entry` convenience wrappers for common flows.
+SweeFi's smart contracts are 10 Move modules deployed on Sui testnet. 264 test functions. Core payment functions are `public` (composable in PTBs), with `entry` convenience wrappers for common flows.
 
 ## Package Info
 
-**Testnet v7**: `0x242f22b9f8b3d77868f6cde06f294203d7c76afa0cd101f388a6cefa45b54c3d`
+**Testnet**: `0xbdbe26305de40e8168daf4b5c3142ebfa1d3e88a96c23d78f0116ad3b59e1833`
 
 ## Module Map
 

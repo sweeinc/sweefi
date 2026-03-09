@@ -8,6 +8,9 @@ module sweefi::agent_mandate_tests {
 
     const DELEGATOR: address = @0xD;
     const DELEGATE: address = @0xA;
+    /// u64::MAX sentinel for "effectively unlimited" caps.
+    /// Post-audit semantic fix: 0 = zero budget (matches mandate.move), u64::MAX = unlimited.
+    const NO_LIMIT: u64 = 18_446_744_073_709_551_615;
 
     // ══════════════════════════════════════════════════════════════
     // Create + spend happy path (L2 capped)
@@ -198,7 +201,7 @@ module sweefi::agent_mandate_tests {
         let mut m = agent_mandate::create<SUI>(
             DELEGATE, 2,
             5_000_000_000,       // max_per_tx: 5 SUI
-            0,                   // daily_limit: 0 (no daily limit)
+            NO_LIMIT,            // daily_limit: unlimited
             3_000_000_000,       // weekly_limit: 3 SUI (low)
             100_000_000_000,
             option::some(1_000_000), &clock, ctx,
@@ -278,7 +281,7 @@ module sweefi::agent_mandate_tests {
         let mut m = agent_mandate::create<SUI>(
             DELEGATE, 2,
             5_000_000_000,       // max_per_tx
-            0,                   // no daily limit
+            NO_LIMIT,            // no daily limit
             3_000_000_000,       // weekly_limit: 3 SUI
             100_000_000_000,
             option::some(1_000_000_000), // expires at 1M seconds
@@ -352,8 +355,8 @@ module sweefi::agent_mandate_tests {
         let mut m = agent_mandate::create<SUI>(
             DELEGATE, 2,
             5_000_000_000,       // max_per_tx: 5 SUI
-            0,                   // no daily limit
-            0,                   // no weekly limit
+            NO_LIMIT,            // no daily limit
+            NO_LIMIT,            // no weekly limit
             3_000_000_000,       // max_total: 3 SUI (tight)
             option::some(10_000_000_000),
             &clock, ctx,
@@ -675,11 +678,11 @@ module sweefi::agent_mandate_tests {
     }
 
     // ══════════════════════════════════════════════════════════════
-    // Zero daily/weekly limits = no periodic cap
+    // u64::MAX daily/weekly limits = effectively no periodic cap
     // ══════════════════════════════════════════════════════════════
 
     #[test]
-    fun test_zero_limits_means_no_periodic_cap() {
+    fun test_max_limits_means_no_periodic_cap() {
         let mut scenario = ts::begin(DELEGATOR);
         let clock = clock::create_for_testing(ts::ctx(&mut scenario));
         let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
@@ -688,8 +691,8 @@ module sweefi::agent_mandate_tests {
         let mut m = agent_mandate::create<SUI>(
             DELEGATE, 2,
             5_000_000_000,   // max_per_tx: 5 SUI
-            0,               // daily_limit: 0 (no daily cap)
-            0,               // weekly_limit: 0 (no weekly cap)
+            NO_LIMIT,        // daily_limit: unlimited
+            NO_LIMIT,        // weekly_limit: unlimited
             50_000_000_000,  // max_total: 50 SUI
             option::some(1_000_000), &clock, ctx,
         );
@@ -940,7 +943,7 @@ module sweefi::agent_mandate_tests {
 
         let mut m = agent_mandate::create<SUI>(
             DELEGATE, 2,
-            5_000_000_000, 0, 20_000_000_000, 100_000_000_000,
+            5_000_000_000, NO_LIMIT, 20_000_000_000, 100_000_000_000,
             option::some(1_000_000), &clock, ctx,
         );
 
@@ -953,7 +956,7 @@ module sweefi::agent_mandate_tests {
         // Delegator tries to set weekly limit to 8 SUI (below 10 already spent)
         ts::next_tx(&mut scenario, DELEGATOR);
         let ctx = ts::ctx(&mut scenario);
-        agent_mandate::update_caps(&mut m, 5_000_000_000, 0, 8_000_000_000, 100_000_000_000, ctx);
+        agent_mandate::update_caps(&mut m, 5_000_000_000, NO_LIMIT, 8_000_000_000, 100_000_000_000, ctx);
 
         agent_mandate::destroy_for_testing(m);
         mandate::destroy_registry_for_testing(registry);
@@ -972,7 +975,7 @@ module sweefi::agent_mandate_tests {
 
         let mut m = agent_mandate::create<SUI>(
             DELEGATE, 2,
-            5_000_000_000, 0, 0, 100_000_000_000,
+            5_000_000_000, NO_LIMIT, NO_LIMIT, 100_000_000_000,
             option::some(1_000_000), &clock, ctx,
         );
 
@@ -988,7 +991,7 @@ module sweefi::agent_mandate_tests {
         // Delegator tries to set max_total to 40 SUI (below 50 already spent)
         ts::next_tx(&mut scenario, DELEGATOR);
         let ctx = ts::ctx(&mut scenario);
-        agent_mandate::update_caps(&mut m, 5_000_000_000, 0, 0, 40_000_000_000, ctx);
+        agent_mandate::update_caps(&mut m, 5_000_000_000, NO_LIMIT, NO_LIMIT, 40_000_000_000, ctx);
 
         agent_mandate::destroy_for_testing(m);
         mandate::destroy_registry_for_testing(registry);

@@ -2,11 +2,11 @@
 
 > All transactions below are **real**, **on-chain**, and **verifiable** on [Sui Testnet Explorer](https://suiscan.xyz/testnet).
 
-**Package (v7):** `0xc80485e9182c607c41e16c2606abefa7ce9b7f78d809054e99486a20d62167d5`
-**Modules:** `payment`, `stream`, `escrow`, `seal_policy`, `mandate`, `agent_mandate`, `prepaid`, `admin`
-**Move tests:** 208 passing (v8 contracts incl. prepaid v0.2 dispute flow)
-**TypeScript tests:** 208+ passing (PTB builders, adapters, receipt signing)
-**Total:** 416+ tests across Move + TypeScript
+**Package (testnet):** `0xbdbe26305de40e8168daf4b5c3142ebfa1d3e88a96c23d78f0116ad3b59e1833`
+**Modules:** `payment`, `stream`, `escrow`, `seal_policy`, `mandate`, `agent_mandate`, `prepaid`, `admin`, `math`, `identity`
+**Move tests:** 264 passing
+**TypeScript tests:** 815 passing
+**Total:** 1,079 tests across Move + TypeScript
 
 ---
 
@@ -210,7 +210,7 @@ This is what "safety layer for autonomous agent commerce" means — every failur
     └────────────────────────┬────────────────────────────────┘
                              │ submits transactions
     ┌────────────────────────▼────────────────────────────────┐
-    │            SweeFi Move Contracts (v7)                    │
+    │            SweeFi Move Contracts (testnet)                    │
     │                                                          │
     │  ┌──────────┐   ┌──────────┐   ┌──────────────────┐    │
     │  │ payment  │   │  stream  │   │     escrow       │    │

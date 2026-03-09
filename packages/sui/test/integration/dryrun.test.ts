@@ -95,7 +95,7 @@ function assertValidStructure(result: any, builderName: string) {
   }
 }
 
-describe.skipIf(SKIP)("PTB dev-inspect against live testnet v6", () => {
+describe.skipIf(SKIP)("PTB dev-inspect against live testnet", () => {
   // ── Payment builders ──────────────────────────────────────
 
   it("buildPayTx dev-inspects without Move errors", async () => {

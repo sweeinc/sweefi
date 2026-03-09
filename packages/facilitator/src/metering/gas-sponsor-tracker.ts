@@ -18,6 +18,13 @@ export interface IGasSponsorTracker {
   canSponsor(apiKey: string): Promise<boolean>;
   /** Record that a sponsored transaction was settled for this API key. */
   recordSponsored(apiKey: string): Promise<void>;
+  /**
+   * Atomically check and consume a sponsorship token.
+   * Returns true if a token was consumed, false if rate limit exceeded.
+   * Prevents TOCTOU race between canSponsor() and recordSponsored()
+   * (concurrent requests during async work can both pass canSponsor).
+   */
+  tryConsume(apiKey: string): Promise<boolean>;
 }
 
 /**
@@ -41,6 +48,12 @@ export class InMemoryGasSponsorTracker implements IGasSponsorTracker {
     if (this.maxPerHour <= 0) return;
     const bucket = this.getOrCreate(apiKey);
     bucket.consume();
+  }
+
+  async tryConsume(apiKey: string): Promise<boolean> {
+    if (this.maxPerHour <= 0) return false;
+    const bucket = this.getOrCreate(apiKey);
+    return bucket.consume();
   }
 
   private getOrCreate(apiKey: string): GasBucket {

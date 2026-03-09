@@ -24,11 +24,6 @@ import {
   buildAdminUnpauseTx,
   buildBurnAdminCapTx,
   TESTNET_PACKAGE_ID,
-  TESTNET_PACKAGE_ID_V1,
-  TESTNET_PACKAGE_ID_V2,
-  TESTNET_PACKAGE_ID_V3,
-  TESTNET_PACKAGE_ID_V4,
-  TESTNET_PACKAGE_ID_V5,
 } from "../../src/ptb";
 import type { SweefiConfig } from "../../src/ptb";
 
@@ -727,41 +722,8 @@ describe("buildDisputeEscrowTx", () => {
 // ══════════════════════════════════════════════════════════════
 
 describe("deployment constants", () => {
-  it("exports testnet v6 package ID (latest — configurable timeout)", () => {
+  it("exports testnet package ID", () => {
     expect(TESTNET_PACKAGE_ID).toMatch(/^0x[a-f0-9]{64}$/);
-  });
-
-  it("exports testnet v5 package ID (security fixes)", () => {
-    expect(TESTNET_PACKAGE_ID_V5).toMatch(/^0x[a-f0-9]{64}$/);
-  });
-
-  it("exports testnet v4 package ID (seal_policy)", () => {
-    expect(TESTNET_PACKAGE_ID_V4).toMatch(/^0x[a-f0-9]{64}$/);
-  });
-
-  it("exports testnet v3 package ID", () => {
-    expect(TESTNET_PACKAGE_ID_V3).toMatch(/^0x[a-f0-9]{64}$/);
-  });
-
-  it("exports testnet v2 package ID", () => {
-    expect(TESTNET_PACKAGE_ID_V2).toMatch(/^0x[a-f0-9]{64}$/);
-  });
-
-  it("exports testnet v1 package ID (legacy)", () => {
-    expect(TESTNET_PACKAGE_ID_V1).toMatch(/^0x[a-f0-9]{64}$/);
-  });
-
-  it("all six versions are different package IDs", () => {
-    const ids = [
-      TESTNET_PACKAGE_ID,
-      TESTNET_PACKAGE_ID_V1,
-      TESTNET_PACKAGE_ID_V2,
-      TESTNET_PACKAGE_ID_V3,
-      TESTNET_PACKAGE_ID_V4,
-      TESTNET_PACKAGE_ID_V5,
-    ];
-    const unique = new Set(ids);
-    expect(unique.size).toBe(6);
   });
 });
 

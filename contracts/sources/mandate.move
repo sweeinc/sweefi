@@ -155,8 +155,13 @@ module sweefi::mandate {
         assert!(amount <= mandate.max_per_tx, EPerTxLimitExceeded);
 
         // Lifetime cap (unconditional — 0 means zero budget, NOT unlimited.
-        // This differs from AgentMandate where 0 = unlimited. See V8 audit F-14.)
-        assert!(mandate.total_spent + amount <= mandate.max_total, ETotalLimitExceeded);
+        // AgentMandate now matches this semantic after V8 audit F-19.)
+        // u128 intermediate: ensures EDailyLimitExceeded fires instead of generic
+        // ARITHMETIC_ERROR when total_spent + amount would overflow u64.
+        assert!(
+            (mandate.total_spent as u128) + (amount as u128) <= (mandate.max_total as u128),
+            ETotalLimitExceeded,
+        );
 
         // Debit
         mandate.total_spent = mandate.total_spent + amount;

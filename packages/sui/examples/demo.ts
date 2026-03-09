@@ -617,7 +617,7 @@ async function main() {
     4. Atomic pay-and-prove (composable PTB → SEAL access)
     5. Abandoned stream recovery (recipient_close safety valve)
 
-  Package (v5): ${config.packageId}
+  Package: ${config.packageId}
   Transactions:
 ${digests.map((d) => `    https://suiscan.xyz/testnet/tx/${d}`).join("\n")}
 

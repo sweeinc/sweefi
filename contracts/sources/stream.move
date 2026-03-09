@@ -598,7 +598,9 @@ module sweefi::stream {
         };
 
         // Must have been inactive for at least the timeout period
-        assert!(now_ms >= last_activity + timeout, ETimeoutNotReached);
+        // Rearranged: subtraction avoids theoretical u64 overflow if last_activity + timeout > u64::MAX.
+        // Safe because now_ms >= last_activity is guaranteed (Clock is monotonic).
+        assert!(now_ms - last_activity >= timeout, ETimeoutNotReached);
 
         // Compute final claim (same logic as close/claim)
         let accrued = if (meter.active) {

@@ -52,7 +52,7 @@ export function buildCreateStreamTx(
 }
 
 /**
- * Build a PTB to create a streaming payment channel with custom recipient_close timeout (v6).
+ * Build a PTB to create a streaming payment channel with custom recipient_close timeout.
  * Same as buildCreateStreamTx but with configurable timeout for abandoned stream recovery.
  * Stored as a Sui dynamic field — no struct change needed for backward compatibility.
  *

@@ -7,15 +7,15 @@
 
 **SweeFi** is open-source agentic payment infrastructure for Sui.
 - Monorepo with 10 TS packages + Move smart contracts
-- Built on top of `s402` (HTTP 402 protocol, published on npm as `s402@0.2.0`)
+- Built on top of `s402` (HTTP 402 protocol, published on npm as `s402@0.2.2`)
 - Competing with BEEP (justbeep.it) — proprietary alternative
-- 849 passing tests (603 TypeScript + 246 Move) — see STATUS.md for per-package breakdown
+- 1,073 passing tests (809 TypeScript + 264 Move) — see STATUS.md for per-package breakdown
 
 ## Repository Structure
 
 ```
 sweefi-project/
-├── contracts/                    # Move smart contracts (10 modules, 246 test functions)
+├── contracts/                    # Move smart contracts (10 modules, 264 test functions)
 │   └── sources/
 │       ├── payment.move          # Direct payments, invoices, receipts
 │       ├── stream.move           # Streaming micropayments + budget caps
@@ -307,12 +307,12 @@ These are hard rules. Do not debate them; read the ADR if you want context.
 
 ---
 
-## Smart Contracts (Testnet v8 — pending deploy)
+## Smart Contracts (Sui Testnet)
 
-Previous deployed: `0x242f22b9f8b3d77868f6cde06f294203d7c76afa0cd101f388a6cefa45b54c3d` (v7)
-V8 package ID: **TBD — run `sui client publish --gas-budget 500000000` in `contracts/` then update here + `packages/sui/src/ptb/deployments.ts`**
+Package ID: `0xbdbe26305de40e8168daf4b5c3142ebfa1d3e88a96c23d78f0116ad3b59e1833`
+Contract version: 0.1.0 (pre-mainnet). 9th testnet iteration. Full history in git log.
 
-10 modules, 246 Move test functions (all passing as of V8).
+10 modules, 264 Move test functions (all passing).
 
 **Key design patterns:**
 - All payment functions are `public` (composable in PTBs), not `entry`
@@ -331,7 +331,7 @@ V8 package ID: **TBD — run `sui client publish --gas-budget 500000000` in `con
 | seal_policy | 300 | ENoAccess=300 |
 | mandate | 400s | ENotDelegate=400, EExpired=401, EPerTxLimitExceeded=402, ETotalLimitExceeded=403, ENotDelegator=404, ERevoked=405 |
 | admin | 500s | EAlreadyPaused=500, ENotPaused=501 |
-| agent_mandate | 500s | ENotDelegate=500, EExpired=501, EDailyLimitExceeded=506, EInvalidLevel=508, ECannotDowngrade=510 |
+| agent_mandate | 550s | ENotDelegate=550, EExpired=551, EPerTxLimitExceeded=552, EDailyLimitExceeded=556, EInvalidLevel=558, ECannotDowngrade=560 |
 | prepaid | 600s | ENotAgent=600, ENotProvider=601, EZeroDeposit=602, EWithdrawalLocked=604, ECallCountRegression=605 |
 | identity | 700s | EAlreadyRegistered=700, ENotOwner=701, EReceiptAlreadyRecorded=705 |
 | math | 900 | EOverflow=900 |
@@ -339,14 +339,16 @@ V8 package ID: **TBD — run `sui client publish --gas-budget 500000000` in `con
 **Critical**: `mandate::is_id_revoked(registry, id)` does NOT check `registry.owner == mandate.delegator`.
 All callers must assert ownership BEFORE calling it. This was the V8 H-1 security fix.
 
-### Version History (abbreviated)
+### Notable Security Fixes (pre-publication audit)
 
-| Version | Key Changes |
-|---------|-------------|
-| v5 | `resume()` accrual theft fix (time-shift pattern); escrow description length cap |
-| v6 | `create_with_timeout()` via Sui dynamic fields (TimeoutKey pattern) |
-| v7 | `identity.move`, `math.move`; token type verification added |
-| v8 | H1: revocation bypass fix; H2: `remaining()` saturated sub; H3: `ETimeoutTooLong`; `MIN_DEPOSIT = 1_000_000` |
+- `resume()` accrual theft fix (time-shift pattern)
+- Revocation bypass fix (registry ownership assertion required before `is_id_revoked`)
+- `remaining()` saturated subtraction (no underflow)
+- Error code collision fix (agent_mandate → 550s series)
+- Event spoofing fix (packageId required on non-exact schemes)
+- TOCTOU race fix (atomic `tryConsume` for gas sponsorship)
+- Error message sanitization (no internal details leaked to clients)
+- **Semantic fix**: `0 = zero budget` across all caps (was "0 = unlimited" in agent_mandate — now consistent with mandate.move; use `u64::MAX` for unlimited)
 
 **Move test deposits must be ≥ MIN_DEPOSIT (1,000,000 MIST).** Any fixture with smaller deposits
 aborts at `create()`, not at assertions — the failure is confusing. Always use ≥ 1M in Move tests.
@@ -551,13 +553,50 @@ decision log. New endpoints and middleware added:
 | `CHANGELOG.md` | new file | Per-package changelog (Keep a Changelog format, matching s402). |
 | `docs/adr/008-facilitator-api-gaps.md` | new file | Full decision log for above changes. |
 
-**Facilitator test count**: 37 → 51 (all passing, zero type errors)
+**Facilitator test count**: 37 → 63 (all passing, zero type errors)
 
 **Key non-obvious findings from skeptic review:**
 - `/stats` aggregate endpoint was dropped — any API key holder seeing total key count = competitor intelligence leak
 - Dedup key must include apiKey — body-only key causes cross-tenant cache collisions (CustomerA gets CustomerB's receipt)
 - Hono body stream concern was a false positive — `c.req.json()` uses internal `bodyCache`; safe to call in middleware and handler
 - Blockchain-level idempotency (Sui rejects duplicate signed tx) means dedup is a reliability improvement, not a safety requirement
+
+### Wave 2 — Mar 2026 (Pre-Publication Security Audit, R1+R2 dual-team)
+
+**Scope**: Full codebase — 10 Move modules + 10 TS packages. Two independent agent teams (R1, R2) to eliminate anchoring bias.
+**Result**: 87% false positives filtered. 6 true positives fixed. 4 design decisions documented.
+
+**Fixes applied:**
+
+| ID | Layer | Finding | Fix |
+|----|-------|---------|-----|
+| F-14 | Move | `agent_mandate` error codes (500s) collided with `admin` (500s) | Renumbered to 550-series. Updated MCP error map + tests. |
+| F-15 | TS | Non-exact scheme facilitators accepted events without packageId verification (spoofable) | `packageId` now required in constructor; graceful degradation in facilitator.ts |
+| F-16 | TS | `/settle` and `/s402/process` double-counted gas sponsorship (recordSponsored called in both /sponsor and /settle) | Removed duplicate tracking from /settle and /s402/process |
+| F-17 | TS | TOCTOU race in gas sponsor rate limiting (canSponsor then recordSponsored with async work between) | Added atomic `tryConsume()` to IGasSponsorTracker; /sponsor uses it |
+| F-18 | TS | Facilitator error responses leaked internal error messages (OWASP info disclosure) | Catch blocks now log server-side, return generic errors to clients |
+| F-19 | Move+TS | AgentMandate max_total=0 footgun (meant "unlimited" in AgentMandate but "zero budget" in base Mandate) | **Semantic fix**: removed all `if (X > 0)` guards — 0 now unconditionally means zero budget. u64::MAX for unlimited. TS SDK throws on L2+ with maxTotal=0. |
+
+**Documented design decisions (NOT fixed — intentional):**
+
+| ID | Finding | Decision |
+|----|---------|----------|
+| D-14 | `payment.move` allows self-payment (sender == recipient) | By design — restricting on immutable contract risks breaking composability. Facilitator validates off-chain. |
+| ~~D-15~~ | ~~`max_total=0` means unlimited~~ | **FIXED in F-19** — 0 = zero budget everywhere. u64::MAX = unlimited. |
+| D-16 | `x-forwarded-for` spoofable for unauthenticated rate limiting | Settlement endpoints use API key (not spoofable). XFF only for unauthenticated /health etc. |
+| D-17 | `calculate_fee_min()` can return fee > amount | Documented in tests as "AUDIT FINDING 1". Immutable contract — TS wrapper validates. |
+
+### Wave 3 — Mar 2026 (Post-Fix Hardening Audit)
+
+**Scope**: Move contracts only — fresh team after Wave 2 contract changes.
+**Result**: 2 hardening improvements applied (error quality + overflow safety). Most findings were false positives from auditor assuming Solidity wrapping-overflow model instead of Move's abort-on-overflow.
+
+**Fixes applied:**
+
+| ID | Layer | Finding | Fix |
+|----|-------|---------|-----|
+| F-20 | Move | Cap checks in `agent_mandate` and `mandate` could abort with generic `ARITHMETIC_ERROR` instead of structured error codes at u64 boundary | u128 intermediate arithmetic for all cap checks (daily, weekly, lifetime). Fires `EDailyLimitExceeded`/`EWeeklyLimitExceeded`/`ETotalLimitExceeded` instead of `ARITHMETIC_ERROR`. |
+| F-21 | Move | `stream.move` timeout check `now_ms >= last_activity + timeout` could abort with `ARITHMETIC_ERROR` if `last_activity + timeout` overflows u64 | Rearranged to `now_ms - last_activity >= timeout`. Safe: Clock is monotonic so `now_ms >= last_activity`. |
 
 ---
 

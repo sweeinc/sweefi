@@ -33,11 +33,11 @@ export interface CreateAgentMandateParams {
   level: MandateLevelValue;
   /** Maximum amount per transaction (base units) */
   maxPerTx: bigint;
-  /** Daily spending cap (base units). 0 = no daily limit. */
+  /** Daily spending cap (base units). u64::MAX = effectively unlimited. 0 = zero budget. */
   dailyLimit: bigint;
-  /** Weekly spending cap (base units). 0 = no weekly limit. */
+  /** Weekly spending cap (base units). u64::MAX = effectively unlimited. 0 = zero budget. */
   weeklyLimit: bigint;
-  /** Lifetime spending cap (base units) */
+  /** Lifetime spending cap (base units). u64::MAX = effectively unlimited. 0 = zero budget. */
   maxTotal: bigint;
   /** Expiry timestamp in milliseconds */
   expiresAtMs: bigint;
@@ -78,9 +78,9 @@ export interface UpdateMandateCapsParams {
   coinType: string;
   /** New max per transaction */
   maxPerTx: bigint;
-  /** New daily limit (0 = no daily limit) */
+  /** New daily limit (u64::MAX = effectively unlimited, 0 = zero budget) */
   dailyLimit: bigint;
-  /** New weekly limit (0 = no weekly limit) */
+  /** New weekly limit (u64::MAX = effectively unlimited, 0 = zero budget) */
   weeklyLimit: bigint;
   /** New lifetime max */
   maxTotal: bigint;
@@ -93,11 +93,26 @@ export interface UpdateMandateCapsParams {
 /**
  * Build a PTB to create an agent mandate and transfer it to the delegate.
  * Called by the delegator (human) to authorize an agent with tiered spending caps.
+ *
+ * IMPORTANT: In the Move contract (post v8-audit), 0 means "zero budget" for all caps
+ * (dailyLimit, weeklyLimit, maxTotal). This matches base Mandate semantics.
+ * Use u64::MAX (BigInt('18446744073709551615')) for "effectively unlimited".
+ * An error is thrown if L2+ mandates are created with maxTotal=0 (no spending possible).
  */
 export function buildCreateAgentMandateTx(
   config: SweefiConfig,
   params: CreateAgentMandateParams,
 ): Transaction {
+  // V8 audit F-14: Guard against zero caps on L2+ mandates.
+  // After the v8-audit semantic fix, 0 = zero budget (NOT unlimited). Use u64::MAX for unlimited.
+  // This catches the likely mistake of creating a spending mandate with no spending authority.
+  if (params.level >= MandateLevel.CAPPED && params.maxTotal === 0n) {
+    throw new Error(
+      "[sweefi] AgentMandate at L2+ with maxTotal=0 has zero lifetime budget (no spending possible). " +
+      "Use BigInt('18446744073709551615') (u64::MAX) for unlimited, or a specific cap for bounded spending.",
+    );
+  }
+
   const tx = new Transaction();
   tx.setSender(params.sender);
 

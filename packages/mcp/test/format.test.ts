@@ -258,9 +258,9 @@ describe("assertTxSuccess", () => {
     }
   });
 
-  it("parses agent_mandate abort code (509 = level not authorized) as human-required", () => {
+  it("parses agent_mandate abort code (559 = level not authorized) as human-required", () => {
     try {
-      assertTxSuccess({ effects: { status: { status: "failure", error: "MoveAbort(agent_mandate, 509)" } } });
+      assertTxSuccess({ effects: { status: { status: "failure", error: "MoveAbort(agent_mandate, 559)" } } });
       expect.unreachable("should have thrown");
     } catch (e) {
       const msg = (e as Error).message;

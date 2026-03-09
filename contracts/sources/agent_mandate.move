@@ -12,7 +12,7 @@
 ///
 /// Uses the same RevocationRegistry from sweefi::mandate for revocation.
 ///
-/// Error codes: 500-series (mandate=400, agent_mandate=500)
+/// Error codes: 550-series (mandate=400, admin=500, agent_mandate=550)
 #[allow(lint(self_transfer), unused_const)]
 module sweefi::agent_mandate {
     use sui::clock::Clock;
@@ -37,17 +37,17 @@ module sweefi::agent_mandate {
     // Error codes
     // ══════════════════════════════════════════════════════════════
 
-    const ENotDelegate: u64 = 500;
-    const EExpired: u64 = 501;
-    const EPerTxLimitExceeded: u64 = 502;
-    const ETotalLimitExceeded: u64 = 503;
-    const ENotDelegator: u64 = 504;
-    const ERevoked: u64 = 505;
-    const EDailyLimitExceeded: u64 = 506;
-    const EWeeklyLimitExceeded: u64 = 507;
-    const EInvalidLevel: u64 = 508;
-    const ELevelNotAuthorized: u64 = 509;
-    const ECannotDowngrade: u64 = 510;
+    const ENotDelegate: u64 = 550;
+    const EExpired: u64 = 551;
+    const EPerTxLimitExceeded: u64 = 552;
+    const ETotalLimitExceeded: u64 = 553;
+    const ENotDelegator: u64 = 554;
+    const ERevoked: u64 = 555;
+    const EDailyLimitExceeded: u64 = 556;
+    const EWeeklyLimitExceeded: u64 = 557;
+    const EInvalidLevel: u64 = 558;
+    const ELevelNotAuthorized: u64 = 559;
+    const ECannotDowngrade: u64 = 560;
 
     // ══════════════════════════════════════════════════════════════
     // Structs
@@ -66,15 +66,15 @@ module sweefi::agent_mandate {
 
         max_per_tx: u64,            // ceiling per individual spend (base units)
 
-        daily_limit: u64,           // daily spending ceiling; 0 = no daily limit
+        daily_limit: u64,           // daily spending ceiling (u64::MAX = effectively unlimited)
         daily_spent: u64,           // amount spent in the current daily period
         last_daily_reset_ms: u64,   // when daily_spent was last zeroed; initialized to creation time, not epoch 0
 
-        weekly_limit: u64,          // weekly spending ceiling; 0 = no weekly limit
+        weekly_limit: u64,          // weekly spending ceiling (u64::MAX = effectively unlimited)
         weekly_spent: u64,          // amount spent in the current weekly period
         last_weekly_reset_ms: u64,  // when weekly_spent was last zeroed; initialized to creation time, not epoch 0
 
-        max_total: u64,             // lifetime ceiling across all spends (base units)
+        max_total: u64,             // lifetime ceiling across all spends (u64::MAX = effectively unlimited)
         total_spent: u64,           // cumulative sum; never decreases; invariant: total_spent <= max_total
 
         expires_at_ms: Option<u64>, // None = permanent (revocation-only control), Some(t) = expires at t
@@ -130,7 +130,8 @@ module sweefi::agent_mandate {
     // ══════════════════════════════════════════════════════════════
 
     /// Create an agent mandate. Called by the delegator (human).
-    /// Level must be 0-3. For L0/L1, spending caps can be 0.
+    /// Level must be 0-3. For L0/L1, spending caps can be 0 (no spending regardless).
+    /// For L2+, use explicit caps. 0 = zero budget. u64::MAX = effectively unlimited.
     public fun create<T>(
         delegate: address,
         level: u8,
@@ -221,8 +222,8 @@ module sweefi::agent_mandate {
     ///   5. Lazy-reset daily counter if 24h+ have elapsed
     ///   6. Lazy-reset weekly counter if 7d+ have elapsed
     ///   7. amount <= max_per_tx
-    ///   8. daily_spent + amount <= daily_limit (if daily_limit > 0)
-    ///   9. weekly_spent + amount <= weekly_limit (if weekly_limit > 0)
+    ///   8. daily_spent + amount <= daily_limit
+    ///   9. weekly_spent + amount <= weekly_limit
     ///  10. total_spent + amount <= max_total
     public fun validate_and_spend<T>(
         mandate: &mut AgentMandate<T>,
@@ -265,20 +266,26 @@ module sweefi::agent_mandate {
         // 7. Per-transaction limit
         assert!(amount <= mandate.max_per_tx, EPerTxLimitExceeded);
 
-        // 8. Daily limit (0 = no daily limit)
-        if (mandate.daily_limit > 0) {
-            assert!(mandate.daily_spent + amount <= mandate.daily_limit, EDailyLimitExceeded);
-        };
+        // 8. Daily limit — u128 intermediate prevents abort-on-overflow at u64 boundary.
+        //    Without u128, hitting the limit near u64::MAX produces a generic ARITHMETIC_ERROR
+        //    instead of the structured EDailyLimitExceeded that MCP agents can parse.
+        assert!(
+            (mandate.daily_spent as u128) + (amount as u128) <= (mandate.daily_limit as u128),
+            EDailyLimitExceeded,
+        );
 
-        // 9. Weekly limit (0 = no weekly limit)
-        if (mandate.weekly_limit > 0) {
-            assert!(mandate.weekly_spent + amount <= mandate.weekly_limit, EWeeklyLimitExceeded);
-        };
+        // 9. Weekly limit (same u128 pattern)
+        assert!(
+            (mandate.weekly_spent as u128) + (amount as u128) <= (mandate.weekly_limit as u128),
+            EWeeklyLimitExceeded,
+        );
 
-        // 10. Lifetime cap (0 = no lifetime limit)
-        if (mandate.max_total > 0) {
-            assert!(mandate.total_spent + amount <= mandate.max_total, ETotalLimitExceeded);
-        };
+        // 10. Lifetime cap — unconditional, matches mandate.move semantics.
+        //     0 = zero budget, NOT unlimited. Use u64::MAX for unlimited.
+        assert!(
+            (mandate.total_spent as u128) + (amount as u128) <= (mandate.max_total as u128),
+            ETotalLimitExceeded,
+        );
 
         // Debit all counters
         mandate.daily_spent = mandate.daily_spent + amount;
@@ -337,10 +344,10 @@ module sweefi::agent_mandate {
         assert!(ctx.sender() == mandate.delegator, ENotDelegator);
         // F-06: Prevent setting a limit below what's already been spent in the current period.
         // This would instantly freeze spending until the next period reset, surprising delegators.
-        // (0 = no limit, so bypass the check when the new limit means "unlimited")
-        assert!(new_daily_limit == 0 || new_daily_limit >= mandate.daily_spent, EDailyLimitExceeded);
-        assert!(new_weekly_limit == 0 || new_weekly_limit >= mandate.weekly_spent, EWeeklyLimitExceeded);
-        assert!(new_max_total == 0 || new_max_total >= mandate.total_spent, ETotalLimitExceeded);
+        // Use u64::MAX for "effectively unlimited". 0 = zero budget (matches mandate.move).
+        assert!(new_daily_limit >= mandate.daily_spent, EDailyLimitExceeded);
+        assert!(new_weekly_limit >= mandate.weekly_spent, EWeeklyLimitExceeded);
+        assert!(new_max_total >= mandate.total_spent, ETotalLimitExceeded);
         mandate.max_per_tx = new_max_per_tx;
         mandate.daily_limit = new_daily_limit;
         mandate.weekly_limit = new_weekly_limit;
@@ -409,30 +416,21 @@ module sweefi::agent_mandate {
     public fun max_total<T>(m: &AgentMandate<T>): u64 { m.max_total }
     public fun total_spent<T>(m: &AgentMandate<T>): u64 { m.total_spent }
     public fun expires_at_ms<T>(m: &AgentMandate<T>): Option<u64> { m.expires_at_ms }
-    /// Remaining lifetime budget. Returns u64::MAX when max_total=0 (unlimited).
-    /// Saturates to 0 if caps were lowered below total_spent via update_caps.
+    /// Remaining lifetime budget. Saturates to 0 (no underflow).
+    /// Matches mandate.move semantics: 0 = zero budget, u64::MAX = effectively unlimited.
     public fun remaining<T>(m: &AgentMandate<T>): u64 {
-        if (m.max_total == 0) return 0xFFFFFFFFFFFFFFFF;
         if (m.total_spent >= m.max_total) 0
         else m.max_total - m.total_spent
     }
 
+    /// Remaining daily budget. Saturates to 0 (no underflow).
     public fun daily_remaining<T>(m: &AgentMandate<T>): u64 {
-        if (m.daily_limit == 0) {
-            if (m.max_total == 0) return 0xFFFFFFFFFFFFFFFF;
-            if (m.total_spent >= m.max_total) return 0;
-            return m.max_total - m.total_spent
-        };
         if (m.daily_spent >= m.daily_limit) 0
         else m.daily_limit - m.daily_spent
     }
 
+    /// Remaining weekly budget. Saturates to 0 (no underflow).
     public fun weekly_remaining<T>(m: &AgentMandate<T>): u64 {
-        if (m.weekly_limit == 0) {
-            if (m.max_total == 0) return 0xFFFFFFFFFFFFFFFF;
-            if (m.total_spent >= m.max_total) return 0;
-            return m.max_total - m.total_spent
-        };
         if (m.weekly_spent >= m.weekly_limit) 0
         else m.weekly_limit - m.weekly_spent
     }

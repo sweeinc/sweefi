@@ -85,10 +85,7 @@ export function parseAmountOrZero(value: string, fieldName: string = "amount"): 
  * Abort codes rebuilt from Move contract source of truth.
  * Source files: contracts/sources/{payment,stream,escrow,seal_policy,mandate,agent_mandate,prepaid,identity,admin,math}.move
  *
- * NOTE: admin.move codes 500-501 collide with agent_mandate.move 500-501.
- * In practice, admin tools are gated separately and the module name in the
- * abort error string disambiguates. We map 500-510 to agent_mandate since
- * those are far more commonly hit by MCP agents.
+ * admin.move uses 500-502, agent_mandate.move uses 550-560 (no collision).
  */
 const ABORT_CODES: Record<number, { code: string; message: string; action: string; retryable: boolean; humanRequired: boolean }> = {
   // ── payment.move (0-2) ──────────────────────────────────────
@@ -136,20 +133,23 @@ const ABORT_CODES: Record<number, { code: string; message: string; action: strin
   404: { code: "MANDATE_NOT_DELEGATOR", message: "Signer is not the delegator (owner) of this mandate", action: "Only the delegator can revoke mandates. Use the delegator wallet.", retryable: false, humanRequired: false },
   405: { code: "MANDATE_REVOKED", message: "Mandate has been revoked by the delegator", action: "This requires human authorization — inform the user. The mandate was intentionally revoked. Do not attempt to create a new mandate, use a different mandate, or retry. Wait for the user to respond.", retryable: false, humanRequired: true },
 
-  // ── agent_mandate.move (500-510) ────────────────────────────
-  // NOTE: admin.move also uses 500-501 (EAlreadyPaused, ENotPaused) but those
-  // are in a different module. The abort error string includes the module name.
-  500: { code: "AGENT_MANDATE_NOT_DELEGATE", message: "Signer is not the authorized delegate for this agent mandate", action: "Verify the mandate ID and that your wallet is the delegate", retryable: false, humanRequired: false },
-  501: { code: "AGENT_MANDATE_EXPIRED", message: "Agent mandate has expired", action: "This requires human authorization — inform the user that the mandate has expired. The agent cannot create or renew mandates.", retryable: false, humanRequired: true },
-  502: { code: "AGENT_MANDATE_PER_TX_EXCEEDED", message: "Amount exceeds the agent mandate's per-transaction limit", action: "Reduce the amount below the mandate's per-tx cap. Use sweefi_inspect_mandate to see the cap.", retryable: false, humanRequired: false },
-  503: { code: "AGENT_MANDATE_TOTAL_EXCEEDED", message: "Agent mandate lifetime spending cap has been reached", action: "This requires human authorization — inform the user that the mandate budget is exhausted. The agent cannot renew mandates.", retryable: false, humanRequired: true },
-  504: { code: "AGENT_MANDATE_NOT_DELEGATOR", message: "Signer is not the delegator (owner) of this agent mandate", action: "Only the delegator can revoke mandates. Use the delegator wallet.", retryable: false, humanRequired: false },
-  505: { code: "AGENT_MANDATE_REVOKED", message: "Agent mandate has been revoked by the delegator", action: "This requires human authorization — inform the user. The mandate was intentionally revoked. Do not retry. Wait for the user to respond.", retryable: false, humanRequired: true },
-  506: { code: "AGENT_MANDATE_DAILY_EXCEEDED", message: "Daily spending limit reached on agent mandate", action: "Wait until tomorrow when the daily limit resets (lazy reset on first spend after midnight), or ask the user to create a new mandate with higher daily limits", retryable: true, humanRequired: false },
-  507: { code: "AGENT_MANDATE_WEEKLY_EXCEEDED", message: "Weekly spending limit reached on agent mandate", action: "Wait until next week when the weekly limit resets (lazy reset on first spend after week boundary), or ask the user to create a new mandate with higher weekly limits", retryable: true, humanRequired: false },
-  508: { code: "AGENT_MANDATE_INVALID_LEVEL", message: "Invalid autonomy level specified", action: "Use a valid level: 0 (read-only), 1 (monitor), 2 (capped), 3 (autonomous)", retryable: false, humanRequired: false },
-  509: { code: "AGENT_MANDATE_LEVEL_NOT_AUTHORIZED", message: "Mandate autonomy level does not permit this action", action: "This mandate's level is too low for spending. L2+ is required for payments. Ask the user to upgrade the mandate level.", retryable: false, humanRequired: true },
-  510: { code: "AGENT_MANDATE_CANNOT_DOWNGRADE", message: "Cannot downgrade agent mandate level", action: "Mandate levels can only be upgraded, not downgraded. To reduce permissions, revoke the mandate and create a new one.", retryable: false, humanRequired: true },
+  // ── admin.move (500-502) ───────────────────────────────────
+  500: { code: "ALREADY_PAUSED", message: "Protocol is already paused", action: "No action needed — the protocol is already in paused state", retryable: false, humanRequired: false },
+  501: { code: "NOT_PAUSED", message: "Protocol is not paused", action: "The protocol must be paused before it can be unpaused", retryable: false, humanRequired: false },
+  502: { code: "PROTOCOL_PAUSED", message: "Protocol is paused — new operations are blocked", action: "Wait for the protocol admin to unpause, or use exit operations (claim, close, withdraw) which are always allowed", retryable: true, humanRequired: true },
+
+  // ── agent_mandate.move (550-560) ──────────────────────────
+  550: { code: "AGENT_MANDATE_NOT_DELEGATE", message: "Signer is not the authorized delegate for this agent mandate", action: "Verify the mandate ID and that your wallet is the delegate", retryable: false, humanRequired: false },
+  551: { code: "AGENT_MANDATE_EXPIRED", message: "Agent mandate has expired", action: "This requires human authorization — inform the user that the mandate has expired. The agent cannot create or renew mandates.", retryable: false, humanRequired: true },
+  552: { code: "AGENT_MANDATE_PER_TX_EXCEEDED", message: "Amount exceeds the agent mandate's per-transaction limit", action: "Reduce the amount below the mandate's per-tx cap. Use sweefi_inspect_mandate to see the cap.", retryable: false, humanRequired: false },
+  553: { code: "AGENT_MANDATE_TOTAL_EXCEEDED", message: "Agent mandate lifetime spending cap has been reached", action: "This requires human authorization — inform the user that the mandate budget is exhausted. The agent cannot renew mandates.", retryable: false, humanRequired: true },
+  554: { code: "AGENT_MANDATE_NOT_DELEGATOR", message: "Signer is not the delegator (owner) of this agent mandate", action: "Only the delegator can revoke mandates. Use the delegator wallet.", retryable: false, humanRequired: false },
+  555: { code: "AGENT_MANDATE_REVOKED", message: "Agent mandate has been revoked by the delegator", action: "This requires human authorization — inform the user. The mandate was intentionally revoked. Do not retry. Wait for the user to respond.", retryable: false, humanRequired: true },
+  556: { code: "AGENT_MANDATE_DAILY_EXCEEDED", message: "Daily spending limit reached on agent mandate", action: "Wait until tomorrow when the daily limit resets (lazy reset on first spend after midnight), or ask the user to create a new mandate with higher daily limits", retryable: true, humanRequired: false },
+  557: { code: "AGENT_MANDATE_WEEKLY_EXCEEDED", message: "Weekly spending limit reached on agent mandate", action: "Wait until next week when the weekly limit resets (lazy reset on first spend after week boundary), or ask the user to create a new mandate with higher weekly limits", retryable: true, humanRequired: false },
+  558: { code: "AGENT_MANDATE_INVALID_LEVEL", message: "Invalid autonomy level specified", action: "Use a valid level: 0 (read-only), 1 (monitor), 2 (capped), 3 (autonomous)", retryable: false, humanRequired: false },
+  559: { code: "AGENT_MANDATE_LEVEL_NOT_AUTHORIZED", message: "Mandate autonomy level does not permit this action", action: "This mandate's level is too low for spending. L2+ is required for payments. Ask the user to upgrade the mandate level.", retryable: false, humanRequired: true },
+  560: { code: "AGENT_MANDATE_CANNOT_DOWNGRADE", message: "Cannot downgrade agent mandate level", action: "Mandate levels can only be upgraded, not downgraded. To reduce permissions, revoke the mandate and create a new one.", retryable: false, humanRequired: true },
 
   // ── prepaid.move (600-613) ──────────────────────────────────
   600: { code: "PREPAID_NOT_AGENT", message: "Signer is not the agent (depositor) for this balance", action: "Use the correct wallet — the one that created the prepaid deposit", retryable: false, humanRequired: false },

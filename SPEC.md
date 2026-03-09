@@ -108,7 +108,7 @@ Client                    Server                  Facilitator
 
 ### Prepaid (Balance)
 
-**Status:** Deployed on testnet v7. Facilitator scheme complete. 8 PTB builders.
+**Status:** Deployed on testnet. Facilitator scheme complete. 8 PTB builders.
 
 Deposit-based access. Agent deposits funds into an on-chain Balance shared object. Each API call decrements atomically. When balance hits zero, 402 again (or auto-topup via mandate).
 
@@ -206,7 +206,7 @@ Pay-to-decrypt via [Sui SEAL](https://docs.sui.io/concepts/cryptography/seal). E
 
 ### Stream
 
-**Status:** Deployed on testnet v7. Facilitator scheme complete. 9 PTB builders.
+**Status:** Deployed on testnet. Facilitator scheme complete. 9 PTB builders.
 
 Per-second micropayments via on-chain `StreamingMeter`. Client deposits funds into a shared object; recipient claims accrued tokens over time.
 
@@ -298,7 +298,7 @@ AI Agent (Claude, GPT, Cursor, etc.)
     |                                   |
     +-- Agent discovery ---------> @sweeagent/registry (search, match)        [FUTURE]
                                         |
-                              Sui blockchain (10 Move modules, testnet v7)
+                              Sui blockchain (10 Move modules, testnet)
                                         |
                                  +------+------+
                                  |  payment    | Direct pay + receipts
@@ -330,7 +330,7 @@ AI Agent (Claude, GPT, Cursor, etc.)
 | [`@sweefi/cli`](packages/cli) | CLI for wallet, pay, prepaid, mandate operations | 43 |
 | [`@sweefi/ap2-adapter`](packages/ap2-adapter) | Google AP2 ↔ SweeFi mandate bridge | 52 |
 | [`@sweefi/solana`](packages/solana) | Solana adapter (exact scheme only) | 40 |
-| [`sweefi-contracts`](contracts) | 10 Move modules on Sui testnet (v8) | 246 |
+| [`sweefi-contracts`](contracts) | 10 Move modules on Sui testnet | 264 |
 
 **Total: 849 tests (603 TypeScript + 246 Move)**
 
@@ -349,7 +349,7 @@ AI Agent (Claude, GPT, Cursor, etc.)
 
 ### v0.1 — Current State (Feb 16, 2026)
 
-Everything below is DONE. Contracts deployed to testnet v7. All packages build, typecheck, and pass tests.
+Everything below is DONE. Contracts deployed to testnet. All packages build, typecheck, and pass tests.
 
 - [x] s402 protocol spec published on npm as `s402@0.1.2`
 - [x] x402 V1 + V2 compatibility layer
@@ -851,7 +851,7 @@ The protocol is open. The schemes are open. **The reputation graph is the moat.*
 | `@sweefi/cli` | CLI for wallet, payments, and provider management | 43 |
 | `@sweefi/ap2-adapter` | Google AP2 ↔ SweeFi mandate bridge | 52 |
 | `@sweefi/solana` | Solana adapter (exact scheme only) | 40 |
-| `sweefi-contracts` | 10 Move modules on Sui testnet (v8) | 246 |
+| `sweefi-contracts` | 10 Move modules on Sui testnet | 264 |
 
 **External dependencies**: `s402@0.2.1` (HTTP 402 protocol), `@mysten/sui@2.4.0`, `@mysten/seal@1.0.1`
 

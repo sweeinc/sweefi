@@ -70,27 +70,32 @@ export function createFacilitator(config: Config): FacilitatorBundle {
     keypair,
   );
 
-  // Package ID for event anti-spoofing verification. When set, facilitator
-  // scheme handlers verify that Move events originate from this package,
-  // preventing attackers from deploying contracts that emit fake events.
+  // Package ID for event anti-spoofing verification. Required for non-exact
+  // schemes (stream, escrow, prepaid) to prevent attacker-deployed contracts
+  // from emitting fake events that pass facilitator verification.
   const packageId = config.SWEEFI_PACKAGE_ID;
-
-  if (!packageId) {
-    console.warn(
-      "[sweefi-facilitator] ⚠️  SWEEFI_PACKAGE_ID is not set. " +
-      "Move event anti-spoofing is DISABLED — an attacker can deploy a contract " +
-      "that emits fake payment events and pass facilitator verification. " +
-      "Set SWEEFI_PACKAGE_ID to the deployed SweeFi package ID before going to mainnet."
-    );
-  }
 
   const networks = ["sui:testnet", "sui:mainnet"];
 
   for (const network of networks) {
+    // Exact scheme uses PTB content verification (no events), so packageId not needed.
     facilitator.register(network, new ExactSuiFacilitatorScheme(signer, BigInt(config.MAX_SPONSOR_GAS_MIST)));
-    facilitator.register(network, new PrepaidSuiFacilitatorScheme(signer, packageId, network));
-    facilitator.register(network, new StreamSuiFacilitatorScheme(signer, packageId, network));
-    facilitator.register(network, new EscrowSuiFacilitatorScheme(signer, packageId, network));
+
+    // Non-exact schemes require packageId for event anti-spoofing.
+    // Skip registration (with warning) if packageId is not configured.
+    if (packageId) {
+      facilitator.register(network, new PrepaidSuiFacilitatorScheme(signer, packageId));
+      facilitator.register(network, new StreamSuiFacilitatorScheme(signer, packageId));
+      facilitator.register(network, new EscrowSuiFacilitatorScheme(signer, packageId));
+    }
+  }
+
+  if (!packageId) {
+    console.warn(
+      "[sweefi-facilitator] ⚠️  SWEEFI_PACKAGE_ID is not set. " +
+      "Only the exact scheme is registered. Stream, escrow, and prepaid schemes " +
+      "require SWEEFI_PACKAGE_ID for event anti-spoofing verification."
+    );
   }
 
   // Gas sponsorship service — only when FACILITATOR_KEYPAIR is configured.

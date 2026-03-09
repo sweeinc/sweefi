@@ -23,17 +23,17 @@
 
 | Package | Status | Tests | Key Limitation |
 |---------|--------|-------|----------------|
-| `@sweefi/sui` | Beta | 252 | Core of everything |
+| `@sweefi/sui` | Beta | 263 | Core of everything |
 | `@sweefi/server` | Beta | Integration-only | Hono middleware |
 | `@sweefi/mcp` | Beta | 124 | 35 AI agent tools |
 | `@sweefi/facilitator` | Beta | 57 | Docker-only, private |
-| `@sweefi/cli` | Beta | 237 | — |
+| `@sweefi/cli` | Beta | 238 | — |
 | `@sweefi/ui-core` | Beta | 13 | Framework-agnostic state machine |
 | `@sweefi/vue` | Alpha | 10 | — |
 | `@sweefi/react` | Alpha | 12 | — |
 | `@sweefi/ap2-adapter` | Alpha | 52 | AP2 spec is v0.1 |
 | `@sweefi/solana` | Stub | 40 | Exact-only. No prepaid/stream/escrow. |
-| Move contracts | V8 local, V7 deployed | 246 | V8 not yet deployed to testnet |
+| Move contracts | Testnet deployed | 264 | 9th testnet iteration, contract v0.1.0 |
 
 ## Key File Locations
 

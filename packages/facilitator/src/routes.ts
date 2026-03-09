@@ -123,8 +123,8 @@ export function createRoutes(
       );
       return c.json(result);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Verification failed";
-      return c.json({ error: message }, 500);
+      console.error("[verify] Unexpected error:", err);
+      return c.json({ error: "Internal verification error" }, 500);
     }
   });
 
@@ -156,14 +156,10 @@ export function createRoutes(
           recordSettlement(usageTracker, apiKey, body.paymentRequirements, result, feeMicroPercent);
         }
 
-        // Gas sponsor rate tracking — record after successful sponsored settlement.
-        // Design: post-record only (no pre-check). The scheme inspects tx bytes to
-        // detect sponsorship, so the route handler can't know in advance. Race window
-        // is bounded by per-tx gas cap (10M MIST ≈ $0.01) — worst case ~$1 burst.
-        // Phase 2: inject tracker into scheme for atomic pre-check + co-sign.
-        if ((result as any).gasSponsored && gasSponsorTracker && apiKey) {
-          await gasSponsorTracker.recordSponsored(apiKey);
-        }
+        // Gas sponsor rate tracking: NOT recorded here. The /sponsor endpoint
+        // already calls recordSponsored() when the facilitator sponsors gas.
+        // Recording here too would double-count (each sponsored tx flows through
+        // /sponsor then /settle). External sponsors don't consume our rate limit.
 
         // Recycle gas coin after sponsored settlement (fire-and-forget)
         if ((result as any).gasSponsored && result.txDigest) {
@@ -173,8 +169,8 @@ export function createRoutes(
 
       return c.json(result);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Settlement failed";
-      return c.json({ error: message }, 500);
+      console.error("[settle] Unexpected error:", err);
+      return c.json({ error: "Internal settlement error" }, 500);
     }
   });
 
@@ -210,10 +206,8 @@ export function createRoutes(
           recordSettlement(usageTracker, apiKey, body.paymentRequirements, result, feeMicroPercent);
         }
 
-        // Gas sponsor rate tracking (see /settle comment for design rationale)
-        if ((result as any).gasSponsored && gasSponsorTracker && apiKey) {
-          await gasSponsorTracker.recordSponsored(apiKey);
-        }
+        // Gas sponsor rate tracking: NOT recorded here (see /settle comment —
+        // /sponsor already records, recording here would double-count).
 
         // Recycle gas coin after sponsored settlement (fire-and-forget)
         if ((result as any).gasSponsored && result.txDigest) {
@@ -223,8 +217,8 @@ export function createRoutes(
 
       return c.json(result);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Processing failed";
-      return c.json({ error: message }, 500);
+      console.error("[s402/process] Unexpected error:", err);
+      return c.json({ error: "Internal processing error" }, 500);
     }
   });
 
@@ -262,11 +256,13 @@ export function createRoutes(
       );
     }
 
-    // Rate limit gas sponsorship per API key
+    // Rate limit gas sponsorship per API key (atomic check-and-consume).
+    // tryConsume() prevents the TOCTOU race where concurrent requests both
+    // pass canSponsor() during the async sponsor() call between check and record.
     const apiKey = getApiKey(c);
     if (apiKey && gasSponsorTracker) {
-      const allowed = await gasSponsorTracker.canSponsor(apiKey);
-      if (!allowed) {
+      const consumed = await gasSponsorTracker.tryConsume(apiKey);
+      if (!consumed) {
         return c.json(
           { error: "Gas sponsorship rate limit exceeded" },
           429,
@@ -310,10 +306,7 @@ export function createRoutes(
         network,
       );
 
-      // Record sponsorship in rate tracker
-      if (apiKey && gasSponsorTracker) {
-        await gasSponsorTracker.recordSponsored(apiKey);
-      }
+      // Rate token already consumed by tryConsume() above — no separate record needed.
 
       return c.json({
         transactionBytes: result.transactionBytes,
@@ -324,9 +317,13 @@ export function createRoutes(
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Sponsorship failed";
-      // Pool exhaustion is temporary — 503 so clients can retry
-      const status = message.includes("POOL_EXHAUSTED") ? 503 : 400;
-      return c.json({ error: message }, status);
+      // Pool exhaustion is temporary — 503 so clients can retry.
+      // Sponsor errors are operational (known failure modes), not internal leaks.
+      if (message.includes("POOL_EXHAUSTED")) {
+        return c.json({ error: "Gas sponsor pool temporarily exhausted" }, 503);
+      }
+      console.error("[sponsor] Sponsorship error:", err);
+      return c.json({ error: "Sponsorship failed" }, 400);
     }
   });
 

@@ -63,7 +63,7 @@ Agent                    Server                  Sui Testnet
 
 ## Payment Schemes
 
-### Deployed Schemes (Testnet v7)
+### Deployed Schemes (Sui Testnet)
 
 | Scheme | Use Case | How It Works | Status |
 |--------|----------|-------------|--------|
@@ -112,7 +112,7 @@ AI Agent (Claude, GPT, Cursor, etc.)
     +-- Agent reputation --------> @sweeagent/reputation [FUTURE]
     +-- Agent discovery ---------> @sweeagent/registry   [FUTURE]
                                         |
-                              Sui blockchain (10 Move modules, testnet v7)
+                              Sui blockchain (10 Move modules, testnet)
                                         |
                                  +------+------+
                                  |  payment    | Direct pay + receipts
@@ -142,11 +142,11 @@ AI Agent (Claude, GPT, Cursor, etc.)
 | [`@sweefi/cli`](/guide/cli) | CLI tool — wallet, pay, prepaid, mandates | 42 |
 | [`@sweefi/solana`](/guide/solana) | Solana s402 adapter (exact scheme, SPL tokens) | 40 |
 | [`@sweefi/ap2-adapter`](/guide/ap2-adapter) | AP2 mandate mapper + bridge | 52 |
-| [`sweefi-contracts`](/guide/contracts) | 10 Move modules on Sui testnet (v7) | 244 |
+| [`sweefi-contracts`](/guide/contracts) | 10 Move modules on Sui testnet | 264 |
 
-**Total: 804 tests (560 TypeScript + 244 Move)**
+**Total: 1,073 tests (809 TypeScript + 264 Move)**
 
-**External**: [`s402`](https://www.npmjs.com/package/s402) (HTTP 402 protocol, v0.1.2), `@mysten/sui@2.4.0`, `@mysten/seal@1.0.1`
+**External**: [`s402`](https://www.npmjs.com/package/s402) (HTTP 402 protocol, v0.2.2), `@mysten/sui@2.6.0`, `@mysten/seal@1.0.1`
 
 ## Try It Now
 
@@ -311,7 +311,7 @@ No admin keys control user funds.
 
 ## Smart Contracts
 
-Deployed on Sui testnet v7. 10 modules, 244 Move test functions (144 positive + 100 expected-failure), AdminCap + ProtocolState for governance.
+Deployed on Sui testnet. 10 modules, 264 Move tests, AdminCap + ProtocolState for governance.
 
 | Module | Purpose |
 |--------|---------|
@@ -326,7 +326,7 @@ Deployed on Sui testnet v7. 10 modules, 244 Move test functions (144 positive + 
 | `math` | Shared arithmetic utilities (safe division, micro-percent fees) |
 | `admin` | AdminCap, ProtocolState, pause/unpause/burn |
 
-Package ID (testnet v7): `0x242f22b9f8b3d77868f6cde06f294203d7c76afa0cd101f388a6cefa45b54c3d`
+Package ID (testnet): `0xbdbe26305de40e8168daf4b5c3142ebfa1d3e88a96c23d78f0116ad3b59e1833`
 
 Token-gated SEAL (standalone): `0xbf9f9d63cbe53f21ac81af068e25e2c736fa2b0537c7e34d7d2862e330fe4fbc`
 
