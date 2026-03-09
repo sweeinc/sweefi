@@ -27,7 +27,7 @@ function copyCode() {
           </p>
           <div class="flex flex-wrap gap-4">
             <a
-              href="https://docs.sweefi.xyz/guide/quickstart-agent"
+              href="https://github.com/sweeinc/sweefi#quick-start"
               class="btn-glow inline-flex items-center px-6 py-3 bg-brand text-bg font-semibold rounded-lg transition-all hover:brightness-110"
             >
               Get Started

@@ -12,7 +12,7 @@ onMounted(() => window.addEventListener('scroll', onScroll, { passive: true }))
 onUnmounted(() => window.removeEventListener('scroll', onScroll))
 
 const links = [
-  { label: 'Docs', href: 'https://docs.sweefi.xyz' },
+  { label: 'Docs', href: 'https://github.com/sweeinc/sweefi/tree/main/docs', external: true },
   { label: 'GitHub', href: 'https://github.com/sweeinc/sweefi', external: true },
   { label: 'npm', href: 'https://www.npmjs.com/org/sweefi', external: true },
 ]
@@ -44,7 +44,7 @@ const links = [
           {{ link.label }}
         </a>
         <a
-          href="https://docs.sweefi.xyz/guide/quickstart-agent"
+          href="https://github.com/sweeinc/sweefi#quick-start"
           class="inline-flex items-center px-4 py-2 bg-brand text-bg text-sm font-semibold rounded-lg transition-all hover:brightness-110"
         >
           Get Started
@@ -83,7 +83,7 @@ const links = [
         {{ link.label }}
       </a>
       <a
-        href="https://docs.sweefi.xyz/guide/quickstart-agent"
+        href="https://github.com/sweeinc/sweefi#quick-start"
         class="block text-center px-4 py-2.5 bg-brand text-bg text-sm font-semibold rounded-lg transition-all hover:brightness-110"
         @click="mobileOpen = false"
       >

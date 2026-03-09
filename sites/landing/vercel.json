@@ -4,8 +4,8 @@
   "redirects": [
     {
       "source": "/docs/:path*",
-      "destination": "https://docs.sweefi.xyz/:path*",
-      "permanent": true
+      "destination": "https://github.com/sweeinc/sweefi/tree/main/docs/:path*",
+      "permanent": false
     },
     {
       "source": "/github",
