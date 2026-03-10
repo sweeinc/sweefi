@@ -170,7 +170,7 @@ module sweefi::stream {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        admin::assert_not_paused(protocol_state);
+        admin::assert_not_paused(protocol_state, clock);
         let deposit_value = deposit.value();
         assert!(deposit_value >= MIN_DEPOSIT, EZeroDeposit);
         assert!(rate_per_second > 0, EZeroRate);
@@ -229,7 +229,7 @@ module sweefi::stream {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        admin::assert_not_paused(protocol_state);
+        admin::assert_not_paused(protocol_state, clock);
         let deposit_value = deposit.value();
         assert!(deposit_value >= MIN_DEPOSIT, EZeroDeposit);
         assert!(rate_per_second > 0, EZeroRate);
@@ -708,7 +708,7 @@ module sweefi::stream {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        admin::assert_not_paused(protocol_state);
+        admin::assert_not_paused(protocol_state, clock);
         assert!(ctx.sender() == meter.payer, ENotPayer);
 
         let amount = deposit.value();

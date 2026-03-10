@@ -367,6 +367,53 @@ module sweefi::escrow_tests {
     }
 
     // ══════════════════════════════════════════════════════════════
+    // MC/DC Coverage Matrix — escrow::refund
+    // ══════════════════════════════════════════════════════════════
+    //
+    // Decision: authorize refund — compound: C1 ∧ (C2 ∨ (C3 ∧ C4))
+    //
+    // Conditions:
+    //   C1: state == ACTIVE || state == DISPUTED   (EAlreadyResolved)
+    //   C2: now_ms >= deadline_ms                  (permissionless timeout path)
+    //   C3: state == DISPUTED                      (arbiter refund path)
+    //   C4: sender == arbiter                      (ENotArbiter)
+    //
+    // MC/DC Matrix:
+    //
+    //   Test                    | C1 | C2 | C3 | C4 | Result
+    //   -----------------------+----+----+----+----+--------
+    //   HP1 (deadline path)    |  T |  T |  - |  - | PASS (refund)
+    //   HP2 (arbiter path)     |  T |  F |  T |  T | PASS (refund)
+    //   MC-1 (resolved)        | N/A — structurally unreachable (Move linear types)
+    //   MC-2 (active, early)   |  T |  F |  F |  - | FAIL (EDeadlineNotReached)
+    //   MC-3 (wrong arbiter)   |  T |  F |  T |  F | FAIL (ENotArbiter)
+    //
+    // NOTE: C1=F is structurally impossible. refund() takes Escrow<T> by value
+    // (consuming it). After release/refund the Escrow object is destroyed — no
+    // Escrow can ever exist in STATE_RELEASED or STATE_REFUNDED. The assert is
+    // defense-in-depth against a hypothetical Move VM or upgrade bug.
+    //
+    // Existing test mapping:
+    //   HP1:  test_refund_after_deadline                              ✅
+    //   HP2:  test_refund_by_arbiter_after_dispute                    ✅
+    //   MC-1: N/A (structurally unreachable — Sui ownership model)
+    //   MC-2: test_refund_before_deadline_fails                       ✅
+    //   MC-3: test_refund_by_non_arbiter_on_disputed_before_deadline  ✅
+    //
+    // Additional coverage beyond MC/DC minimum:
+    //   test_seller_triggers_permissionless_refund_buyer_gets_funds   ✅ (adversarial caller)
+    //   test_deadline_refund_on_disputed_escrow                       ✅ (C2=T overrides C3/C4)
+    //   test_permissionless_refund_blocked_during_grace_period         ✅ (grace period)
+    //   test_permissionless_refund_succeeds_after_grace_period         ✅ (grace period)
+    //   test_refund_while_protocol_paused_succeeds                    ✅ (exit always open)
+    //
+    // BVA (Boundary Value Analysis) — 2 tests:
+    //   test_mcdc_bva_deadline_exact_ms       (now == deadline → PASS, >= is inclusive)
+    //   test_mcdc_bva_deadline_one_before     (now == deadline - 1 → FAIL)
+    //
+    // ══════════════════════════════════════════════════════════════
+
+    // ══════════════════════════════════════════════════════════════
     // Refund tests
     // ══════════════════════════════════════════════════════════════
 
@@ -854,7 +901,7 @@ module sweefi::escrow_tests {
         let (cap, mut state) = admin::create_for_testing(scenario.ctx());
 
         // Pause the protocol
-        admin::pause(&cap, &mut state, scenario.ctx());
+        admin::pause(&cap, &mut state, &clock, scenario.ctx());
 
         // Try to create an escrow — should fail
         let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
@@ -881,7 +928,7 @@ module sweefi::escrow_tests {
         );
 
         // Pause the protocol
-        admin::pause(&cap, &mut state, scenario.ctx());
+        admin::pause(&cap, &mut state, &clock, scenario.ctx());
 
         // Buyer should still be able to release (withdrawal always allowed)
         scenario.next_tx(BUYER);
@@ -911,7 +958,7 @@ module sweefi::escrow_tests {
         clock.set_for_testing(DEADLINE_MS + 1);
 
         // Pause the protocol
-        admin::pause(&cap, &mut state, scenario.ctx());
+        admin::pause(&cap, &mut state, &clock, scenario.ctx());
 
         // Anyone should still be able to trigger refund (withdrawal always allowed)
         scenario.next_tx(STRANGER);
@@ -937,7 +984,7 @@ module sweefi::escrow_tests {
         );
 
         // Pause the protocol
-        admin::pause(&cap, &mut state, scenario.ctx());
+        admin::pause(&cap, &mut state, &clock, scenario.ctx());
 
         // Buyer should still be able to dispute (user action, always allowed)
         scenario.next_tx(BUYER);
@@ -1411,6 +1458,70 @@ module sweefi::escrow_tests {
         let e = scenario.take_shared<escrow::Escrow<SUI>>();
         assert!(escrow::escrow_balance(&e) == 1_000_000);
         ts::return_shared(e);
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // BVA (Boundary Value Analysis) — escrow::refund deadline off-by-one
+    // ══════════════════════════════════════════════════════════════
+
+    #[test]
+    fun test_mcdc_bva_deadline_exact_ms() {
+        // now == deadline_ms → PASS (boundary: >= is inclusive)
+        let mut scenario = ts::begin(BUYER);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
+        );
+
+        // Set clock to exactly the deadline (not past it)
+        clock.set_for_testing(DEADLINE_MS);
+
+        scenario.next_tx(STRANGER);
+        let e = scenario.take_shared<escrow::Escrow<SUI>>();
+
+        // Should succeed — >= means exact deadline is refundable
+        escrow::refund<SUI>(e, &clock, scenario.ctx());
+
+        scenario.next_tx(BUYER);
+        let refund = scenario.take_from_address<coin::Coin<SUI>>(BUYER);
+        assert!(refund.value() == 1_000_000);
+        ts::return_to_address(BUYER, refund);
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    #[expected_failure(abort_code = escrow::EDeadlineNotReached)]
+    fun test_mcdc_bva_deadline_one_before() {
+        // now == deadline_ms - 1 → FAIL (off-by-one: < not >=)
+        let mut scenario = ts::begin(BUYER);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"", &state, &clock, scenario.ctx(),
+        );
+
+        // Set clock to 1ms before deadline
+        clock.set_for_testing(DEADLINE_MS - 1);
+
+        scenario.next_tx(STRANGER);
+        let e = scenario.take_shared<escrow::Escrow<SUI>>();
+
+        // Should fail — 1ms too early
+        escrow::refund<SUI>(e, &clock, scenario.ctx());
 
         admin::destroy_cap_for_testing(_cap);
         admin::destroy_state_for_testing(state);

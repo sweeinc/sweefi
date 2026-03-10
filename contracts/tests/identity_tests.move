@@ -441,7 +441,7 @@ module sweefi::identity_tests {
         let mut registry = identity::create_registry_for_testing(scenario.ctx());
 
         // Pause the protocol
-        admin::pause(&cap, &mut state, scenario.ctx());
+        admin::pause(&cap, &mut state, &clock, scenario.ctx());
 
         // Try to create identity — should fail
         let id = identity::create(&mut registry, &state, &clock, scenario.ctx());

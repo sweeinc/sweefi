@@ -1154,7 +1154,7 @@ module sweefi::stream_tests {
         let (cap, mut state) = admin::create_for_testing(scenario.ctx());
 
         // Pause the protocol
-        admin::pause(&cap, &mut state, scenario.ctx());
+        admin::pause(&cap, &mut state, &clock, scenario.ctx());
 
         // Try to create a stream — should fail
         let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
@@ -1178,7 +1178,7 @@ module sweefi::stream_tests {
         stream::create<SUI>(deposit, PROVIDER, RATE, 20_000_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         // Pause the protocol
-        admin::pause(&cap, &mut state, scenario.ctx());
+        admin::pause(&cap, &mut state, &clock, scenario.ctx());
 
         // Try to top up — should fail
         scenario.next_tx(PAYER);
@@ -1207,7 +1207,7 @@ module sweefi::stream_tests {
         clock.increment_for_testing(10_000);
 
         // Pause the protocol
-        admin::pause(&cap, &mut state, scenario.ctx());
+        admin::pause(&cap, &mut state, &clock, scenario.ctx());
 
         // Recipient should still be able to claim (withdrawal always allowed)
         scenario.next_tx(PROVIDER);
@@ -1235,7 +1235,7 @@ module sweefi::stream_tests {
         clock.increment_for_testing(10_000);
 
         // Pause the protocol
-        admin::pause(&cap, &mut state, scenario.ctx());
+        admin::pause(&cap, &mut state, &clock, scenario.ctx());
 
         // Payer should still be able to close (withdrawal always allowed)
         scenario.next_tx(PAYER);
@@ -1262,7 +1262,7 @@ module sweefi::stream_tests {
         clock.increment_for_testing(604_801_000);
 
         // Pause the protocol
-        admin::pause(&cap, &mut state, scenario.ctx());
+        admin::pause(&cap, &mut state, &clock, scenario.ctx());
 
         // Recipient should still be able to force-close (withdrawal always allowed)
         scenario.next_tx(PROVIDER);

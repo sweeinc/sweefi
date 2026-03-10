@@ -265,7 +265,7 @@ module sweefi::prepaid {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        admin::assert_not_paused(protocol_state);
+        admin::assert_not_paused(protocol_state, clock);
 
         let amount = coin.value();
         // H-6: Enforce minimum deposit to prevent dust spam on shared objects
@@ -338,7 +338,7 @@ module sweefi::prepaid {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        admin::assert_not_paused(protocol_state);
+        admin::assert_not_paused(protocol_state, clock);
 
         let amount = coin.value();
         assert!(amount >= MIN_DEPOSIT, EZeroDeposit);
@@ -784,7 +784,7 @@ module sweefi::prepaid {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        admin::assert_not_paused(protocol_state);
+        admin::assert_not_paused(protocol_state, clock);
         assert!(ctx.sender() == balance.agent, ENotAgent);
         assert!(!balance.withdrawal_pending, EWithdrawalPending);
         assert!(!balance.disputed, EBalanceDisputed);

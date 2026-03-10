@@ -1066,4 +1066,348 @@ module sweefi::agent_mandate_tests {
         clock::destroy_for_testing(clock);
         ts::end(scenario);
     }
+
+    // ══════════════════════════════════════════════════════════════════
+    // MC/DC — Modified Condition/Decision Coverage (DO-178B)
+    // ══════════════════════════════════════════════════════════════════
+    //
+    // validate_and_spend Decision: ALLOW iff C1∧C2∧C3∧C4∧C5∧C6∧C7∧C8∧C9
+    //
+    // C1: registry.owner == mandate.delegator   (ENotDelegator)
+    // C2: !is_id_revoked(registry, mandate_id)  (ERevoked)
+    // C3: sender == mandate.delegate            (ENotDelegate)
+    // C4: !expired                              (EExpired)
+    // C5: level >= L2_CAPPED                    (ELevelNotAuthorized)
+    // C6: amount <= max_per_tx                  (EPerTxLimitExceeded)
+    // C7: daily_spent + amount <= daily_limit   (EDailyLimitExceeded)
+    // C8: weekly_spent + amount <= weekly_limit  (EWeeklyLimitExceeded)
+    // C9: total_spent + amount <= max_total     (ETotalLimitExceeded)
+    //
+    // MC/DC Matrix (10 tests for 9 conditions):
+    // Test  | C1 C2 C3 C4 C5 C6 C7 C8 C9 | Outcome | Existing Test
+    // HP    | T  T  T  T  T  T  T  T  T  | ALLOW   | test_create_l2_and_spend
+    // MC-1  | F  T  T  T  T  T  T  T  T  | REJECT  | test_wrong_registry_owner_rejected
+    // MC-2  | T  F  T  T  T  T  T  T  T  | REJECT  | test_revoked_agent_mandate
+    // MC-3  | T  T  F  T  T  T  T  T  T  | REJECT  | test_wrong_caller
+    // MC-4  | T  T  T  F  T  T  T  T  T  | REJECT  | test_expired_agent_mandate
+    // MC-5  | T  T  T  T  F  T  T  T  T  | REJECT  | test_l1_cannot_spend
+    // MC-6  | T  T  T  T  T  F  T  T  T  | REJECT  | test_per_tx_limit
+    // MC-7  | T  T  T  T  T  T  F  T  T  | REJECT  | test_daily_limit_exceeded
+    // MC-8  | T  T  T  T  T  T  T  F  T  | REJECT  | test_weekly_limit_exceeded
+    // MC-9  | T  T  T  T  T  T  T  T  F  | REJECT  | test_total_limit
+    //
+    // Status: ALL 10 MC/DC tests satisfied by existing suite.
+    //
+    // Below: Boundary Value Analysis (BVA) — catches off-by-one errors that
+    // MC/DC doesn't. For each numeric cap: test at exact limit (pass) and
+    // exact limit + 1 (fail). Critical for financial code.
+    // ══════════════════════════════════════════════════════════════════
+
+    // --- BVA: Per-tx limit boundary ---
+
+    #[test]
+    fun test_mcdc_bva_per_tx_at_exact_limit() {
+        // amount == max_per_tx exactly → should SUCCEED
+        let mut scenario = ts::begin(DELEGATOR);
+        let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            1_000,       // max_per_tx: exactly 1000
+            NO_LIMIT, NO_LIMIT, NO_LIMIT,
+            option::some(1_000_000), &clock, ctx,
+        );
+
+        ts::next_tx(&mut scenario, DELEGATE);
+        let ctx = ts::ctx(&mut scenario);
+
+        // Spend exactly 1000 — at the boundary
+        agent_mandate::validate_and_spend(&mut m, 1_000, &registry, &clock, ctx);
+        assert!(agent_mandate::total_spent(&m) == 1_000);
+
+        agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = agent_mandate::EPerTxLimitExceeded)]
+    fun test_mcdc_bva_per_tx_one_over() {
+        // amount == max_per_tx + 1 → should FAIL
+        let mut scenario = ts::begin(DELEGATOR);
+        let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            1_000,       // max_per_tx: exactly 1000
+            NO_LIMIT, NO_LIMIT, NO_LIMIT,
+            option::some(1_000_000), &clock, ctx,
+        );
+
+        ts::next_tx(&mut scenario, DELEGATE);
+        let ctx = ts::ctx(&mut scenario);
+
+        // Spend 1001 — one over the boundary
+        agent_mandate::validate_and_spend(&mut m, 1_001, &registry, &clock, ctx);
+
+        agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    // --- BVA: Daily limit boundary ---
+
+    #[test]
+    fun test_mcdc_bva_daily_at_exact_limit() {
+        // daily_spent + amount == daily_limit exactly → should SUCCEED
+        let mut scenario = ts::begin(DELEGATOR);
+        let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            NO_LIMIT,    // no per-tx cap
+            2_000,       // daily_limit: exactly 2000
+            NO_LIMIT, NO_LIMIT,
+            option::some(1_000_000), &clock, ctx,
+        );
+
+        ts::next_tx(&mut scenario, DELEGATE);
+        let ctx = ts::ctx(&mut scenario);
+
+        // Spend 1500, then 500 (total daily: 2000 == limit)
+        agent_mandate::validate_and_spend(&mut m, 1_500, &registry, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 500, &registry, &clock, ctx);
+        assert!(agent_mandate::daily_spent(&m) == 2_000);
+
+        agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = agent_mandate::EDailyLimitExceeded)]
+    fun test_mcdc_bva_daily_one_over() {
+        // daily_spent + amount == daily_limit + 1 → should FAIL
+        let mut scenario = ts::begin(DELEGATOR);
+        let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            NO_LIMIT,
+            2_000,       // daily_limit: exactly 2000
+            NO_LIMIT, NO_LIMIT,
+            option::some(1_000_000), &clock, ctx,
+        );
+
+        ts::next_tx(&mut scenario, DELEGATE);
+        let ctx = ts::ctx(&mut scenario);
+
+        // Spend 1500, then 501 (total daily: 2001 > 2000)
+        agent_mandate::validate_and_spend(&mut m, 1_500, &registry, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 501, &registry, &clock, ctx);
+
+        agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    // --- BVA: Weekly limit boundary ---
+
+    #[test]
+    fun test_mcdc_bva_weekly_at_exact_limit() {
+        // weekly_spent + amount == weekly_limit exactly → should SUCCEED
+        let mut scenario = ts::begin(DELEGATOR);
+        let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            NO_LIMIT, NO_LIMIT,
+            5_000,       // weekly_limit: exactly 5000
+            NO_LIMIT,
+            option::some(1_000_000), &clock, ctx,
+        );
+
+        ts::next_tx(&mut scenario, DELEGATE);
+        let ctx = ts::ctx(&mut scenario);
+
+        // Spend 3000, then 2000 (total weekly: 5000 == limit)
+        agent_mandate::validate_and_spend(&mut m, 3_000, &registry, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 2_000, &registry, &clock, ctx);
+        assert!(agent_mandate::weekly_spent(&m) == 5_000);
+
+        agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = agent_mandate::EWeeklyLimitExceeded)]
+    fun test_mcdc_bva_weekly_one_over() {
+        // weekly_spent + amount == weekly_limit + 1 → should FAIL
+        let mut scenario = ts::begin(DELEGATOR);
+        let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            NO_LIMIT, NO_LIMIT,
+            5_000,       // weekly_limit: exactly 5000
+            NO_LIMIT,
+            option::some(1_000_000), &clock, ctx,
+        );
+
+        ts::next_tx(&mut scenario, DELEGATE);
+        let ctx = ts::ctx(&mut scenario);
+
+        // Spend 3000, then 2001 (total weekly: 5001 > 5000)
+        agent_mandate::validate_and_spend(&mut m, 3_000, &registry, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 2_001, &registry, &clock, ctx);
+
+        agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    // --- BVA: Total (lifetime) limit boundary ---
+
+    #[test]
+    fun test_mcdc_bva_total_at_exact_limit() {
+        // total_spent + amount == max_total exactly → should SUCCEED
+        let mut scenario = ts::begin(DELEGATOR);
+        let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            NO_LIMIT, NO_LIMIT, NO_LIMIT,
+            10_000,      // max_total: exactly 10000
+            option::some(1_000_000), &clock, ctx,
+        );
+
+        ts::next_tx(&mut scenario, DELEGATE);
+        let ctx = ts::ctx(&mut scenario);
+
+        // Spend 7000, then 3000 (total: 10000 == limit)
+        agent_mandate::validate_and_spend(&mut m, 7_000, &registry, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 3_000, &registry, &clock, ctx);
+        assert!(agent_mandate::total_spent(&m) == 10_000);
+        assert!(agent_mandate::remaining(&m) == 0);
+
+        agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = agent_mandate::ETotalLimitExceeded)]
+    fun test_mcdc_bva_total_one_over() {
+        // total_spent + amount == max_total + 1 → should FAIL
+        let mut scenario = ts::begin(DELEGATOR);
+        let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            NO_LIMIT, NO_LIMIT, NO_LIMIT,
+            10_000,      // max_total: exactly 10000
+            option::some(1_000_000), &clock, ctx,
+        );
+
+        ts::next_tx(&mut scenario, DELEGATE);
+        let ctx = ts::ctx(&mut scenario);
+
+        // Spend 7000, then 3001 (total: 10001 > 10000)
+        agent_mandate::validate_and_spend(&mut m, 7_000, &registry, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 3_001, &registry, &clock, ctx);
+
+        agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    // --- BVA: Expiry boundary (1ms resolution) ---
+
+    #[test]
+    fun test_mcdc_bva_expiry_last_valid_ms() {
+        // Spend at now = expires_at - 1 → should SUCCEED
+        let mut scenario = ts::begin(DELEGATOR);
+        let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            NO_LIMIT, NO_LIMIT, NO_LIMIT, NO_LIMIT,
+            option::some(100_000), // expires at 100,000ms
+            &clock, ctx,
+        );
+
+        // Set clock to 99,999ms — one ms before expiry
+        clock::set_for_testing(&mut clock, 99_999);
+
+        ts::next_tx(&mut scenario, DELEGATE);
+        let ctx = ts::ctx(&mut scenario);
+
+        // Should succeed — not yet expired
+        agent_mandate::validate_and_spend(&mut m, 1_000, &registry, &clock, ctx);
+        assert!(agent_mandate::total_spent(&m) == 1_000);
+
+        agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = agent_mandate::EExpired)]
+    fun test_mcdc_bva_expiry_exact_ms() {
+        // Spend at now = expires_at exactly → should FAIL
+        // Code: assert!(now < expires_at), so now == expires_at fails
+        let mut scenario = ts::begin(DELEGATOR);
+        let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            NO_LIMIT, NO_LIMIT, NO_LIMIT, NO_LIMIT,
+            option::some(100_000), // expires at 100,000ms
+            &clock, ctx,
+        );
+
+        // Set clock to exactly 100,000ms — expiry boundary
+        clock::set_for_testing(&mut clock, 100_000);
+
+        ts::next_tx(&mut scenario, DELEGATE);
+        let ctx = ts::ctx(&mut scenario);
+
+        // Should fail — expired at exact boundary
+        agent_mandate::validate_and_spend(&mut m, 1_000, &registry, &clock, ctx);
+
+        agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
 }

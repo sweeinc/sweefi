@@ -142,7 +142,7 @@ module sweefi::identity {
         clock: &Clock,
         ctx: &mut TxContext,
     ): AgentIdentity {
-        admin::assert_not_paused(protocol_state);
+        admin::assert_not_paused(protocol_state, clock);
         let owner = ctx.sender();
         assert!(!registry.identities.contains(owner), EAlreadyRegistered);
 

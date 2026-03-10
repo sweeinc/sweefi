@@ -23,6 +23,7 @@
 #[allow(lint(self_transfer, public_entry))]
 module sweefi::admin {
     use sui::event;
+    use sui::clock::Clock;
 
     // ══════════════════════════════════════════════════════════════
     // Error codes (500-series)
@@ -31,6 +32,16 @@ module sweefi::admin {
     const EAlreadyPaused: u64 = 500;
     const ENotPaused: u64 = 501;
     const EProtocolPaused: u64 = 502;
+    const EAutoUnpauseNotReady: u64 = 503;
+
+    // ══════════════════════════════════════════════════════════════
+    // Constants
+    // ══════════════════════════════════════════════════════════════
+
+    /// Auto-unpause window: 14 days in milliseconds.
+    /// If the admin key is lost while paused, the protocol self-heals
+    /// after this window — converting key loss into decentralization.
+    const AUTO_UNPAUSE_WINDOW_MS: u64 = 1_209_600_000;
 
     // ══════════════════════════════════════════════════════════════
     // Structs
@@ -45,10 +56,10 @@ module sweefi::admin {
 
     /// Global protocol state — shared object.
     /// No `store` ability — only this module can share it, preventing shadow registries.
-    /// Currently just a pause flag. Granularity can be added later if needed.
     public struct ProtocolState has key {
         id: UID,
-        paused: bool,   // true = only withdrawals allowed; new deposits/creations blocked
+        paused: bool,        // true = only withdrawals allowed; new deposits/creations blocked
+        paused_at_ms: u64,   // timestamp when pause was activated (0 when not paused)
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -61,6 +72,10 @@ module sweefi::admin {
 
     public struct ProtocolUnpaused has copy, drop {
         unpaused_by: address,
+    }
+
+    public struct ProtocolAutoUnpaused has copy, drop {
+        triggered_by: address,
     }
 
     public struct AdminCapBurned has copy, drop {
@@ -79,7 +94,7 @@ module sweefi::admin {
             ctx.sender(),
         );
         transfer::share_object(
-            ProtocolState { id: object::new(ctx), paused: false },
+            ProtocolState { id: object::new(ctx), paused: false, paused_at_ms: 0 },
         );
     }
 
@@ -95,8 +110,16 @@ module sweefi::admin {
     /// Convenience: abort if paused. One-liner guard for guarded functions.
     /// Uses EProtocolPaused (502), distinct from EAlreadyPaused (500) which is
     /// for the admin's double-pause attempt in pause().
-    public fun assert_not_paused(state: &ProtocolState) {
-        assert!(!state.paused, EProtocolPaused);
+    ///
+    /// Time-aware: if the auto-unpause window has elapsed, the protocol is
+    /// effectively unpaused even if `state.paused` is still true. This means
+    /// creation functions self-heal after 14 days without anyone calling
+    /// `auto_unpause()` explicitly.
+    public fun assert_not_paused(state: &ProtocolState, clock: &Clock) {
+        assert!(
+            !(state.paused && clock.timestamp_ms() < state.paused_at_ms + AUTO_UNPAUSE_WINDOW_MS),
+            EProtocolPaused,
+        );
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -107,13 +130,19 @@ module sweefi::admin {
     /// Existing streams/escrows and all withdrawals are unaffected.
     /// `_cap` is unused beyond proving capability — the underscore is intentional
     /// (Move's capability pattern: object presence in a tx is the authorization).
+    ///
+    /// Records the pause timestamp for auto-unpause. The protocol will
+    /// self-heal after AUTO_UNPAUSE_WINDOW_MS (14 days) if the admin key
+    /// is lost. Re-pausing resets the timer.
     public entry fun pause(
         _cap: &AdminCap,
         state: &mut ProtocolState,
+        clock: &Clock,
         ctx: &TxContext,
     ) {
         assert!(!state.paused, EAlreadyPaused);
         state.paused = true;
+        state.paused_at_ms = clock.timestamp_ms();
         event::emit(ProtocolPaused { paused_by: ctx.sender() });
     }
 
@@ -125,7 +154,26 @@ module sweefi::admin {
     ) {
         assert!(state.paused, ENotPaused);
         state.paused = false;
+        state.paused_at_ms = 0;
         event::emit(ProtocolUnpaused { unpaused_by: ctx.sender() });
+    }
+
+    /// Permissionless auto-unpause after the safety window elapses.
+    /// Anyone can call this — same pattern as permissionless escrow refund.
+    /// Converts admin key loss into graceful decentralization.
+    public entry fun auto_unpause(
+        state: &mut ProtocolState,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert!(state.paused, ENotPaused);
+        assert!(
+            clock.timestamp_ms() >= state.paused_at_ms + AUTO_UNPAUSE_WINDOW_MS,
+            EAutoUnpauseNotReady,
+        );
+        state.paused = false;
+        state.paused_at_ms = 0;
+        event::emit(ProtocolAutoUnpaused { triggered_by: ctx.sender() });
     }
 
     /// Irrevocably burn the AdminCap — protocol becomes fully trustless.
@@ -152,18 +200,18 @@ module sweefi::admin {
     public fun create_for_testing(ctx: &mut TxContext): (AdminCap, ProtocolState) {
         (
             AdminCap { id: object::new(ctx) },
-            ProtocolState { id: object::new(ctx), paused: false },
+            ProtocolState { id: object::new(ctx), paused: false, paused_at_ms: 0 },
         )
     }
 
     #[test_only]
     public fun create_state_for_testing(ctx: &mut TxContext): ProtocolState {
-        ProtocolState { id: object::new(ctx), paused: false }
+        ProtocolState { id: object::new(ctx), paused: false, paused_at_ms: 0 }
     }
 
     #[test_only]
     public fun destroy_state_for_testing(state: ProtocolState) {
-        let ProtocolState { id, paused: _ } = state;
+        let ProtocolState { id, paused: _, paused_at_ms: _ } = state;
         object::delete(id);
     }
 

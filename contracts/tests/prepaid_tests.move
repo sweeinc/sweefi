@@ -170,6 +170,49 @@ module sweefi::prepaid_tests {
     }
 
     // ══════════════════════════════════════════════════════════════
+    // MC/DC Coverage Matrix — prepaid::claim
+    // ══════════════════════════════════════════════════════════════
+    //
+    // Decision: authorize claim (all checks pass → settle/pend)
+    //
+    // Conditions (non-zero delta path):
+    //   C1: ctx.sender() == balance.provider      (ENotProvider)
+    //   C2: !balance.disputed                     (EBalanceDisputed)
+    //   C3: balance.pending_claim_count == 0      (EPendingClaimExists)
+    //   C4: cumulative >= balance.claimed_calls   (ECallCountRegression)
+    //   C5: cumulative <= balance.max_calls       (EMaxCallsExceeded)
+    //   C6: gross_amount <= deposited.value()     (ERateLimitExceeded)
+    //
+    // MC/DC Matrix (N+1 = 7 tests for 6 conditions):
+    //
+    //   Test             | C1 | C2 | C3 | C4 | C5 | C6 | Result
+    //   -----------------+----+----+----+----+----+----+--------
+    //   HP (happy path)  |  T |  T |  T |  T |  T |  T | PASS
+    //   MC-1 (provider)  |  F |  T |  T |  T |  T |  T | FAIL (ENotProvider)
+    //   MC-2 (disputed)  |  T |  F |  T |  T |  T |  T | FAIL (EBalanceDisputed)
+    //   MC-3 (pending)   |  T |  T |  F |  T |  T |  T | FAIL (EPendingClaimExists)
+    //   MC-4 (regress)   |  T |  T |  T |  F |  T |  T | FAIL (ECallCountRegression)
+    //   MC-5 (max_calls) |  T |  T |  T |  T |  F |  T | FAIL (EMaxCallsExceeded)
+    //   MC-6 (rate)      |  T |  T |  T |  T |  T |  F | FAIL (ERateLimitExceeded)
+    //
+    // Existing test mapping:
+    //   HP:   test_claim_basic                            ✅
+    //   MC-1: test_claim_not_provider_fails               ✅
+    //   MC-2: test_mcdc_claim_on_disputed_balance_fails   ✅ (NEW — was indirect-only)
+    //   MC-3: test_v2_double_pending_claim_fails          ✅
+    //   MC-4: test_claim_regression_fails                 ✅
+    //   MC-5: test_claim_max_calls_exceeded               ✅
+    //   MC-6: test_claim_rate_limit_exceeded              ✅
+    //
+    // BVA (Boundary Value Analysis) — 4 tests:
+    //   test_mcdc_bva_max_calls_at_exact_limit  (cumulative == max_calls → PASS)
+    //   test_mcdc_bva_max_calls_one_over        (cumulative == max_calls + 1 → FAIL)
+    //   test_mcdc_bva_rate_at_exact_balance     (gross == balance → PASS)
+    //   test_mcdc_bva_rate_one_over_balance     (gross == balance + 1 MIST → FAIL)
+    //
+    // ══════════════════════════════════════════════════════════════
+
+    // ══════════════════════════════════════════════════════════════
     // Claim tests
     // ══════════════════════════════════════════════════════════════
 
@@ -951,7 +994,7 @@ module sweefi::prepaid_tests {
         let clock = clock::create_for_testing(scenario.ctx());
         let (cap, mut state) = admin::create_for_testing(scenario.ctx());
 
-        admin::pause(&cap, &mut state, scenario.ctx());
+        admin::pause(&cap, &mut state, &clock, scenario.ctx());
 
         let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
         prepaid::deposit<SUI>(deposit, PROVIDER, RATE, UNLIMITED, DELAY_MS, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
@@ -973,7 +1016,7 @@ module sweefi::prepaid_tests {
         prepaid::deposit<SUI>(deposit, PROVIDER, RATE, UNLIMITED, DELAY_MS, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         // Pause the protocol
-        admin::pause(&cap, &mut state, scenario.ctx());
+        admin::pause(&cap, &mut state, &clock, scenario.ctx());
 
         // Provider should still be able to claim
         clock.increment_for_testing(1_000);
@@ -1000,7 +1043,7 @@ module sweefi::prepaid_tests {
         prepaid::deposit<SUI>(deposit, PROVIDER, RATE, UNLIMITED, DELAY_MS, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
 
         // Pause the protocol
-        admin::pause(&cap, &mut state, scenario.ctx());
+        admin::pause(&cap, &mut state, &clock, scenario.ctx());
 
         // Agent should still be able to request withdrawal
         scenario.next_tx(AGENT);
@@ -1206,10 +1249,50 @@ module sweefi::prepaid_tests {
         scenario.end();
     }
 
-    // NOTE: test_v2_claim_on_disputed_fails is not included here because
-    // setting disputed=true requires a valid Ed25519 fraud proof, which needs
-    // the balance's object ID at test time. The EBalanceDisputed guard on claim()
-    // is verified indirectly via the dispute integration test below.
+    // MC-2: Claim on disputed balance (C2=F, all others T) — MC/DC direct test
+    // Uses same dispute_claim pattern as test_top_up_blocked_when_disputed.
+    #[test]
+    #[expected_failure(abort_code = prepaid::EBalanceDisputed)]
+    fun test_mcdc_claim_on_disputed_balance_fails() {
+        let mut scenario = ts::begin(AGENT);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        setup_v2_balance(&mut scenario, &clock, &state);
+
+        // Provider claims 100 calls → pending
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::claim(&mut bal, 100, &clock, scenario.ctx());
+        ts::return_shared(bal);
+
+        // Agent disputes with receipt #50 → balance.disputed = true
+        scenario.next_tx(AGENT);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::dispute_claim(
+            &mut bal,
+            @0x06d553b842f768751ef60436013fd9a563de7986dc8991a2b3a8edb7037fc8ed,
+            50,
+            1700000000000,
+            TEST_RESPONSE_HASH,
+            TEST_SIG_CALL_50,
+            &clock,
+            scenario.ctx(),
+        );
+        assert!(prepaid::balance_disputed(&bal) == true);
+        ts::return_shared(bal);
+
+        // Provider tries to claim again on disputed balance → EBalanceDisputed
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::claim(&mut bal, 200, &clock, scenario.ctx());
+
+        ts::return_shared(bal);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
 
     // ── finalize_claim tests ──
 
@@ -2133,6 +2216,112 @@ module sweefi::prepaid_tests {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         ];
         assert!(prepaid::balance_provider_pubkey(&bal) == &expected);
+
+        ts::return_shared(bal);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // BVA (Boundary Value Analysis) — prepaid::claim off-by-one detection
+    // ══════════════════════════════════════════════════════════════
+
+    #[test]
+    fun test_mcdc_bva_max_calls_at_exact_limit() {
+        // cumulative == max_calls → PASS (boundary: <=)
+        let mut scenario = ts::begin(AGENT);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        // Deposit 1M tokens, rate 1000/call, max 100 calls
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+        prepaid::deposit<SUI>(deposit, PROVIDER, RATE, 100, DELAY_MS, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+
+        // Claim exactly 100 calls (== max_calls) → should succeed
+        prepaid::claim(&mut bal, 100, &clock, scenario.ctx());
+        assert!(prepaid::balance_claimed_calls(&bal) == 100);
+
+        ts::return_shared(bal);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    #[expected_failure(abort_code = prepaid::EMaxCallsExceeded)]
+    fun test_mcdc_bva_max_calls_one_over() {
+        // cumulative == max_calls + 1 → FAIL (boundary: off-by-one)
+        let mut scenario = ts::begin(AGENT);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        // Deposit 1M tokens, rate 1000/call, max 100 calls
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+        prepaid::deposit<SUI>(deposit, PROVIDER, RATE, 100, DELAY_MS, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+
+        // Claim 101 calls (max_calls + 1) → should fail
+        prepaid::claim(&mut bal, 101, &clock, scenario.ctx());
+
+        ts::return_shared(bal);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    fun test_mcdc_bva_rate_at_exact_balance() {
+        // gross_amount == deposited.value() → PASS (boundary: <=)
+        let mut scenario = ts::begin(AGENT);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        // Deposit exactly 100_000, rate 1000/call, unlimited calls, zero fee
+        // 100 calls × 1000 = 100_000 = exactly the deposit
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+        prepaid::deposit<SUI>(deposit, PROVIDER, RATE, UNLIMITED, DELAY_MS, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+
+        // Claim 1000 calls × 1000 rate = 1_000_000 = exact deposit → should succeed
+        prepaid::claim(&mut bal, 1000, &clock, scenario.ctx());
+        assert!(prepaid::balance_remaining(&bal) == 0);
+
+        ts::return_shared(bal);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    #[expected_failure(abort_code = prepaid::ERateLimitExceeded)]
+    fun test_mcdc_bva_rate_one_over_balance() {
+        // gross_amount == deposited.value() + rate (one more call than balance allows)
+        let mut scenario = ts::begin(AGENT);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        // Deposit 1_000_000, rate 1000/call, unlimited calls, zero fee
+        // 1001 calls × 1000 = 1_001_000 > 1_000_000
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+        prepaid::deposit<SUI>(deposit, PROVIDER, RATE, UNLIMITED, DELAY_MS, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+
+        // Claim 1001 calls → gross = 1_001_000 > 1_000_000 deposit → should fail
+        prepaid::claim(&mut bal, 1001, &clock, scenario.ctx());
 
         ts::return_shared(bal);
         admin::destroy_cap_for_testing(_cap);

@@ -198,7 +198,7 @@ module sweefi::escrow {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        admin::assert_not_paused(protocol_state);
+        admin::assert_not_paused(protocol_state, clock);
         let now_ms = clock.timestamp_ms();
         let deposit_value = deposit.value();
 
