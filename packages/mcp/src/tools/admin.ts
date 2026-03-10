@@ -1,5 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { buildAdminPauseTx, buildAdminUnpauseTx, buildBurnAdminCapTx } from "@sweefi/sui/ptb";
+import { buildAdminPauseTx, buildAdminUnpauseTx, buildBurnAdminCapTx, buildAutoUnpauseTx } from "@sweefi/sui/ptb";
 import type { SweefiContext } from "../context.js";
 import { requireSigner } from "../context.js";
 import { assertTxSuccess, suiObjectId } from "../utils/format.js";
@@ -165,6 +165,42 @@ export function registerAdminTools(server: McpServer, ctx: SweefiContext) {
         content: [{
           type: "text" as const,
           text: `AdminCap BURNED. This is irreversible.\n\nTX Digest: ${result.digest}\nNetwork: ${ctx.network}\n\nThe protocol is now fully trustless — no one can pause or unpause it.`,
+        }],
+      };
+    },
+  );
+
+  // ─── Transaction: auto-unpause (permissionless) ───
+  server.registerTool(
+    "sweefi_auto_unpause",
+    {
+      title: "Auto-Unpause Protocol (Permissionless)",
+      description:
+        "Trigger auto-unpause after the 14-day pause window has elapsed. " +
+        "Anyone can call this — no AdminCap required. " +
+        "Fails if the protocol is not paused or the 14-day window hasn't passed. " +
+        "This is the safety valve: if the admin loses their key, the protocol self-heals. " +
+        "Requires configured wallet (any wallet — permissionless).",
+      inputSchema: {},
+    },
+    async () => {
+      const signer = requireSigner(ctx);
+
+      const tx = buildAutoUnpauseTx(ctx.config, {
+        sender: signer.toSuiAddress(),
+      });
+
+      const result = await ctx.suiClient.signAndExecuteTransaction({
+        signer,
+        transaction: tx,
+        options: { showEffects: true },
+      });
+      assertTxSuccess(result);
+
+      return {
+        content: [{
+          type: "text" as const,
+          text: `Protocol AUTO-UNPAUSED successfully.\n\nTX Digest: ${result.digest}\nNetwork: ${ctx.network}\n\nThe 14-day pause window elapsed. Protocol is now active — all operations enabled.`,
         }],
       };
     },

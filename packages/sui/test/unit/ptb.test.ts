@@ -23,6 +23,7 @@ import {
   buildAdminPauseTx,
   buildAdminUnpauseTx,
   buildBurnAdminCapTx,
+  buildAutoUnpauseTx,
   TESTNET_PACKAGE_ID,
 } from "../../src/ptb";
 import type { SweefiConfig } from "../../src/ptb";
@@ -773,13 +774,40 @@ describe("buildAdminUnpauseTx", () => {
 
 describe("buildBurnAdminCapTx", () => {
   it("returns a Transaction instance", () => {
-    // burn does NOT require protocolStateId — it only consumes the cap
-    const tx = buildBurnAdminCapTx(config, {
+    // burn requires protocolStateId — checks !paused before burning (prevents permanent lockdown)
+    const tx = buildBurnAdminCapTx(fullConfig, {
       adminCapId: ADMIN_CAP_ID,
       sender: SENDER,
     });
 
     expect(tx).toBeInstanceOf(Transaction);
+  });
+
+  it("throws without protocolStateId", () => {
+    expect(() =>
+      buildBurnAdminCapTx(config, {
+        adminCapId: ADMIN_CAP_ID,
+        sender: SENDER,
+      }),
+    ).toThrow("protocolStateId");
+  });
+});
+
+describe("buildAutoUnpauseTx", () => {
+  it("returns a Transaction instance (permissionless — no AdminCap)", () => {
+    const tx = buildAutoUnpauseTx(fullConfig, {
+      sender: SENDER,
+    });
+
+    expect(tx).toBeInstanceOf(Transaction);
+  });
+
+  it("throws without protocolStateId", () => {
+    expect(() =>
+      buildAutoUnpauseTx(config, {
+        sender: SENDER,
+      }),
+    ).toThrow("protocolStateId");
   });
 });
 

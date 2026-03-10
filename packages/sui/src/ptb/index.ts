@@ -57,10 +57,12 @@ export {
 } from "./escrow";
 
 // Admin PTB builders (emergency pause circuit breaker)
+export type { AutoUnpauseParams } from "./admin";
 export {
   buildAdminPauseTx,
   buildAdminUnpauseTx,
   buildBurnAdminCapTx,
+  buildAutoUnpauseTx,
 } from "./admin";
 
 // Mandate PTB builders (AP2 spending authorization)
