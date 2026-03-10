@@ -2,11 +2,11 @@
 
 > All transactions below are **real**, **on-chain**, and **verifiable** on [Sui Testnet Explorer](https://suiscan.xyz/testnet).
 
-**Package (testnet):** `0x04421dc12bdadbc1b7f7652cf2c299e7864571ded5ff4d7f2866de8304a820ef`
+**Package (testnet):** `0xb83e50365ba460aaa02e240902a40890bec88cd35bd2fc09afb6c79ec8ea9ac5`
 **Modules:** `payment`, `stream`, `escrow`, `seal_policy`, `mandate`, `agent_mandate`, `prepaid`, `admin`, `math`, `identity`
-**Move tests:** 264 passing
+**Move tests:** 293 passing
 **TypeScript tests:** 809 passing
-**Total:** 1,073 tests across Move + TypeScript
+**Total:** 1,102 tests across Move + TypeScript
 
 ---
 
@@ -138,7 +138,7 @@ sui client call --package $PKG --module escrow --function release_and_keep \
 | Escrow | `escrow::Escrow<SUI>` | `0xe1331575...b531` |
 | PaymentReceipt | `payment::PaymentReceipt` | `0xffd2c8e2...b00f` |
 
-All three primitives are live on Sui Testnet. Verifiable. Open source. 264 Move tests passing.
+All three primitives are live on Sui Testnet. Verifiable. Open source. 293 Move tests passing.
 
 ---
 

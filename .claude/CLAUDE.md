@@ -33,7 +33,7 @@
 | `@sweefi/react` | Alpha | 12 | — |
 | `@sweefi/ap2-adapter` | Alpha | 52 | AP2 spec is v0.1 |
 | `@sweefi/solana` | Stub | 40 | Exact-only. No prepaid/stream/escrow. |
-| Move contracts | Testnet deployed | 264 | 9th testnet iteration, contract v0.1.0 |
+| Move contracts | Testnet deployed | 293 | 11th testnet iteration, contract v0.1.0 |
 
 ## Key File Locations
 

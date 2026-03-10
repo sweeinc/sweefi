@@ -144,7 +144,7 @@ AI Agent (Claude, GPT, Cursor, etc.)
 | [`@sweefi/ap2-adapter`](/guide/ap2-adapter) | AP2 mandate mapper + bridge | 52 |
 | [`sweefi-contracts`](/guide/contracts) | 10 Move modules on Sui testnet | 264 |
 
-**Total: 1,073 tests (809 TypeScript + 264 Move)**
+**Total: 1,102 tests (809 TypeScript + 293 Move)**
 
 **External**: [`s402`](https://www.npmjs.com/package/s402) (HTTP 402 protocol, v0.2.2), `@mysten/sui@2.6.0`, `@mysten/seal@1.0.1`
 
@@ -294,7 +294,7 @@ No admin keys control user funds.
 
 ## Smart Contracts
 
-Deployed on Sui testnet. 10 modules, 264 Move tests, AdminCap + ProtocolState for governance.
+Deployed on Sui testnet. 10 modules, 293 Move tests, AdminCap + ProtocolState for governance.
 
 | Module | Purpose |
 |--------|---------|
@@ -309,7 +309,7 @@ Deployed on Sui testnet. 10 modules, 264 Move tests, AdminCap + ProtocolState fo
 | `math` | Shared arithmetic utilities (safe division, micro-percent fees) |
 | `admin` | AdminCap, ProtocolState, pause/unpause/burn |
 
-Package ID (testnet): `0x04421dc12bdadbc1b7f7652cf2c299e7864571ded5ff4d7f2866de8304a820ef`
+Package ID (testnet): `0xb83e50365ba460aaa02e240902a40890bec88cd35bd2fc09afb6c79ec8ea9ac5`
 
 Token-gated SEAL (standalone): `0xbf9f9d63cbe53f21ac81af068e25e2c736fa2b0537c7e34d7d2862e330fe4fbc`
 

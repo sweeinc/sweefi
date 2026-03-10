@@ -4,7 +4,7 @@
 
 SweeFi implements the s402 HTTP 402 protocol — when an AI agent hits a payment-gated API, it auto-detects the price, signs a Sui transaction, and retries without human intervention. The protocol is wire-compatible with Coinbase's x402 at the HTTP layer, but uses Sui's Programmable Transaction Blocks for atomic, composable settlement impossible on EVM.
 
-Ten Move modules deployed to Sui testnet. 1,073 tests (264 Move + 809 TS). Builds for: autonomous AI agents, API monetization without API keys, streaming micropayments for AI inference, trustless escrow for digital goods, pay-to-decrypt via SEAL threshold encryption.
+Ten Move modules deployed to Sui testnet. 1,102 tests (293 Move + 809 TS). Builds for: autonomous AI agents, API monetization without API keys, streaming micropayments for AI inference, trustless escrow for digital goods, pay-to-decrypt via SEAL threshold encryption.
 
 ## Getting Started
 

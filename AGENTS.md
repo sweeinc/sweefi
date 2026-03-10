@@ -9,7 +9,7 @@
 - Monorepo with 10 TS packages + Move smart contracts
 - Built on top of `s402` (HTTP 402 protocol, published on npm as `s402@0.2.2`)
 - Competing with BEEP (justbeep.it) — proprietary alternative
-- 1,073 passing tests (809 TypeScript + 264 Move) — see STATUS.md for per-package breakdown
+- 1,102 passing tests (809 TypeScript + 293 Move) — see STATUS.md for per-package breakdown
 
 ## Repository Structure
 
@@ -309,10 +309,10 @@ These are hard rules. Do not debate them; read the ADR if you want context.
 
 ## Smart Contracts (Sui Testnet)
 
-Package ID: `0x04421dc12bdadbc1b7f7652cf2c299e7864571ded5ff4d7f2866de8304a820ef`
-Contract version: 0.1.0 (pre-mainnet). 10th testnet iteration (v8-audit hardening). Full history in git log.
+Package ID: `0xb83e50365ba460aaa02e240902a40890bec88cd35bd2fc09afb6c79ec8ea9ac5`
+Contract version: 0.1.0 (pre-mainnet). 11th testnet iteration (auto-unpause + MC/DC). Full history in git log.
 
-10 modules, 264 Move test functions (all passing).
+10 modules, 293 Move test functions (all passing). MC/DC coverage on 4 authorization-critical functions (agent_mandate, mandate, prepaid, escrow).
 
 **Key design patterns:**
 - All payment functions are `public` (composable in PTBs), not `entry`
@@ -492,6 +492,45 @@ This project was built with 3 AI instances:
 - **Coordinator** — MCP server, grant application, integration
 
 When working on this codebase, check which layer your changes affect and whether other packages need updates.
+
+---
+
+## Testing Methodology — Aviation-Grade (DO-178B)
+
+SweeFi uses **MC/DC (Modified Condition/Decision Coverage)** from DO-178B Level A (the same standard as Boeing avionics and SQLite). This is NOT optional for authorization-critical functions.
+
+### MC/DC Rules
+
+For any function with N boolean conditions that guards money or authorization:
+
+1. **Happy path test** — all N conditions TRUE, function succeeds
+2. **N isolation tests (MC-1 through MC-N)** — each flips exactly ONE condition to FALSE, all others TRUE. Proves each condition independently affects the outcome.
+3. **BVA tests** — for every numeric boundary (caps, deadlines, amounts), test at exact limit (pass) and limit±1 (fail)
+4. **Document the matrix** in the test file as comments
+
+**Naming convention:**
+```move
+#[test] fun test_mcdc_hp_<function>() { ... }              // Happy path
+#[test] fun test_mcdc_mc1_<function>_<condition>() { ... }  // C1=F
+#[test] fun test_mcdc_bva_<function>_<boundary>() { ... }   // BVA
+```
+
+### Current MC/DC Coverage
+
+| Module | Function | Conditions | MC/DC | BVA | Gaps |
+|--------|----------|-----------|-------|-----|------|
+| agent_mandate | `validate_and_spend` | 9 (C1-C9) | Complete | 10 tests | 0 |
+| mandate | `validate_and_spend` | 6 (C1-C6) | Complete | 6 tests | 0 (MC-1 fixed) |
+| prepaid | `claim` | 6 (C1-C6) | Complete | 4 tests | 0 (MC-2 fixed) |
+| escrow | `refund` | 4 (C1-C4) | Complete | 2 tests | C1 unreachable (linear types) |
+| stream | `claim` | ~5 | **TODO** | **TODO** | — |
+| payment | `pay` | ~3 | **TODO** | **TODO** | — |
+| admin | all guards | ~2-3 each | **TODO** | **TODO** | 5 tests exist, no matrix |
+
+### Formal Verification
+
+- **TLA+**: 6 modules formally specified (escrow, stream, prepaid, agent_mandate, mandate, admin). 27 safety invariants, 14 liveness properties, 39 adversarial scenarios — all verified. See `tla/VERIFICATION-REPORT.md`.
+- **INVARIANTS.md**: 10 formally proven safety/liveness properties with full proofs. See `projects/sweefi-project/INVARIANTS.md`.
 
 ---
 

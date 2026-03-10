@@ -332,7 +332,7 @@ AI Agent (Claude, GPT, Cursor, etc.)
 | [`@sweefi/solana`](packages/solana) | Solana adapter (exact scheme only) | 40 |
 | [`sweefi-contracts`](contracts) | 10 Move modules on Sui testnet | 264 |
 
-**Total: 849 tests (603 TypeScript + 246 Move)**
+**Total: 1,102 tests (809 TypeScript + 293 Move)**
 
 ### External Dependencies
 

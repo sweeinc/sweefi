@@ -25,12 +25,12 @@ cd contracts && sui move test
   - `@sweefi/react`: 12
   - `@sweefi/vue`: 10
   - `@sweefi/server`: 0 (integration-only tests — no offline unit tests)
-- Move tests: **264 functions** (all passing)
-- **Grand total: 1,073 tests**
+- Move tests: **293 functions** (all passing)
+- **Grand total: 1,102 tests**
 
-## Live Testnet Transactions (v10 — current package)
+## Live Testnet Transactions (v11 — current package)
 
-All transactions below call the v10 Move contracts at `0x04421d...a820ef`.
+All transactions below call the v11 Move contracts at `0xb83e5036...9ac5`.
 
 | Transaction | Type | Explorer Link |
 |------------|------|---------------|
@@ -48,10 +48,10 @@ All transactions below call the v10 Move contracts at `0x04421d...a820ef`.
 
 ## Current Testnet Package
 
-**v10 (live — 10th testnet deploy):**
-- Package ID: `0x04421dc12bdadbc1b7f7652cf2c299e7864571ded5ff4d7f2866de8304a820ef`
-- AdminCap: `0xc54ec6846273170565e3eec1836bb48363413fb4b7b2592ee342cc3d0363f5e5`
-- ProtocolState: `0x9eae2fa9f298927230d8fdf2e525cab0f7894874d94ecedec4df2ae7a4f3df15`
-- UpgradeCap: `0x2472fdc1bbfe8958d776bf80baa7e7e50fcc146f4c4c91cdd61f0e2970ba98e9`
-- Explorer: <https://suiscan.xyz/testnet/object/0x04421dc12bdadbc1b7f7652cf2c299e7864571ded5ff4d7f2866de8304a820ef>
+**v11 (live — 11th testnet deploy, auto-unpause + MC/DC):**
+- Package ID: `0xb83e50365ba460aaa02e240902a40890bec88cd35bd2fc09afb6c79ec8ea9ac5`
+- AdminCap: `0xdba70844f06c46dd4f4a331bcf9ffa234cfd1b9c9d7449719a5311112fa946dc`
+- ProtocolState: `0x75f4eef7ad9cdffda4278c9677a15d4993393e16cc901dc2fe26befe9e79808b`
+- UpgradeCap: `0xb160234f12c12e4c1a98010569e18fcd9a444a5eec3c15e3b2eedb0f691d000f`
+- Explorer: <https://suiscan.xyz/testnet/object/0xb83e50365ba460aaa02e240902a40890bec88cd35bd2fc09afb6c79ec8ea9ac5>
 - Modules: `payment`, `stream`, `escrow`, `seal_policy`, `mandate`, `agent_mandate`, `prepaid`, `admin`, `math`, `identity`

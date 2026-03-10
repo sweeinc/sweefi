@@ -4,21 +4,21 @@
 
 ## Deployment State
 
-- **Sui Testnet**: `0x04421dc12bdadbc1b7f7652cf2c299e7864571ded5ff4d7f2866de8304a820ef` (live, v10 deploy)
+- **Sui Testnet**: `0xb83e50365ba460aaa02e240902a40890bec88cd35bd2fc09afb6c79ec8ea9ac5` (live, v11 deploy — auto-unpause + MC/DC)
 - **Mainnet**: Not yet deployed
 - **SEAL mainnet**: Blocked on Mysten Labs publishing key server addresses
 
 ## What Is Working (Verified on Testnet)
 
-- **Demo 1** (direct payment via `payment::pay`): PASSED on v10
+- **Demo 1** (direct payment via `payment::pay`): PASSED on v11
   - TX: [`Gts9F3gXaVVqLfi4M9pSFkkc2WsC6zCJejZmrwi8f1iK`](https://suiscan.xyz/testnet/tx/Gts9F3gXaVVqLfi4M9pSFkkc2WsC6zCJejZmrwi8f1iK) — 10K MIST + 5% fee, PaymentReceipt minted
-- **Demo 2** (streaming via `stream::create`): PASSED on v10
+- **Demo 2** (streaming via `stream::create`): PASSED on v11
   - TX: [`GDo8g5Yu1X1zCdaLTtEVCqxeWJqkDDyoHjdGP5TLvkhf`](https://suiscan.xyz/testnet/tx/GDo8g5Yu1X1zCdaLTtEVCqxeWJqkDDyoHjdGP5TLvkhf) — 1M MIST deposit, 300 MIST/sec, StreamingMeter created
-- **Demo 3** (escrow via `escrow::create`): PASSED on v10
+- **Demo 3** (escrow via `escrow::create`): PASSED on v11
   - TX: [`EcYFG3FTSwxM49UckuBhg2gYBPMzRBTNzmKy5Aq6UbzR`](https://suiscan.xyz/testnet/tx/EcYFG3FTSwxM49UckuBhg2gYBPMzRBTNzmKy5Aq6UbzR) — 1M MIST escrow, Escrow object created
 - All 10 TS packages build and typecheck
 - **809 TypeScript tests** passing across 10 packages
-- **264 Move test functions** passing (10 modules)
+- **293 Move test functions** passing (10 modules)
 - MCP server: 35 tools, all tested
 - Facilitator service: verify, settle, process, discovery, metering
 - s402 npm package published (v0.2.2) with 133 conformance test vectors
@@ -58,4 +58,4 @@
 | `@sweefi/vue` | 10 |
 | **TypeScript total** | **809 passing** |
 | Move contracts | 264 |
-| **Grand total** | **1,073 passing** |
+| **Grand total** | **1,102 passing** |

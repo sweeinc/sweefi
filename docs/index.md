@@ -58,4 +58,4 @@ SweeFi handles the s402 negotiation, PTB construction, signing, and settlement. 
 
 ---
 
-**v0.1.0** · 7 published packages · 1,073 tests (264 Move + 809 TS) · 10 Move modules · Apache 2.0 · Built on [s402](https://www.npmjs.com/package/s402) and [Sui](https://sui.io)
+**v0.1.0** · 7 published packages · 1,102 tests (293 Move + 809 TS) · 10 Move modules · Apache 2.0 · Built on [s402](https://www.npmjs.com/package/s402) and [Sui](https://sui.io)

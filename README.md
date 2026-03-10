@@ -2,7 +2,7 @@
 
 > Give your AI agents a budget, not a blank check.
 
-**Five payment schemes for AI agents on Sui — exact, prepaid, escrow, streaming, and SEAL pay-to-decrypt. 1,073 tests. 10 packages. Apache 2.0.**
+**Five payment schemes for AI agents on Sui — exact, prepaid, escrow, streaming, and SEAL pay-to-decrypt. 1,102 tests. 10 packages. Apache 2.0.**
 
 ```typescript
 // 3 lines: AI agent auto-pays for premium data
@@ -177,9 +177,9 @@ AI Agent (Claude, GPT, Cursor, etc.)
 | [`@sweefi/cli`](packages/cli) | CLI tool — wallet, pay, prepaid, mandates | 238 |
 | [`@sweefi/solana`](packages/solana) | Solana s402 payment adapter | 40 |
 | [`@sweefi/ap2-adapter`](packages/ap2-adapter) | Google AP2 ↔ SweeFi mandate bridge | 52 |
-| [`sweefi-contracts`](contracts) | 10 Move modules on Sui testnet | 264 |
+| [`sweefi-contracts`](contracts) | 10 Move modules on Sui testnet | 293 |
 
-**Total: 1,073 passing tests (809 TypeScript + 264 Move)**
+**Total: 1,102 passing tests (809 TypeScript + 293 Move)**
 
 **External**: [`s402`](https://www.npmjs.com/package/s402) (HTTP 402 protocol, v0.2.2), `@mysten/sui@2.6.0`, `@mysten/seal@1.0.1`
 
@@ -208,7 +208,7 @@ View real demo transactions on Sui testnet:
 - [stream::create](https://suiscan.xyz/testnet/tx/GDo8g5Yu1X1zCdaLTtEVCqxeWJqkDDyoHjdGP5TLvkhf) — streaming micropayment meter
 - [escrow::create](https://suiscan.xyz/testnet/tx/EcYFG3FTSwxM49UckuBhg2gYBPMzRBTNzmKy5Aq6UbzR) — time-locked conditional payment
 
-All three invoke Move contracts on [package v10](https://suiscan.xyz/testnet/object/0x04421dc12bdadbc1b7f7652cf2c299e7864571ded5ff4d7f2866de8304a820ef).
+All three invoke Move contracts on [package v11](https://suiscan.xyz/testnet/object/0xb83e50365ba460aaa02e240902a40890bec88cd35bd2fc09afb6c79ec8ea9ac5).
 
 ## Quick Start
 
@@ -337,7 +337,7 @@ No admin keys control user funds.
 
 ## Smart Contracts
 
-Deployed on Sui testnet. 10 modules, 264 Move tests, AdminCap + ProtocolState for governance.
+Deployed on Sui testnet. 10 modules, 293 Move tests, AdminCap + ProtocolState for governance.
 
 | Module | Purpose |
 |--------|---------|
@@ -352,7 +352,7 @@ Deployed on Sui testnet. 10 modules, 264 Move tests, AdminCap + ProtocolState fo
 | `math` | Shared arithmetic utilities (safe division, BPS) |
 | `admin` | AdminCap, ProtocolState, pause/unpause/burn |
 
-Package ID (testnet): `0x04421dc12bdadbc1b7f7652cf2c299e7864571ded5ff4d7f2866de8304a820ef`
+Package ID (testnet): `0xb83e50365ba460aaa02e240902a40890bec88cd35bd2fc09afb6c79ec8ea9ac5`
 
 Token-gated SEAL (standalone): `0xbf9f9d63cbe53f21ac81af068e25e2c736fa2b0537c7e34d7d2862e330fe4fbc`
 
