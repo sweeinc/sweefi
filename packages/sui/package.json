@@ -1,6 +1,6 @@
 {
   "name": "@sweefi/sui",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "type": "module",
   "description": "Sui-native s402 protocol implementation for SweeFi",
   "keywords": [
