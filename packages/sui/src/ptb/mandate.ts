@@ -1,7 +1,7 @@
 import { Transaction, coinWithBalance } from "@mysten/sui/transactions";
 import type { SweefiConfig, PayParams } from "./types";
 import { SUI_CLOCK } from "./deployments";
-import { assertFeeMicroPercent } from "./assert";
+import { assertFeeMicroPercent, assertPositive } from "./assert";
 
 // ══════════════════════════════════════════════════════════════
 // Mandate types
@@ -19,8 +19,8 @@ export interface CreateMandateParams {
   maxPerTx: bigint;
   /** Lifetime spending cap (base units) */
   maxTotal: bigint;
-  /** Expiry timestamp in milliseconds */
-  expiresAtMs: bigint;
+  /** Expiry timestamp in milliseconds. null = no expiry (permanent mandate). */
+  expiresAtMs: bigint | null;
 }
 
 /** Parameters for a mandated payment — validate_and_spend + pay in one PTB */
@@ -74,7 +74,7 @@ export function buildCreateMandateTx(
       tx.pure.address(params.delegate),
       tx.pure.u64(params.maxPerTx),
       tx.pure.u64(params.maxTotal),
-      tx.pure.u64(params.expiresAtMs),
+      tx.pure.option("u64", params.expiresAtMs),
       tx.object(SUI_CLOCK),
     ],
   });
@@ -96,6 +96,7 @@ export function buildMandatedPayTx(
   params: MandatedPayParams,
 ): Transaction {
   assertFeeMicroPercent(params.feeMicroPercent, "buildMandatedPayTx");
+  assertPositive(params.amount, "amount", "buildMandatedPayTx");
 
   const tx = new Transaction();
   tx.setSender(params.sender);

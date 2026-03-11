@@ -239,6 +239,7 @@ export function buildTopUpTx(
   config: SweefiConfig,
   params: PrepaidTopUpParams,
 ): Transaction {
+  assertPositive(params.amount, "amount", "buildTopUpTx");
   const protocolStateId = requireProtocolState(config, "buildTopUpTx");
   const tx = new Transaction();
   tx.setSender(params.sender);

@@ -135,6 +135,7 @@ export function buildPayInvoiceTx(
   config: SweefiConfig,
   params: PayInvoiceParams,
 ): Transaction {
+  assertPositive(params.amount, "amount", "buildPayInvoiceTx");
   const tx = new Transaction();
   tx.setSender(params.sender);
 

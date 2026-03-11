@@ -33,8 +33,9 @@ export function parseAmount(value: string, fieldName: string = "amount"): bigint
   }
   const trimmed = value.trim();
   if (!/^\d+$/.test(trimmed)) {
+    const display = value.length > 100 ? value.slice(0, 100) + "…" : value;
     throw new Error(
-      `${fieldName} must be a non-negative integer in base units (got "${value}"). ` +
+      `${fieldName} must be a non-negative integer in base units (got "${display}"). ` +
         `For 1 SUI, use "1000000000" (9 decimals). For 1 USDC, use "1000000" (6 decimals).`,
     );
   }
@@ -62,8 +63,9 @@ export function parseAmountOrZero(value: string, fieldName: string = "amount"): 
   }
   const trimmed = value.trim();
   if (!/^\d+$/.test(trimmed)) {
+    const display = value.length > 100 ? value.slice(0, 100) + "…" : value;
     throw new Error(
-      `${fieldName} must be a non-negative integer in base units (got "${value}"). ` +
+      `${fieldName} must be a non-negative integer in base units (got "${display}"). ` +
         `For 1 SUI, use "1000000000" (9 decimals). For 1 USDC, use "1000000" (6 decimals).`,
     );
   }
@@ -105,8 +107,9 @@ const ABORT_CODES: Record<number, { code: string; message: string; action: strin
   108: { code: "STREAM_BUDGET_CAP_EXCEEDED", message: "Stream deposit exceeds budget cap", action: "Reduce the deposit amount or increase the budget cap", retryable: false, humanRequired: false },
   109: { code: "STREAM_TIMEOUT_NOT_REACHED", message: "Recipient close timeout has not been reached yet", action: "Wait for the timeout period to elapse before closing", retryable: true, humanRequired: false },
   110: { code: "STREAM_TIMEOUT_TOO_SHORT", message: "Recipient close timeout is too short", action: "Use a longer timeout value", retryable: false, humanRequired: false },
+  111: { code: "STREAM_TIMEOUT_TOO_LONG", message: "Recipient close timeout is too long", action: "Use a shorter timeout value", retryable: false, humanRequired: false },
 
-  // ── escrow.move (200-213) ───────────────────────────────────
+  // ── escrow.move (200-215) ───────────────────────────────────
   200: { code: "ESCROW_NOT_BUYER", message: "Signer is not the escrow buyer", action: "Use the buyer wallet that created the escrow", retryable: false, humanRequired: false },
   201: { code: "ESCROW_NOT_SELLER", message: "Signer is not the escrow seller", action: "Use the seller wallet specified in the escrow", retryable: false, humanRequired: false },
   202: { code: "ESCROW_NOT_ARBITER", message: "Signer is not the escrow arbiter", action: "Use the arbiter wallet specified in the escrow", retryable: false, humanRequired: false },
@@ -121,6 +124,8 @@ const ABORT_CODES: Record<number, { code: string; message: string; action: strin
   211: { code: "ESCROW_DESCRIPTION_TOO_LONG", message: "Escrow description exceeds maximum length", action: "Shorten the description", retryable: false, humanRequired: false },
   212: { code: "ESCROW_ARBITER_IS_SELLER", message: "Arbiter cannot be the same address as the seller", action: "Use a different arbiter address", retryable: false, humanRequired: false },
   213: { code: "ESCROW_ARBITER_IS_BUYER", message: "Arbiter cannot be the same address as the buyer", action: "Use a different arbiter address", retryable: false, humanRequired: false },
+  214: { code: "ESCROW_BUYER_IS_SELLER", message: "Buyer cannot be the same address as the seller", action: "Use a different buyer or seller address", retryable: false, humanRequired: false },
+  215: { code: "ESCROW_DEADLINE_REACHED", message: "Escrow deadline has already passed — release is blocked", action: "The deadline has passed. The buyer can now refund the escrow instead.", retryable: false, humanRequired: false },
 
   // ── seal_policy.move (300) ──────────────────────────────────
   300: { code: "SEAL_NO_ACCESS", message: "Access denied by SEAL policy", action: "The payment receipt does not satisfy the SEAL access policy. Check that payment was made correctly.", retryable: false, humanRequired: false },
@@ -133,10 +138,11 @@ const ABORT_CODES: Record<number, { code: string; message: string; action: strin
   404: { code: "MANDATE_NOT_DELEGATOR", message: "Signer is not the delegator (owner) of this mandate", action: "Only the delegator can revoke mandates. Use the delegator wallet.", retryable: false, humanRequired: false },
   405: { code: "MANDATE_REVOKED", message: "Mandate has been revoked by the delegator", action: "This requires human authorization — inform the user. The mandate was intentionally revoked. Do not attempt to create a new mandate, use a different mandate, or retry. Wait for the user to respond.", retryable: false, humanRequired: true },
 
-  // ── admin.move (500-502) ───────────────────────────────────
+  // ── admin.move (500-503) ───────────────────────────────────
   500: { code: "ALREADY_PAUSED", message: "Protocol is already paused", action: "No action needed — the protocol is already in paused state", retryable: false, humanRequired: false },
   501: { code: "NOT_PAUSED", message: "Protocol is not paused", action: "The protocol must be paused before it can be unpaused", retryable: false, humanRequired: false },
   502: { code: "PROTOCOL_PAUSED", message: "Protocol is paused — new operations are blocked", action: "Wait for the protocol admin to unpause, or use exit operations (claim, close, withdraw) which are always allowed", retryable: true, humanRequired: true },
+  503: { code: "AUTO_UNPAUSE_NOT_READY", message: "Auto-unpause window has not elapsed yet", action: "Wait for the 14-day auto-unpause window to pass, then call auto_unpause again", retryable: true, humanRequired: false },
 
   // ── agent_mandate.move (550-560) ──────────────────────────
   550: { code: "AGENT_MANDATE_NOT_DELEGATE", message: "Signer is not the authorized delegate for this agent mandate", action: "Verify the mandate ID and that your wallet is the delegate", retryable: false, humanRequired: false },
@@ -151,7 +157,7 @@ const ABORT_CODES: Record<number, { code: string; message: string; action: strin
   559: { code: "AGENT_MANDATE_LEVEL_NOT_AUTHORIZED", message: "Mandate autonomy level does not permit this action", action: "This mandate's level is too low for spending. L2+ is required for payments. Ask the user to upgrade the mandate level.", retryable: false, humanRequired: true },
   560: { code: "AGENT_MANDATE_CANNOT_DOWNGRADE", message: "Cannot downgrade agent mandate level", action: "Mandate levels can only be upgraded, not downgraded. To reduce permissions, revoke the mandate and create a new one.", retryable: false, humanRequired: true },
 
-  // ── prepaid.move (600-613) ──────────────────────────────────
+  // ── prepaid.move (600-622) ──────────────────────────────────
   600: { code: "PREPAID_NOT_AGENT", message: "Signer is not the agent (depositor) for this balance", action: "Use the correct wallet — the one that created the prepaid deposit", retryable: false, humanRequired: false },
   601: { code: "PREPAID_NOT_PROVIDER", message: "Signer is not the authorized provider", action: "Use the provider wallet that was authorized in the prepaid deposit", retryable: false, humanRequired: false },
   602: { code: "PREPAID_ZERO_DEPOSIT", message: "Deposit amount must be greater than zero", action: "Provide a positive deposit amount", retryable: false, humanRequired: false },
@@ -166,6 +172,15 @@ const ABORT_CODES: Record<number, { code: string; message: string; action: strin
   611: { code: "PREPAID_BALANCE_NOT_EXHAUSTED", message: "Cannot close PrepaidBalance — funds remain", action: "Use sweefi_prepaid_request_withdrawal to withdraw remaining funds, or wait for the provider to claim the remaining balance", retryable: false, humanRequired: false },
   612: { code: "PREPAID_WITHDRAWAL_DELAY_TOO_SHORT", message: "Withdrawal delay is below the minimum (60000 ms / 1 minute)", action: "Use a withdrawal delay of at least 60000 ms", retryable: false, humanRequired: false },
   613: { code: "PREPAID_WITHDRAWAL_DELAY_TOO_LONG", message: "Withdrawal delay exceeds the maximum (604800000 ms / 7 days)", action: "Use a withdrawal delay of at most 604800000 ms", retryable: false, humanRequired: false },
+  614: { code: "PREPAID_INVALID_DISPUTE_WINDOW", message: "Dispute window is invalid (must be > 0 and ≤ withdrawal delay)", action: "Provide a valid dispute_window_ms value", retryable: false, humanRequired: false },
+  615: { code: "PREPAID_NO_PENDING_CLAIM", message: "No pending claim exists to dispute or finalize", action: "The provider must submit a claim first before it can be disputed or finalized", retryable: false, humanRequired: false },
+  616: { code: "PREPAID_CLAIM_NOT_FINALIZABLE", message: "Pending claim cannot be finalized yet (dispute window still open)", action: "Wait for the dispute window to close, then call finalize_claim", retryable: true, humanRequired: false },
+  617: { code: "PREPAID_INVALID_FRAUD_PROOF", message: "Fraud proof is invalid — receipt does not prove overcharge", action: "Submit a valid signed receipt from the current batch that proves the provider claimed more calls than actually served", retryable: false, humanRequired: false },
+  618: { code: "PREPAID_BALANCE_DISPUTED", message: "PrepaidBalance is in disputed state — claims are blocked", action: "The dispute must be resolved before new claims can be submitted", retryable: false, humanRequired: true },
+  619: { code: "PREPAID_INVALID_PROVIDER_PUBKEY", message: "Provider public key is invalid", action: "Provide a valid Ed25519 public key (32 bytes)", retryable: false, humanRequired: false },
+  620: { code: "PREPAID_PENDING_CLAIM_EXISTS", message: "A pending claim already exists — cannot withdraw or submit another claim", action: "Finalize or dispute the existing pending claim first", retryable: false, humanRequired: false },
+  621: { code: "PREPAID_BALANCE_NOT_DISPUTED", message: "Balance is not in disputed state", action: "This action requires the balance to be disputed first", retryable: false, humanRequired: false },
+  622: { code: "PREPAID_DISPUTE_WINDOW_EXPIRED", message: "Dispute window has expired — the claim can no longer be disputed", action: "The dispute window has closed. The pending claim will be finalized.", retryable: false, humanRequired: false },
 
   // ── identity.move (700-705) ─────────────────────────────────
   700: { code: "IDENTITY_ALREADY_REGISTERED", message: "This address already has a registered identity", action: "Each address can only have one identity. Use the existing identity or transfer it first.", retryable: false, humanRequired: false },

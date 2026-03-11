@@ -101,6 +101,9 @@ export class ExactSuiClientScheme implements s402ClientScheme {
     }
 
     const totalAmount = BigInt(amount);
+    if (totalAmount <= 0n) {
+      throw new Error("ExactSuiClientScheme: payment amount must be positive");
+    }
 
     // Resolve the effective package ID for Move calls (memo-bearing payments
     // use payment::pay_and_keep which requires the SweeFi package).

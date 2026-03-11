@@ -1,7 +1,7 @@
 import { Transaction, coinWithBalance } from "@mysten/sui/transactions";
 import type { SweefiConfig, PayParams } from "./types";
 import { SUI_CLOCK } from "./deployments";
-import { assertFeeMicroPercent } from "./assert";
+import { assertFeeMicroPercent, assertPositive } from "./assert";
 
 // ══════════════════════════════════════════════════════════════
 // Agent Mandate types
@@ -39,8 +39,8 @@ export interface CreateAgentMandateParams {
   weeklyLimit: bigint;
   /** Lifetime spending cap (base units). u64::MAX = effectively unlimited. 0 = zero budget. */
   maxTotal: bigint;
-  /** Expiry timestamp in milliseconds */
-  expiresAtMs: bigint;
+  /** Expiry timestamp in milliseconds. null = no expiry (permanent mandate). */
+  expiresAtMs: bigint | null;
 }
 
 /** Parameters for agent-mandated payment — validate_and_spend + pay in one PTB */
@@ -126,7 +126,7 @@ export function buildCreateAgentMandateTx(
       tx.pure.u64(params.dailyLimit),
       tx.pure.u64(params.weeklyLimit),
       tx.pure.u64(params.maxTotal),
-      tx.pure.u64(params.expiresAtMs),
+      tx.pure.option("u64", params.expiresAtMs),
       tx.object(SUI_CLOCK),
     ],
   });
@@ -145,6 +145,7 @@ export function buildAgentMandatedPayTx(
   params: AgentMandatedPayParams,
 ): Transaction {
   assertFeeMicroPercent(params.feeMicroPercent, "buildAgentMandatedPayTx");
+  assertPositive(params.amount, "amount", "buildAgentMandatedPayTx");
 
   const tx = new Transaction();
   tx.setSender(params.sender);

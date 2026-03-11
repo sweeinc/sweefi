@@ -257,6 +257,7 @@ export function buildTopUpTx(
   config: SweefiConfig,
   params: StreamTopUpParams,
 ): Transaction {
+  assertPositive(params.depositAmount, "depositAmount", "buildTopUpTx");
   const protocolStateId = requireProtocolState(config, "buildTopUpTx");
   const tx = new Transaction();
   tx.setSender(params.sender);
