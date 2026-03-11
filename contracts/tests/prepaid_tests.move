@@ -2329,4 +2329,501 @@ module sweefi::prepaid_tests {
         clock.destroy_for_testing();
         scenario.end();
     }
+
+    // ══════════════════════════════════════════════════════════════
+    // PART A: Adversarial Scenario Tests
+    // ══════════════════════════════════════════════════════════════
+
+    // ── A1: Balance drain attack ──────────────────────────────────
+    // Can a malicious provider claim more than deposited?
+    // Deposit X, provider claims max_calls * rate_per_call, verify balance == 0,
+    // then try to claim one more — should fail with ERateLimitExceeded.
+    #[test]
+    #[expected_failure(abort_code = prepaid::EMaxCallsExceeded)]
+    fun test_adversarial_prepaid_balance_drain() {
+        let mut scenario = ts::begin(AGENT);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        // Deposit exactly 10_000_000 MIST, rate 1000/call, max 10_000 calls
+        // max_calls * rate = 10_000 * 1000 = 10_000_000 = deposit (exactly exhausts)
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        prepaid::deposit<SUI>(deposit, PROVIDER, RATE, 10_000, DELAY_MS, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+
+        clock.increment_for_testing(1_000);
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+
+        // Provider claims ALL 10_000 calls — drains balance to 0
+        prepaid::claim(&mut bal, 10_000, &clock, scenario.ctx());
+        assert!(prepaid::balance_remaining(&bal) == 0);
+        assert!(prepaid::balance_claimed_calls(&bal) == 10_000);
+
+        // Invariant P1: claimed + remaining == initial_deposit
+        // 10_000_000 + 0 == 10_000_000 ✓
+
+        // Now attacker tries ONE MORE claim (10_001) — must fail
+        prepaid::claim(&mut bal, 10_001, &clock, scenario.ctx());
+
+        ts::return_shared(bal);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // ── A2: Call count regression attack ──────────────────────────
+    // Can a provider submit claim(50) then claim(30) to re-claim already-paid calls?
+    #[test]
+    #[expected_failure(abort_code = prepaid::ECallCountRegression)]
+    fun test_adversarial_prepaid_call_count_regression() {
+        let mut scenario = ts::begin(AGENT);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+        prepaid::deposit<SUI>(deposit, PROVIDER, RATE, UNLIMITED, DELAY_MS, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+
+        clock.increment_for_testing(1_000);
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+
+        // Provider claims 50 calls (legitimate)
+        prepaid::claim(&mut bal, 50, &clock, scenario.ctx());
+        assert!(prepaid::balance_claimed_calls(&bal) == 50);
+
+        // Attacker submits claim(30) — trying to re-claim calls 1-30
+        // Should fail with ECallCountRegression (cumulative < claimed_calls)
+        prepaid::claim(&mut bal, 30, &clock, scenario.ctx());
+
+        ts::return_shared(bal);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // ── A3: Withdrawal race (finalize with pending v0.2 claim) ───
+    // Can an agent finalize withdrawal while a claim is pending?
+    // Should fail with EPendingClaimExists.
+    #[test]
+    #[expected_failure(abort_code = prepaid::EPendingClaimExists)]
+    fun test_adversarial_prepaid_withdrawal_race_pending_claim() {
+        let mut scenario = ts::begin(AGENT);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        // Use v0.2 mode (dispute_window > 0) so claims go to pending state
+        let pubkey = x"0000000000000000000000000000000000000000000000000000000000000001";
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        prepaid::deposit_with_receipts<SUI>(
+            deposit, PROVIDER, RATE, UNLIMITED, DELAY_MS,
+            0, FEE_RECIPIENT,
+            pubkey,
+            60_000, // 1 min dispute window
+            &state, &clock, scenario.ctx(),
+        );
+
+        clock.increment_for_testing(1_000);
+
+        // Provider submits a claim → enters pending state (v0.2 optimistic)
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::claim(&mut bal, 100, &clock, scenario.ctx());
+        assert!(prepaid::balance_pending_claim_count(&bal) == 100);
+        ts::return_shared(bal);
+
+        // Agent requests withdrawal
+        scenario.next_tx(AGENT);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::request_withdrawal(&mut bal, &clock, scenario.ctx());
+        ts::return_shared(bal);
+
+        // Advance past withdrawal delay
+        clock.increment_for_testing(DELAY_MS + 1_000);
+
+        // Agent tries to finalize withdrawal — should fail because pending claim exists
+        scenario.next_tx(AGENT);
+        let bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::finalize_withdrawal(bal, &clock, scenario.ctx());
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // ── A4: Dispute on settled batch (P2 invariant fix F1) ───────
+    // Can an agent dispute using a receipt from a PREVIOUSLY settled batch?
+    // The F1 lower bound check (receipt_call_number > balance.claimed_calls)
+    // prevents reusing old receipts to fraudulently dispute new legitimate claims.
+    //
+    // NOTE: This test verifies the contract logic by constructing the scenario
+    // where a receipt_call_number from a prior batch would pass the upper bound
+    // (< pending_claim_count) but must fail the lower bound (> claimed_calls).
+    // We cannot forge Ed25519 signatures in tests, so we verify the structural
+    // check by attempting dispute_claim with call_number <= claimed_calls.
+    // The Ed25519 verify would also need to pass, so we document the F1 guard
+    // conceptually: even if signature were valid, the lower bound check fires.
+    //
+    // In practice, dispute_claim checks:
+    //   receipt_call_number < pending_claim_count  (upper bound — receipt shows fewer)
+    //   receipt_call_number > claimed_calls         (lower bound — F1: must be from current batch)
+    //
+    // A receipt from batch 1 (call_number=25, settled claimed_calls=50) tried against
+    // batch 2 (pending_claim_count=100) would pass upper (25 < 100) but FAIL lower (25 !> 50).
+    //
+    // Since we can't construct a valid Ed25519 signature in Move tests for dispute_claim,
+    // we document this invariant and verify the immediately preceding guard (ENoPendingClaim)
+    // which also blocks the attack path: if there's no pending claim, dispute is impossible.
+    #[test]
+    #[expected_failure(abort_code = prepaid::ENoPendingClaim)]
+    fun test_adversarial_prepaid_dispute_on_settled_batch() {
+        let mut scenario = ts::begin(AGENT);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        // v0.2 balance with dispute window
+        let pubkey = x"0000000000000000000000000000000000000000000000000000000000000001";
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        prepaid::deposit_with_receipts<SUI>(
+            deposit, PROVIDER, RATE, UNLIMITED, DELAY_MS,
+            0, FEE_RECIPIENT,
+            pubkey,
+            60_000, // 1 min dispute window
+            &state, &clock, scenario.ctx(),
+        );
+
+        clock.increment_for_testing(1_000);
+
+        // Provider submits claim (batch 1)
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::claim(&mut bal, 50, &clock, scenario.ctx());
+        assert!(prepaid::balance_pending_claim_count(&bal) == 50);
+        ts::return_shared(bal);
+
+        // Wait for dispute window to expire, then finalize (batch 1 settled)
+        clock.increment_for_testing(60_001);
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::finalize_claim(&mut bal, &clock, scenario.ctx());
+        assert!(prepaid::balance_claimed_calls(&bal) == 50);
+        assert!(prepaid::balance_pending_claim_count(&bal) == 0);
+        ts::return_shared(bal);
+
+        // Now agent tries to dispute with NO pending claim — should fail with ENoPendingClaim
+        // (In a real attack, they'd try to reuse a receipt from batch 1; the F1 lower bound
+        // check would catch it. But ENoPendingClaim fires first since no batch 2 exists.)
+        scenario.next_tx(AGENT);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::dispute_claim(
+            &mut bal,
+            @0x0, // dummy receipt_balance_id
+            25,   // call_number from old batch (would fail F1: 25 !> 50)
+            0,
+            b"dummy_hash",
+            x"0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", // 64-byte dummy sig
+            &clock,
+            scenario.ctx(),
+        );
+
+        ts::return_shared(bal);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // PART B: State Transition Tests
+    // ══════════════════════════════════════════════════════════════
+
+    // ── B1: Full lifecycle: deposit → claim → request_withdrawal → finalize ──
+    #[test]
+    fun test_state_prepaid_full_lifecycle() {
+        let mut scenario = ts::begin(AGENT);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        // 1. Agent deposits
+        let deposit = coin::mint_for_testing<SUI>(10_000_000, scenario.ctx());
+        prepaid::deposit<SUI>(deposit, PROVIDER, RATE, UNLIMITED, DELAY_MS, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+
+        clock.increment_for_testing(1_000);
+
+        // 2. Provider claims some calls
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::claim(&mut bal, 500, &clock, scenario.ctx());
+        assert!(prepaid::balance_claimed_calls(&bal) == 500);
+        assert!(prepaid::balance_remaining(&bal) == 9_500_000); // 10M - 500*1000
+        assert!(prepaid::balance_withdrawal_pending(&bal) == false);
+        ts::return_shared(bal);
+
+        // 3. Agent requests withdrawal
+        clock.increment_for_testing(1_000);
+        scenario.next_tx(AGENT);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::request_withdrawal(&mut bal, &clock, scenario.ctx());
+        assert!(prepaid::balance_withdrawal_pending(&bal) == true);
+        ts::return_shared(bal);
+
+        // 4. Wait past delay, finalize withdrawal
+        clock.increment_for_testing(DELAY_MS + 1_000);
+        scenario.next_tx(AGENT);
+        let bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::finalize_withdrawal(bal, &clock, scenario.ctx());
+
+        // 5. Agent receives remaining funds
+        scenario.next_tx(AGENT);
+        let refund = scenario.take_from_address<coin::Coin<SUI>>(AGENT);
+        assert!(refund.value() == 9_500_000);
+        ts::return_to_address(AGENT, refund);
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // ── B2: Cancel withdrawal → back to active → can claim again ──
+    #[test]
+    fun test_state_prepaid_cancel_withdrawal_then_claim() {
+        let mut scenario = ts::begin(AGENT);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        let deposit = coin::mint_for_testing<SUI>(5_000_000, scenario.ctx());
+        prepaid::deposit<SUI>(deposit, PROVIDER, RATE, UNLIMITED, DELAY_MS, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+
+        clock.increment_for_testing(1_000);
+
+        // Agent requests withdrawal
+        scenario.next_tx(AGENT);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::request_withdrawal(&mut bal, &clock, scenario.ctx());
+        assert!(prepaid::balance_withdrawal_pending(&bal) == true);
+
+        // Agent cancels withdrawal
+        prepaid::cancel_withdrawal(&mut bal, scenario.ctx());
+        assert!(prepaid::balance_withdrawal_pending(&bal) == false);
+        ts::return_shared(bal);
+
+        // Provider can still claim after cancel
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::claim(&mut bal, 200, &clock, scenario.ctx());
+        assert!(prepaid::balance_claimed_calls(&bal) == 200);
+        assert!(prepaid::balance_remaining(&bal) == 4_800_000);
+
+        ts::return_shared(bal);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // ── B3: Cannot request withdrawal while already pending ──
+    #[test]
+    #[expected_failure(abort_code = prepaid::EWithdrawalPending)]
+    fun test_state_prepaid_double_withdrawal_request_fails() {
+        let mut scenario = ts::begin(AGENT);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+        prepaid::deposit<SUI>(deposit, PROVIDER, RATE, UNLIMITED, DELAY_MS, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+
+        scenario.next_tx(AGENT);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::request_withdrawal(&mut bal, &clock, scenario.ctx());
+        assert!(prepaid::balance_withdrawal_pending(&bal) == true);
+
+        // Second request — should fail with EWithdrawalPending
+        prepaid::request_withdrawal(&mut bal, &clock, scenario.ctx());
+
+        ts::return_shared(bal);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // ── B4: Dispute blocks further claims ──────────────────────────
+    // After a balance is disputed (v0.2 fraud proof), provider cannot claim.
+    // We create a disputed balance by exploiting test helpers and verify claims fail.
+    //
+    // NOTE: Creating a legitimately disputed balance requires valid Ed25519 signatures
+    // which cannot be generated in Move tests. The MC/DC matrix already covers
+    // claim() checking !balance.disputed (MC-2: test_mcdc_claim_on_disputed_balance_fails).
+    // This test confirms the state transition: disputed → claim blocked.
+    // We rely on the existing test_mcdc_claim_on_disputed_balance_fails for this coverage.
+    // Documented here for completeness of the state transition matrix.
+
+    // ══════════════════════════════════════════════════════════════
+    // Mutation kill tests
+    // ══════════════════════════════════════════════════════════════
+
+    // Mutation kill: cumulative_call_count <= max_calls → < (would reject exact max_calls)
+    // Severity: HIGH — denies provider their final earned payment
+    #[test]
+    fun test_mutation_kill_claim_at_exact_max_calls() {
+        let mut scenario = ts::begin(AGENT);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        // max_calls = 100, deposit enough for 100 calls
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+        prepaid::deposit<SUI>(deposit, PROVIDER, RATE, 100, DELAY_MS, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+
+        clock.increment_for_testing(1_000);
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+
+        // Claim exactly max_calls (100) — MUST succeed
+        prepaid::claim(&mut bal, 100, &clock, scenario.ctx());
+        assert!(prepaid::balance_claimed_calls(&bal) == 100);
+        // 100 calls * 1000 rate = 100_000 claimed
+        assert!(prepaid::balance_remaining(&bal) == 900_000);
+
+        ts::return_shared(bal);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // Mutation kill: gross_amount <= deposited.value() → < (would reject exact-balance claim)
+    // Severity: HIGH — locks provider out of final payment when claim equals remaining balance
+    #[test]
+    fun test_mutation_kill_claim_exactly_remaining_balance() {
+        let mut scenario = ts::begin(AGENT);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        // Deposit exactly 5_000_000, rate = 1_000_000 per call, max 5 calls
+        let deposit = coin::mint_for_testing<SUI>(5_000_000, scenario.ctx());
+        prepaid::deposit<SUI>(deposit, PROVIDER, 1_000_000, 5, DELAY_MS, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+
+        clock.increment_for_testing(1_000);
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+
+        // Claim exactly 5 calls = 5_000_000 = entire deposit — MUST succeed
+        prepaid::claim(&mut bal, 5, &clock, scenario.ctx());
+        assert!(prepaid::balance_remaining(&bal) == 0);
+        assert!(prepaid::balance_claimed_calls(&bal) == 5);
+
+        ts::return_shared(bal);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // Mutation kill: amount >= MIN_DEPOSIT → > (would reject exact MIN_DEPOSIT)
+    // Severity: MEDIUM — prevents legitimate minimum deposits
+    #[test]
+    fun test_mutation_kill_deposit_exact_min_deposit() {
+        let mut scenario = ts::begin(AGENT);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        // Deposit exactly MIN_DEPOSIT (1_000_000) — MUST succeed
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+        prepaid::deposit<SUI>(deposit, PROVIDER, RATE, UNLIMITED, DELAY_MS, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+
+        scenario.next_tx(AGENT);
+        let bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        assert!(prepaid::balance_remaining(&bal) == 1_000_000);
+
+        ts::return_shared(bal);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // Mutation kill: withdrawal_delay_ms >= MIN_WITHDRAWAL_DELAY_MS → > (would reject exact minimum)
+    // Severity: MEDIUM — prevents legitimate minimum delay configuration
+    #[test]
+    fun test_mutation_kill_deposit_exact_min_withdrawal_delay() {
+        let mut scenario = ts::begin(AGENT);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        // MIN_WITHDRAWAL_DELAY_MS = 60_000 (1 minute)
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+        prepaid::deposit<SUI>(deposit, PROVIDER, RATE, UNLIMITED, 60_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+
+        scenario.next_tx(AGENT);
+        let bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        assert!(prepaid::balance_withdrawal_delay_ms(&bal) == 60_000);
+
+        ts::return_shared(bal);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // Mutation kill: withdrawal_delay_ms <= MAX_WITHDRAWAL_DELAY_MS → < (would reject exact max)
+    // Severity: MEDIUM — prevents legitimate maximum delay configuration
+    #[test]
+    fun test_mutation_kill_deposit_exact_max_withdrawal_delay() {
+        let mut scenario = ts::begin(AGENT);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        // MAX_WITHDRAWAL_DELAY_MS = 604_800_000 (7 days)
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+        prepaid::deposit<SUI>(deposit, PROVIDER, RATE, UNLIMITED, 604_800_000, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+
+        scenario.next_tx(AGENT);
+        let bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        assert!(prepaid::balance_withdrawal_delay_ms(&bal) == 604_800_000);
+
+        ts::return_shared(bal);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // Mutation kill: now_ms >= withdrawal_requested_ms + withdrawal_delay_ms → > in finalize_withdrawal
+    // Severity: HIGH — delays agent fund recovery by rejecting finalize at exact delay boundary
+    #[test]
+    fun test_mutation_kill_finalize_withdrawal_at_exact_delay() {
+        let mut scenario = ts::begin(AGENT);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+        prepaid::deposit<SUI>(deposit, PROVIDER, RATE, UNLIMITED, DELAY_MS, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx());
+
+        // Request withdrawal at T=0
+        scenario.next_tx(AGENT);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::request_withdrawal(&mut bal, &clock, scenario.ctx());
+        ts::return_shared(bal);
+
+        // Advance exactly DELAY_MS (not DELAY_MS + 1) — MUST succeed
+        clock.increment_for_testing(DELAY_MS);
+
+        scenario.next_tx(AGENT);
+        let bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+        prepaid::finalize_withdrawal(bal, &clock, scenario.ctx());
+
+        // Verify agent received refund
+        scenario.next_tx(AGENT);
+        let refund = scenario.take_from_address<coin::Coin<SUI>>(AGENT);
+        assert!(refund.value() == 1_000_000);
+        ts::return_to_address(AGENT, refund);
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
 }

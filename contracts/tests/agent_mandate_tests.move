@@ -1410,4 +1410,232 @@ module sweefi::agent_mandate_tests {
         clock::destroy_for_testing(clock);
         ts::end(scenario);
     }
+
+    // ══════════════════════════════════════════════════════════════
+    // PART A: Adversarial Scenario Tests
+    // ══════════════════════════════════════════════════════════════
+
+    // ── A1: Registry bypass (H-1 equivalent for AgentMandate) ────
+    // Rogue delegate creates their own empty registry to bypass revocation.
+    // agent_mandate::validate_and_spend checks registry_owner == mandate.delegator.
+    #[test]
+    #[expected_failure(abort_code = agent_mandate::ENotDelegator)]
+    fun test_adversarial_agent_mandate_registry_bypass() {
+        let mut scenario = ts::begin(DELEGATOR);
+        let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let mut legit_registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = agent_mandate::create<SUI>(
+            DELEGATE, 2,      // L2 capped
+            1_000_000_000,    // max_per_tx
+            NO_LIMIT,         // daily_limit
+            NO_LIMIT,         // weekly_limit
+            NO_LIMIT,         // max_total
+            option::some(1_000_000),
+            &clock, ctx,
+        );
+
+        // Delegator revokes
+        let mandate_id = object::id(&m);
+        mandate::revoke<SUI>(&mut legit_registry, mandate_id, ctx);
+        assert!(agent_mandate::is_revoked(&m, &legit_registry));
+
+        // Delegate creates rogue registry (empty — no revocations)
+        ts::next_tx(&mut scenario, DELEGATE);
+        let rogue_registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        // Spend with rogue registry → MUST fail with ENotDelegator
+        agent_mandate::validate_and_spend(&mut m, 100, &rogue_registry, &clock, ctx);
+
+        agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(legit_registry);
+        mandate::destroy_registry_for_testing(rogue_registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    // ── A2: Expired agent mandate spend ──────────────────────────
+    #[test]
+    #[expected_failure(abort_code = agent_mandate::EExpired)]
+    fun test_adversarial_agent_mandate_expired_spend() {
+        let mut scenario = ts::begin(DELEGATOR);
+        let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            NO_LIMIT, NO_LIMIT, NO_LIMIT, NO_LIMIT,
+            option::some(10_000), // expires at 10s
+            &clock, ctx,
+        );
+
+        // Advance clock past expiry
+        clock::set_for_testing(&mut clock, 10_001);
+
+        ts::next_tx(&mut scenario, DELEGATE);
+        let ctx = ts::ctx(&mut scenario);
+
+        // Must fail — mandate expired
+        agent_mandate::validate_and_spend(&mut m, 1_000, &registry, &clock, ctx);
+
+        agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    // ── A3: Daily cap boundary test ──────────────────────────────
+    // Spend exactly to the daily limit, then try one more — should fail.
+    // Then advance clock past 24h, verify cap resets.
+    #[test]
+    fun test_adversarial_agent_mandate_daily_cap_boundary_and_reset() {
+        let mut scenario = ts::begin(DELEGATOR);
+        let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            100,              // max_per_tx: 100
+            200,              // daily_limit: 200
+            NO_LIMIT,         // weekly_limit: unlimited
+            NO_LIMIT,         // max_total: unlimited
+            option::some(100_000_000), // far future
+            &clock, ctx,
+        );
+
+        ts::next_tx(&mut scenario, DELEGATE);
+        let ctx = ts::ctx(&mut scenario);
+
+        // Spend exactly daily_limit in two transactions
+        agent_mandate::validate_and_spend(&mut m, 100, &registry, &clock, ctx);
+        agent_mandate::validate_and_spend(&mut m, 100, &registry, &clock, ctx);
+        assert!(agent_mandate::daily_spent(&m) == 200);
+        assert!(agent_mandate::daily_remaining(&m) == 0);
+
+        // Advance clock past 24h (86_400_000 ms) to trigger lazy daily reset
+        clock::set_for_testing(&mut clock, 86_400_001);
+
+        // Should succeed — daily cap reset
+        agent_mandate::validate_and_spend(&mut m, 50, &registry, &clock, ctx);
+        assert!(agent_mandate::daily_spent(&m) == 50); // fresh daily counter
+        assert!(agent_mandate::total_spent(&m) == 250); // lifetime accumulates
+
+        agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    // ── A3b: Daily cap exceeded (one over) ───────────────────────
+    #[test]
+    #[expected_failure(abort_code = agent_mandate::EDailyLimitExceeded)]
+    fun test_adversarial_agent_mandate_daily_cap_exceeded() {
+        let mut scenario = ts::begin(DELEGATOR);
+        let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            200,              // max_per_tx: 200
+            200,              // daily_limit: 200
+            NO_LIMIT, NO_LIMIT,
+            option::some(100_000_000),
+            &clock, ctx,
+        );
+
+        ts::next_tx(&mut scenario, DELEGATE);
+        let ctx = ts::ctx(&mut scenario);
+
+        // Spend exactly daily_limit
+        agent_mandate::validate_and_spend(&mut m, 200, &registry, &clock, ctx);
+        assert!(agent_mandate::daily_spent(&m) == 200);
+
+        // Try one more — MUST fail with EDailyLimitExceeded
+        agent_mandate::validate_and_spend(&mut m, 1, &registry, &clock, ctx);
+
+        agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    // ── A4: Weekly cap boundary test ─────────────────────────────
+    #[test]
+    #[expected_failure(abort_code = agent_mandate::EWeeklyLimitExceeded)]
+    fun test_adversarial_agent_mandate_weekly_cap_exceeded() {
+        let mut scenario = ts::begin(DELEGATOR);
+        let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            500,              // max_per_tx: 500
+            NO_LIMIT,         // daily_limit: unlimited
+            500,              // weekly_limit: 500
+            NO_LIMIT,         // max_total: unlimited
+            option::some(100_000_000),
+            &clock, ctx,
+        );
+
+        ts::next_tx(&mut scenario, DELEGATE);
+        let ctx = ts::ctx(&mut scenario);
+
+        // Spend exactly weekly_limit
+        agent_mandate::validate_and_spend(&mut m, 500, &registry, &clock, ctx);
+        assert!(agent_mandate::weekly_spent(&m) == 500);
+
+        // Try one more — MUST fail with EWeeklyLimitExceeded
+        agent_mandate::validate_and_spend(&mut m, 1, &registry, &clock, ctx);
+
+        agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    // ── A5: Weekly cap reset after 7 days ────────────────────────
+    #[test]
+    fun test_adversarial_agent_mandate_weekly_cap_reset() {
+        let mut scenario = ts::begin(DELEGATOR);
+        let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = agent_mandate::create<SUI>(
+            DELEGATE, 2,
+            500,              // max_per_tx: 500
+            NO_LIMIT,         // daily_limit
+            500,              // weekly_limit: 500
+            NO_LIMIT,         // max_total
+            option::some(100_000_000_000), // far future
+            &clock, ctx,
+        );
+
+        ts::next_tx(&mut scenario, DELEGATE);
+        let ctx = ts::ctx(&mut scenario);
+
+        // Exhaust weekly cap
+        agent_mandate::validate_and_spend(&mut m, 500, &registry, &clock, ctx);
+        assert!(agent_mandate::weekly_spent(&m) == 500);
+        assert!(agent_mandate::weekly_remaining(&m) == 0);
+
+        // Advance clock past 7 days (604_800_000 ms)
+        clock::set_for_testing(&mut clock, 604_800_001);
+
+        // Should succeed — weekly cap reset
+        agent_mandate::validate_and_spend(&mut m, 100, &registry, &clock, ctx);
+        assert!(agent_mandate::weekly_spent(&m) == 100);
+        assert!(agent_mandate::total_spent(&m) == 600); // lifetime accumulates
+
+        agent_mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
 }

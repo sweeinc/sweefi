@@ -658,4 +658,137 @@ module sweefi::mandate_tests {
         clock::destroy_for_testing(clock);
         ts::end(scenario);
     }
+
+    // ══════════════════════════════════════════════════════════════
+    // PART A: Adversarial Scenario Tests
+    // ══════════════════════════════════════════════════════════════
+
+    // ── A1: Cap bypass via many small transactions ───────────────
+    // Can an agent bypass per_tx limit by making many small transactions?
+    // Each individual 1-unit transaction is within per_tx, but they should
+    // all succeed until the lifetime cap is hit — then fail.
+    #[test]
+    #[expected_failure(abort_code = mandate::ETotalLimitExceeded)]
+    fun test_adversarial_mandate_cap_bypass_many_small_txs() {
+        let mut scenario = ts::begin(DELEGATOR);
+        let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        // per_tx=50, max_total=100
+        // Agent can do 100 transactions of 1 each (all within per_tx=50)
+        // but total_spent will hit max_total=100 on the 101st
+        let mut m = mandate::create<SUI>(
+            DELEGATE,
+            50,               // max_per_tx: 50
+            100,              // max_total: 100
+            option::some(1_000_000), // far future expiry
+            &clock,
+            ctx,
+        );
+
+        ts::next_tx(&mut scenario, DELEGATE);
+        let ctx = ts::ctx(&mut scenario);
+
+        // Spend 100 times (1 each) — all succeed, total_spent reaches 100
+        let mut i = 0u64;
+        while (i < 100) {
+            mandate::validate_and_spend(&mut m, 1, &registry, &clock, ctx);
+            i = i + 1;
+        };
+        assert!(mandate::total_spent(&m) == 100);
+        assert!(mandate::remaining(&m) == 0);
+
+        // 101st attempt — even 1 unit exceeds lifetime cap
+        mandate::validate_and_spend(&mut m, 1, &registry, &clock, ctx);
+
+        mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    // ── A2: Registry bypass (V8 H-1 fix) ────────────────────────
+    // Can a rogue delegate pass their OWN empty registry to bypass revocation?
+    // The registry ownership check (registry.owner == mandate.delegator) catches this.
+    #[test]
+    #[expected_failure(abort_code = mandate::ENotDelegator)]
+    fun test_adversarial_mandate_registry_bypass() {
+        let mut scenario = ts::begin(DELEGATOR);
+        let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let mut legit_registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = mandate::create<SUI>(
+            DELEGATE,
+            1_000_000_000,
+            10_000_000_000,
+            option::some(100_000),
+            &clock,
+            ctx,
+        );
+
+        // Delegator revokes the mandate in the LEGITIMATE registry
+        let mandate_id = object::id(&m);
+        mandate::revoke<SUI>(&mut legit_registry, mandate_id, ctx);
+
+        // Verify revocation worked in legit registry
+        assert!(mandate::is_revoked(&m, &legit_registry));
+
+        // Delegate creates their OWN rogue registry (empty — no revocations)
+        ts::next_tx(&mut scenario, DELEGATE);
+        let rogue_registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        // Delegate confirms mandate is NOT revoked in their rogue registry
+        assert!(!mandate::is_revoked(&m, &rogue_registry));
+
+        // Delegate tries to spend with rogue registry → MUST fail with ENotDelegator
+        // because rogue_registry.owner == DELEGATE != mandate.delegator == DELEGATOR
+        mandate::validate_and_spend(&mut m, 100_000_000, &rogue_registry, &clock, ctx);
+
+        mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(legit_registry);
+        mandate::destroy_registry_for_testing(rogue_registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    // ── A3: Expired mandate spend ────────────────────────────────
+    // Can an agent spend from an expired mandate? Should fail with EExpired.
+    // (Reinforces existing test_expired_mandate but with explicit adversarial framing)
+    #[test]
+    #[expected_failure(abort_code = mandate::EExpired)]
+    fun test_adversarial_mandate_expired_spend() {
+        let mut scenario = ts::begin(DELEGATOR);
+        let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
+        let registry = mandate::create_registry_for_testing(ts::ctx(&mut scenario));
+        let ctx = ts::ctx(&mut scenario);
+
+        let mut m = mandate::create<SUI>(
+            DELEGATE,
+            1_000_000_000,
+            10_000_000_000,
+            option::some(10_000), // expires at 10s
+            &clock,
+            ctx,
+        );
+
+        // First spend succeeds (before expiry)
+        ts::next_tx(&mut scenario, DELEGATE);
+        let ctx = ts::ctx(&mut scenario);
+        mandate::validate_and_spend(&mut m, 100, &registry, &clock, ctx);
+        assert!(mandate::total_spent(&m) == 100);
+
+        // Advance clock past expiry
+        clock::set_for_testing(&mut clock, 10_001);
+
+        // Attacker tries to spend after expiry — MUST fail
+        mandate::validate_and_spend(&mut m, 100, &registry, &clock, ctx);
+
+        mandate::destroy_for_testing(m);
+        mandate::destroy_registry_for_testing(registry);
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
 }

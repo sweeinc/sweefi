@@ -241,4 +241,63 @@ module sweefi::seal_policy_tests {
         clock.destroy_for_testing();
         scenario.end();
     }
+
+    // ══════════════════════════════════════════════════════════════
+    // PART A: Adversarial Scenario Documentation (Seal Policy)
+    // ══════════════════════════════════════════════════════════════
+    //
+    // A1: Receipt forgery — structurally impossible in Move.
+    //
+    // PaymentReceipt and EscrowReceipt are defined with `key, store` abilities
+    // but NO public constructor. The only way to mint an EscrowReceipt is via
+    // escrow::release() which requires a valid Escrow object (itself only
+    // created by escrow::create with real funds). There is no
+    // `create_receipt_for_testing()` or `new()` function exposed.
+    //
+    // In Move, you cannot construct a struct from outside its defining module
+    // unless a public constructor function exists. The type system enforces this
+    // at compile time — there is nothing to test at runtime.
+    //
+    // A2: Wrong receipt type — also structurally impossible.
+    //
+    // seal_approve takes `receipt: &escrow::EscrowReceipt` — passing a
+    // PaymentReceipt (different struct type) would fail at compile time.
+    // Move's type system is nominally typed — escrow::EscrowReceipt and
+    // payment::PaymentReceipt are distinct types even if they had identical fields.
+    // No runtime test is possible or needed.
+    //
+    // Both attacks are prevented by Move's type system, which is a STRONGER
+    // guarantee than any runtime check. Documented here for the security audit trail.
+    // ══════════════════════════════════════════════════════════════
+
+    // ── Adversarial: wrong escrow ID prefix still fails ──────────
+    // Reinforces that only the exact escrow_id prefix unlocks decryption.
+    // Even a single-byte difference in the prefix is caught.
+    #[test]
+    #[expected_failure(abort_code = seal_policy::ENoAccess)]
+    fun test_adversarial_seal_policy_partial_prefix_mismatch() {
+        let mut scenario = ts::begin(BUYER);
+        let clock = clock::create_for_testing(scenario.ctx());
+
+        setup_released_escrow(&mut scenario, &clock);
+
+        scenario.next_tx(BUYER);
+        let receipt = scenario.take_from_address<escrow::EscrowReceipt>(BUYER);
+
+        // Construct key_id with correct length but wrong first byte
+        let correct_prefix = escrow::receipt_escrow_id(&receipt).to_bytes();
+        let mut bad_key_id = correct_prefix;
+        // Flip the first byte
+        let first_byte = bad_key_id[0];
+        let flipped = if (first_byte == 0) { 1u8 } else { 0u8 };
+        *bad_key_id.borrow_mut(0) = flipped;
+        bad_key_id.push_back(1); // nonce
+
+        // Should fail — prefix doesn't match
+        seal_policy::seal_approve(bad_key_id, &receipt, scenario.ctx());
+
+        ts::return_to_address(BUYER, receipt);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
 }

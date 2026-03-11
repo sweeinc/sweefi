@@ -1528,4 +1528,512 @@ module sweefi::escrow_tests {
         clock.destroy_for_testing();
         scenario.end();
     }
+
+    // ══════════════════════════════════════════════════════════════
+    // PART A: Adversarial Escrow Tests
+    // ══════════════════════════════════════════════════════════════
+
+    #[test]
+    fun test_adversarial_escrow_griefing_arbiter_collusion() {
+        // ATTACK: Arbiter colludes with buyer. Buyer disputes, arbiter releases to seller.
+        // Wait — that helps seller, not buyer. Let's try the real attack:
+        // Buyer disputes, arbiter refunds (arbiter+buyer collude to steal seller's funds).
+        //
+        // RESULT: This is BY DESIGN — the arbiter CAN refund on a disputed escrow.
+        // The protection is that the arbiter must be chosen at creation time by BOTH
+        // parties (implicit trust). The contract guards against arbiter == buyer and
+        // arbiter == seller (EArbiterIsBuyer / EArbiterIsSeller), so the arbiter is
+        // always a distinct third party.
+        //
+        // This test proves: (1) arbiter != buyer/seller is enforced, (2) arbiter CAN
+        // refund after dispute (intended behavior), (3) the buyer cannot release or
+        // refund a DISPUTED escrow themselves (only arbiter can).
+        let mut scenario = ts::begin(BUYER);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"",
+            &state, &clock, scenario.ctx(),
+        );
+
+        // Buyer disputes
+        scenario.next_tx(BUYER);
+        let mut e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::dispute(&mut e, &clock, scenario.ctx());
+        assert!(escrow::escrow_state(&e) == 1); // STATE_DISPUTED
+        ts::return_shared(e);
+
+        // Arbiter refunds (colluding with buyer) — this IS allowed by design.
+        // The protection is social: don't choose a corrupt arbiter.
+        scenario.next_tx(ARBITER);
+        let e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::refund<SUI>(e, &clock, scenario.ctx());
+
+        // Buyer gets full refund (no fee on refund)
+        scenario.next_tx(BUYER);
+        let refund = scenario.take_from_address<coin::Coin<SUI>>(BUYER);
+        assert!(refund.value() == 1_000_000);
+        ts::return_to_address(BUYER, refund);
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    #[expected_failure(abort_code = escrow::EArbiterIsBuyer)]
+    fun test_adversarial_escrow_arbiter_is_buyer_blocked() {
+        // ATTACK: Buyer tries to set themselves as arbiter to self-approve disputes.
+        // RESULT: create() rejects with EArbiterIsBuyer.
+        let mut scenario = ts::begin(BUYER);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        // BUYER == ARBITER → should abort
+        escrow::create<SUI>(
+            deposit, SELLER, BUYER, DEADLINE_MS, 0, FEE_RECIPIENT, b"",
+            &state, &clock, scenario.ctx(),
+        );
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    #[expected_failure(abort_code = escrow::EArbiterIsSeller)]
+    fun test_adversarial_escrow_arbiter_is_seller_blocked() {
+        // ATTACK: Seller tries to set themselves as arbiter.
+        // RESULT: create() rejects with EArbiterIsSeller.
+        let mut scenario = ts::begin(BUYER);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        // SELLER == ARBITER → should abort
+        escrow::create<SUI>(
+            deposit, SELLER, SELLER, DEADLINE_MS, 0, FEE_RECIPIENT, b"",
+            &state, &clock, scenario.ctx(),
+        );
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // ADVERSARIAL #2: Double-release
+    // STRUCTURALLY IMPOSSIBLE — Move's linear types consume the Escrow<T> object
+    // on release(). The function signature `release(escrow: Escrow<T>, ...)` takes
+    // ownership by value, so the object is destroyed after the first call.
+    // There is no way to pass the same Escrow to release() a second time — the
+    // Move bytecode verifier enforces this at compile time. No test needed.
+
+    #[test]
+    fun test_adversarial_escrow_short_deadline_refund() {
+        // ATTACK: Buyer sets a very short deadline (e.g., 1ms in the future)
+        // to auto-refund before the seller can deliver.
+        //
+        // ANALYSIS: The contract enforces deadline_ms > now_ms (EDeadlineInPast)
+        // but does NOT enforce a minimum duration. The shortest possible deadline
+        // is now_ms + 1. This is a business-logic concern, not a contract bug —
+        // the seller can see the deadline before agreeing to trade off-chain.
+        //
+        // This test proves the boundary: deadline = now + 1 works, and the
+        // permissionless refund works 1ms later.
+        let mut scenario = ts::begin(BUYER);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        let short_deadline = 1; // 1ms from clock=0
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, short_deadline, 0, FEE_RECIPIENT, b"",
+            &state, &clock, scenario.ctx(),
+        );
+
+        // Advance 1ms — now at deadline, permissionless refund available
+        clock.set_for_testing(1);
+
+        scenario.next_tx(STRANGER);
+        let e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::refund<SUI>(e, &clock, scenario.ctx());
+
+        // Buyer gets full refund
+        scenario.next_tx(BUYER);
+        let refund = scenario.take_from_address<coin::Coin<SUI>>(BUYER);
+        assert!(refund.value() == 1_000_000);
+        ts::return_to_address(BUYER, refund);
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    #[expected_failure(abort_code = escrow::ENotArbiter)]
+    fun test_adversarial_post_dispute_buyer_release_blocked() {
+        // ATTACK: After dispute, buyer (non-arbiter) tries to call release().
+        // RESULT: Only arbiter can release a DISPUTED escrow.
+        let mut scenario = ts::begin(BUYER);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"",
+            &state, &clock, scenario.ctx(),
+        );
+
+        // Buyer disputes
+        scenario.next_tx(BUYER);
+        let mut e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::dispute(&mut e, &clock, scenario.ctx());
+        ts::return_shared(e);
+
+        // Buyer tries to release after dispute — should fail (only arbiter can)
+        scenario.next_tx(BUYER);
+        let e = scenario.take_shared<escrow::Escrow<SUI>>();
+        let receipt = escrow::release<SUI>(e, &clock, scenario.ctx());
+        transfer::public_transfer(receipt, BUYER);
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    #[expected_failure(abort_code = escrow::ENotArbiter)]
+    fun test_adversarial_post_dispute_seller_refund_blocked() {
+        // ATTACK: After dispute, seller (non-arbiter) tries to call refund()
+        // before deadline. RESULT: Only arbiter can refund a DISPUTED escrow
+        // before the deadline.
+        let mut scenario = ts::begin(BUYER);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"",
+            &state, &clock, scenario.ctx(),
+        );
+
+        // Seller disputes
+        scenario.next_tx(SELLER);
+        let mut e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::dispute(&mut e, &clock, scenario.ctx());
+        ts::return_shared(e);
+
+        // Seller tries to refund (not arbiter) — should fail
+        scenario.next_tx(SELLER);
+        let e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::refund<SUI>(e, &clock, scenario.ctx());
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    #[expected_failure(abort_code = escrow::ENotArbiter)]
+    fun test_adversarial_post_dispute_stranger_release_blocked() {
+        // ATTACK: Random stranger tries to release a DISPUTED escrow.
+        // RESULT: release() on DISPUTED requires sender == arbiter.
+        // Stranger is not the arbiter → ENotArbiter.
+        let mut scenario = ts::begin(BUYER);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"",
+            &state, &clock, scenario.ctx(),
+        );
+
+        // Buyer disputes
+        scenario.next_tx(BUYER);
+        let mut e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::dispute(&mut e, &clock, scenario.ctx());
+        ts::return_shared(e);
+
+        // Stranger tries to release — should fail
+        scenario.next_tx(STRANGER);
+        let e = scenario.take_shared<escrow::Escrow<SUI>>();
+        let receipt = escrow::release<SUI>(e, &clock, scenario.ctx());
+        transfer::public_transfer(receipt, STRANGER);
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // PART B: Escrow State Transition Tests
+    // ══════════════════════════════════════════════════════════════
+
+    #[test]
+    fun test_state_escrow_active_to_disputed() {
+        // Valid transition: ACTIVE(0) → DISPUTED(1)
+        let mut scenario = ts::begin(BUYER);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"",
+            &state, &clock, scenario.ctx(),
+        );
+
+        scenario.next_tx(BUYER);
+        let mut e = scenario.take_shared<escrow::Escrow<SUI>>();
+        assert!(escrow::escrow_state(&e) == 0); // ACTIVE
+        escrow::dispute(&mut e, &clock, scenario.ctx());
+        assert!(escrow::escrow_state(&e) == 1); // DISPUTED
+
+        ts::return_shared(e);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    fun test_state_escrow_active_to_released() {
+        // Valid transition: ACTIVE(0) → RELEASED (buyer releases)
+        let mut scenario = ts::begin(BUYER);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"",
+            &state, &clock, scenario.ctx(),
+        );
+
+        scenario.next_tx(BUYER);
+        let e = scenario.take_shared<escrow::Escrow<SUI>>();
+        assert!(escrow::escrow_state(&e) == 0); // ACTIVE
+        let receipt = escrow::release<SUI>(e, &clock, scenario.ctx());
+        // Escrow is consumed — RELEASED is terminal. Receipt proves it.
+        assert!(escrow::receipt_amount(&receipt) == 1_000_000);
+        transfer::public_transfer(receipt, BUYER);
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    fun test_state_escrow_active_to_refunded() {
+        // Valid transition: ACTIVE(0) → REFUNDED (deadline passes, permissionless refund)
+        let mut scenario = ts::begin(BUYER);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"",
+            &state, &clock, scenario.ctx(),
+        );
+
+        // Advance past deadline
+        clock.set_for_testing(DEADLINE_MS);
+
+        scenario.next_tx(STRANGER);
+        let e = scenario.take_shared<escrow::Escrow<SUI>>();
+        assert!(escrow::escrow_state(&e) == 0); // ACTIVE
+        escrow::refund<SUI>(e, &clock, scenario.ctx());
+        // Escrow consumed — REFUNDED is terminal.
+
+        scenario.next_tx(BUYER);
+        let refund = scenario.take_from_address<coin::Coin<SUI>>(BUYER);
+        assert!(refund.value() == 1_000_000);
+        ts::return_to_address(BUYER, refund);
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    fun test_state_escrow_disputed_to_released() {
+        // Valid transition: DISPUTED(1) → RELEASED (arbiter releases)
+        let mut scenario = ts::begin(BUYER);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"",
+            &state, &clock, scenario.ctx(),
+        );
+
+        // Buyer disputes
+        scenario.next_tx(BUYER);
+        let mut e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::dispute(&mut e, &clock, scenario.ctx());
+        assert!(escrow::escrow_state(&e) == 1); // DISPUTED
+        ts::return_shared(e);
+
+        // Arbiter releases
+        scenario.next_tx(ARBITER);
+        let e = scenario.take_shared<escrow::Escrow<SUI>>();
+        let receipt = escrow::release<SUI>(e, &clock, scenario.ctx());
+        assert!(escrow::receipt_released_by(&receipt) == ARBITER);
+        transfer::public_transfer(receipt, BUYER);
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    fun test_state_escrow_disputed_to_refunded() {
+        // Valid transition: DISPUTED(1) → REFUNDED (arbiter refunds)
+        let mut scenario = ts::begin(BUYER);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"",
+            &state, &clock, scenario.ctx(),
+        );
+
+        // Seller disputes
+        scenario.next_tx(SELLER);
+        let mut e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::dispute(&mut e, &clock, scenario.ctx());
+        assert!(escrow::escrow_state(&e) == 1); // DISPUTED
+        ts::return_shared(e);
+
+        // Arbiter refunds
+        scenario.next_tx(ARBITER);
+        let e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::refund<SUI>(e, &clock, scenario.ctx());
+
+        scenario.next_tx(BUYER);
+        let refund = scenario.take_from_address<coin::Coin<SUI>>(BUYER);
+        assert!(refund.value() == 1_000_000);
+        ts::return_to_address(BUYER, refund);
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // RELEASED → anything: STRUCTURALLY IMPOSSIBLE.
+    // release() consumes the Escrow<T> by value (linear types). After release(),
+    // the object no longer exists — it cannot be passed to any function.
+    // The Move bytecode verifier prevents this at compile time.
+
+    // REFUNDED → anything: STRUCTURALLY IMPOSSIBLE.
+    // refund() consumes the Escrow<T> by value (linear types). Same reasoning
+    // as RELEASED above — the object is destroyed and cannot be reused.
+
+    #[test]
+    #[expected_failure(abort_code = escrow::EAlreadyDisputed)]
+    fun test_state_escrow_disputed_to_active_rejected() {
+        // INVALID transition: DISPUTED(1) → ACTIVE(0).
+        // There is no "undispute" function. Attempting dispute() again on a
+        // DISPUTED escrow aborts with EAlreadyDisputed.
+        let mut scenario = ts::begin(BUYER);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"",
+            &state, &clock, scenario.ctx(),
+        );
+
+        // Buyer disputes → DISPUTED
+        scenario.next_tx(BUYER);
+        let mut e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::dispute(&mut e, &clock, scenario.ctx());
+        assert!(escrow::escrow_state(&e) == 1);
+
+        // Seller tries to dispute again → should fail (already disputed, no path back to ACTIVE)
+        scenario.next_tx(SELLER);
+        escrow::dispute(&mut e, &clock, scenario.ctx());
+
+        ts::return_shared(e);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // Mutation-killing boundary tests
+    // ══════════════════════════════════════════════════════════════
+
+    // Mutation kill: now_ms < deadline_ms → <= in dispute()
+    // (would allow dispute at exact deadline, bypassing the permissionless refund guarantee)
+    #[test]
+    #[expected_failure(abort_code = escrow::EDeadlineReached)]
+    fun test_mutation_kill_dispute_at_exact_deadline_fails() {
+        let mut scenario = ts::begin(BUYER);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"",
+            &state, &clock, scenario.ctx(),
+        );
+
+        // Set clock to EXACTLY the deadline — not deadline+1, not deadline-1
+        clock.set_for_testing(DEADLINE_MS);
+
+        scenario.next_tx(BUYER);
+        let mut e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::dispute(&mut e, &clock, scenario.ctx()); // should abort EDeadlineReached
+
+        ts::return_shared(e);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // Mutation kill: deposit_value >= MIN_DEPOSIT → > in create()
+    // (would reject exact MIN_DEPOSIT of 1_000_000)
+    // Note: many existing tests incidentally use 1_000_000, but this test
+    // makes the boundary intent EXPLICIT for mutation testing coverage.
+    #[test]
+    fun test_mutation_kill_create_exact_min_deposit() {
+        let mut scenario = ts::begin(BUYER);
+        let clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx()); // exactly MIN_DEPOSIT
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, DEADLINE_MS, 0, FEE_RECIPIENT, b"exact-min",
+            &state, &clock, scenario.ctx(),
+        );
+
+        scenario.next_tx(BUYER);
+        let e = scenario.take_shared<escrow::Escrow<SUI>>();
+        assert!(escrow::escrow_state(&e) == 0); // ACTIVE — creation succeeded
+
+        ts::return_shared(e);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
 }
