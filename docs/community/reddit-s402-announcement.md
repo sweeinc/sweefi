@@ -20,7 +20,7 @@ The prepaid mode is where the economics get interesting — an agent deposits on
 
 **What's shipped:**
 
-- 10 Move modules on Sui testnet (293 Move tests)
+- 10 Move modules on Sui testnet (426 Move tests)
 - Zero runtime dependencies (peer dep: @mysten/sui)
 - Apache-2.0 license
 

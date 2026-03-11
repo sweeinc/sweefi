@@ -1,6 +1,6 @@
 # SweeFi Proof of Work
 
-Last verified: 2026-03-08
+Last verified: 2026-03-10
 
 ## Verification Commands
 
@@ -14,19 +14,20 @@ cd contracts && sui move test
 
 ## Verified Test Counts
 
-- TypeScript tests: **809 passing**
-  - `@sweefi/sui`: 257
+- TypeScript tests: **1,143 passing**
+  - `@sweefi/sui`: 465
   - `@sweefi/cli`: 238
-  - `@sweefi/mcp`: 124
-  - `@sweefi/facilitator`: 63
+  - `@sweefi/mcp`: 222
+  - `@sweefi/facilitator`: 91
   - `@sweefi/ap2-adapter`: 52
   - `@sweefi/solana`: 40
   - `@sweefi/ui-core`: 13
   - `@sweefi/react`: 12
   - `@sweefi/vue`: 10
   - `@sweefi/server`: 0 (integration-only tests — no offline unit tests)
-- Move tests: **293 functions** (all passing)
-- **Grand total: 1,102 tests**
+- Move tests: **426 functions** (all passing)
+- **Grand total: 1,569 tests**
+- **Hardening audit**: [HARDENING-AUDIT-2026-03-10.md](HARDENING-AUDIT-2026-03-10.md) — DO-178B MC/DC, mutation testing, metamorphic verification
 
 ## Live Testnet Transactions (v11 — current package)
 

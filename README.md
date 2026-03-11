@@ -2,7 +2,7 @@
 
 > Give your AI agents a budget, not a blank check.
 
-**Five payment schemes for AI agents on Sui — exact, prepaid, escrow, streaming, and SEAL pay-to-decrypt. 1,102 tests. 10 packages. Apache 2.0.**
+**Five payment schemes for AI agents on Sui — exact, prepaid, escrow, streaming, and SEAL pay-to-decrypt. 1,569 tests. 10 packages. Apache 2.0.**
 
 ```typescript
 // 3 lines: AI agent auto-pays for premium data
@@ -177,9 +177,9 @@ AI Agent (Claude, GPT, Cursor, etc.)
 | [`@sweefi/cli`](packages/cli) | CLI tool — wallet, pay, prepaid, mandates | 238 |
 | [`@sweefi/solana`](packages/solana) | Solana s402 payment adapter | 40 |
 | [`@sweefi/ap2-adapter`](packages/ap2-adapter) | Google AP2 ↔ SweeFi mandate bridge | 52 |
-| [`sweefi-contracts`](contracts) | 10 Move modules on Sui testnet | 293 |
+| [`sweefi-contracts`](contracts) | 10 Move modules on Sui testnet | 426 |
 
-**Total: 1,102 passing tests (809 TypeScript + 293 Move)**
+**Total: 1,569 passing tests (1,143 TypeScript + 426 Move)**
 
 **External**: [`s402`](https://www.npmjs.com/package/s402) (HTTP 402 protocol, v0.2.2), `@mysten/sui@2.6.0`, `@mysten/seal@1.0.1`
 
@@ -337,7 +337,7 @@ No admin keys control user funds.
 
 ## Smart Contracts
 
-Deployed on Sui testnet. 10 modules, 293 Move tests, AdminCap + ProtocolState for governance.
+Deployed on Sui testnet. 10 modules, 426 Move tests, AdminCap + ProtocolState for governance.
 
 | Module | Purpose |
 |--------|---------|

@@ -17,8 +17,8 @@
 - **Demo 3** (escrow via `escrow::create`): PASSED on v11
   - TX: [`EcYFG3FTSwxM49UckuBhg2gYBPMzRBTNzmKy5Aq6UbzR`](https://suiscan.xyz/testnet/tx/EcYFG3FTSwxM49UckuBhg2gYBPMzRBTNzmKy5Aq6UbzR) — 1M MIST escrow, Escrow object created
 - All 10 TS packages build and typecheck
-- **809 TypeScript tests** passing across 10 packages
-- **293 Move test functions** passing (10 modules)
+- **1,143 TypeScript tests** passing across 10 packages
+- **426 Move test functions** passing (10 modules)
 - MCP server: 35 tools, all tested
 - Facilitator service: verify, settle, process, discovery, metering
 - s402 npm package published (v0.2.2) with 133 conformance test vectors
@@ -47,15 +47,15 @@
 
 | Package | Tests |
 |---------|-------|
-| `@sweefi/sui` | 257 |
+| `@sweefi/sui` | 465 |
 | `@sweefi/cli` | 238 |
-| `@sweefi/mcp` | 124 |
-| `@sweefi/facilitator` | 63 |
+| `@sweefi/mcp` | 222 |
+| `@sweefi/facilitator` | 91 |
 | `@sweefi/ap2-adapter` | 52 |
 | `@sweefi/solana` | 40 |
 | `@sweefi/ui-core` | 13 |
 | `@sweefi/react` | 12 |
 | `@sweefi/vue` | 10 |
-| **TypeScript total** | **809 passing** |
-| Move contracts | 264 |
-| **Grand total** | **1,102 passing** |
+| **TypeScript total** | **1,143 passing** |
+| Move contracts | 426 |
+| **Grand total** | **1,569 passing** |

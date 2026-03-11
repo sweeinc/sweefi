@@ -4,9 +4,9 @@
 
 **Package (testnet):** `0xb83e50365ba460aaa02e240902a40890bec88cd35bd2fc09afb6c79ec8ea9ac5`
 **Modules:** `payment`, `stream`, `escrow`, `seal_policy`, `mandate`, `agent_mandate`, `prepaid`, `admin`, `math`, `identity`
-**Move tests:** 293 passing
-**TypeScript tests:** 809 passing
-**Total:** 1,102 tests across Move + TypeScript
+**Move tests:** 426 passing
+**TypeScript tests:** 1,143 passing
+**Total:** 1,569 tests across Move + TypeScript
 
 ---
 
@@ -138,7 +138,7 @@ sui client call --package $PKG --module escrow --function release_and_keep \
 | Escrow | `escrow::Escrow<SUI>` | `0xe1331575...b531` |
 | PaymentReceipt | `payment::PaymentReceipt` | `0xffd2c8e2...b00f` |
 
-All three primitives are live on Sui Testnet. Verifiable. Open source. 293 Move tests passing.
+All three primitives are live on Sui Testnet. Verifiable. Open source. 426 Move tests passing.
 
 ---
 
