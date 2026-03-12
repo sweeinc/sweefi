@@ -17,17 +17,9 @@
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 import { requestSuiFromFaucetV2, getFaucetHost } from "@mysten/sui/faucet";
-import {
-  testnetConfig,
-  buildPayTx,
-  buildPayAndProveTx,
-  buildCreateStreamTx,
-  buildClaimTx,
-  buildCloseTx,
-  buildRecipientCloseTx,
-  buildCreateEscrowTx,
-  buildReleaseEscrowTx,
-} from "../src/ptb";
+import { Transaction } from "@mysten/sui/transactions";
+import { testnetConfig } from "../src/ptb";
+import { PaymentContract, StreamContract, EscrowContract, createBuilderConfig } from "../src";
 
 // ══════════════════════════════════════════════════════════════
 // Config
@@ -43,6 +35,13 @@ const FEE_MICRO_PCT = 5_000; // 0.5% fee (micro-percent: 5_000 / 1_000_000)
 
 const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl("testnet"), network: "testnet" });
 const config = testnetConfig;
+const builderConfig = createBuilderConfig({
+  packageId: config.packageId,
+  protocolState: config.protocolStateId,
+});
+const payment = new PaymentContract(builderConfig);
+const stream = new StreamContract(builderConfig);
+const escrowContract = new EscrowContract(builderConfig);
 
 // ══════════════════════════════════════════════════════════════
 // Helpers
@@ -151,7 +150,8 @@ async function demoPayment(
   header("DEMO 1: Direct Payment");
   log("pay", `Paying ${Number(PAYMENT_AMOUNT) / 1e9} SUI to recipient with ${FEE_MICRO_PCT / 10_000}% fee`);
 
-  const tx = buildPayTx(config, {
+  const tx = new Transaction();
+  payment.pay({
     coinType: SUI_COIN_TYPE,
     sender: payer.toSuiAddress(),
     recipient: recipient.toSuiAddress(),
@@ -159,7 +159,7 @@ async function demoPayment(
     feeMicroPercent: FEE_MICRO_PCT,
     feeRecipient: feeRecipient.toSuiAddress(),
     memo: "SweeFi demo payment",
-  });
+  })(tx);
 
   const digest = await signAndExecute(payer, tx);
   log("pay", `TX digest: ${digest}`);
@@ -207,7 +207,8 @@ async function demoStream(
   log("stream", `Creating stream: ${Number(STREAM_RATE)} MIST/sec, ${Number(STREAM_DEPOSIT) / 1e9} SUI deposit`);
 
   // Step 1: Create stream
-  const createTx = buildCreateStreamTx(config, {
+  const createTx = new Transaction();
+  stream.create({
     coinType: SUI_COIN_TYPE,
     sender: payer.toSuiAddress(),
     recipient: recipient.toSuiAddress(),
@@ -216,7 +217,7 @@ async function demoStream(
     budgetCap: STREAM_BUDGET_CAP,
     feeMicroPercent: FEE_MICRO_PCT,
     feeRecipient: feeRecipient.toSuiAddress(),
-  });
+  })(createTx);
 
   const createDigest = await signAndExecute(payer, createTx);
   log("stream", `Created: ${createDigest}`);
@@ -268,11 +269,12 @@ async function demoStream(
   });
 
   if (BigInt(recipientBalance.totalBalance) > 1_000_000n) {
-    const claimTx = buildClaimTx(config, {
+    const claimTx = new Transaction();
+    stream.claim({
       coinType: SUI_COIN_TYPE,
       meterId,
       sender: recipient.toSuiAddress(),
-    });
+    })(claimTx);
 
     try {
       const claimDigest = await signAndExecute(recipient, claimTx);
@@ -296,11 +298,12 @@ async function demoStream(
 
   // Step 3: Payer closes the stream (final claim + refund)
   log("stream", "Closing stream (final claim to recipient, remainder refunded to payer)...");
-  const closeTx = buildCloseTx(config, {
+  const closeTx = new Transaction();
+  stream.close({
     coinType: SUI_COIN_TYPE,
     meterId,
     sender: payer.toSuiAddress(),
-  });
+  })(closeTx);
 
   const closeDigest = await signAndExecute(payer, closeTx);
   log("stream", `Closed: ${closeDigest}`);
@@ -326,7 +329,8 @@ async function demoEscrow(
   const arbiter = payer;
 
   // Step 1: Create escrow (buyer deposits)
-  const createTx = buildCreateEscrowTx(config, {
+  const createTx = new Transaction();
+  escrowContract.create({
     coinType: SUI_COIN_TYPE,
     sender: payer.toSuiAddress(),
     seller: recipient.toSuiAddress(),
@@ -336,7 +340,7 @@ async function demoEscrow(
     feeMicroPercent: FEE_MICRO_PCT,
     feeRecipient: feeRecipient.toSuiAddress(),
     memo: "SweeFi demo escrow — API access license",
-  });
+  })(createTx);
 
   const createDigest = await signAndExecute(payer, createTx);
   log("escrow", `Created: ${createDigest}`);
@@ -377,11 +381,12 @@ async function demoEscrow(
   // This ensures the buyer explicitly confirms receipt before funds move.
   log("escrow", "Buyer confirms delivery — releasing escrow to seller...");
 
-  const releaseTx = buildReleaseEscrowTx(config, {
+  const releaseTx = new Transaction();
+  escrowContract.release({
     coinType: SUI_COIN_TYPE,
     escrowId,
     sender: payer.toSuiAddress(), // buyer releases
-  });
+  })(releaseTx);
 
   const releaseDigest = await signAndExecute(payer, releaseTx);
   log("escrow", `Released: ${releaseDigest}`);
@@ -414,16 +419,17 @@ async function demoPayAndProve(
   header("DEMO 4: Atomic Pay-and-Prove (SEAL Flow)");
   log("prove", "One PTB: pay + get receipt + transfer proof. Atomic — no reconciliation gap.");
 
-  const tx = buildPayAndProveTx(config, {
+  const tx = new Transaction();
+  const receipt = payment.payComposable({
     coinType: SUI_COIN_TYPE,
     sender: payer.toSuiAddress(),
     recipient: recipient.toSuiAddress(),
     amount: PAYMENT_AMOUNT,
     feeMicroPercent: FEE_MICRO_PCT,
     feeRecipient: feeRecipient.toSuiAddress(),
-    receiptDestination: payer.toSuiAddress(), // buyer keeps receipt for SEAL
     memo: "seal:content-id:demo-encrypted-api-docs",
-  });
+  })(tx);
+  tx.transferObjects([receipt], payer.toSuiAddress());
 
   const digest = await signAndExecute(payer, tx);
   log("prove", `TX digest: ${digest}`);
@@ -465,7 +471,8 @@ async function demoRecipientClose(
   log("recover", "Creating stream, then recipient force-closes (simulating abandoned payer)...");
 
   // Step 1: Create a stream
-  const createTx = buildCreateStreamTx(config, {
+  const createTx = new Transaction();
+  stream.create({
     coinType: SUI_COIN_TYPE,
     sender: payer.toSuiAddress(),
     recipient: recipient.toSuiAddress(),
@@ -474,7 +481,7 @@ async function demoRecipientClose(
     budgetCap: STREAM_BUDGET_CAP,
     feeMicroPercent: FEE_MICRO_PCT,
     feeRecipient: feeRecipient.toSuiAddress(),
-  });
+  })(createTx);
 
   const createDigest = await signAndExecute(payer, createTx);
   log("recover", `Stream created: ${createDigest}`);
@@ -516,22 +523,24 @@ async function demoRecipientClose(
     await sleep(2000);
   } catch {
     log("recover", "Faucet unavailable — using payer to close instead");
-    const closeTx = buildCloseTx(config, {
+    const closeTx = new Transaction();
+    stream.close({
       coinType: SUI_COIN_TYPE,
       meterId: meterId!,
       sender: payer.toSuiAddress(),
-    });
+    })(closeTx);
     const closeDigest = await signAndExecute(payer, closeTx);
     log("recover", `Closed by payer (faucet fallback): ${closeDigest}`);
     return createDigest;
   }
 
   // Step 2: Recipient tries recipient_close (will fail with timeout check — that's the point)
-  const recipientCloseTx = buildRecipientCloseTx(config, {
+  const recipientCloseTx = new Transaction();
+  stream.recipientClose({
     coinType: SUI_COIN_TYPE,
     meterId: meterId!,
     sender: recipient.toSuiAddress(),
-  });
+  })(recipientCloseTx);
 
   try {
     const closeDigest = await signAndExecute(recipient, recipientCloseTx);
@@ -550,11 +559,12 @@ async function demoRecipientClose(
 
     // Clean up — payer closes since timeout hasn't passed
     log("recover", "Cleaning up (payer closes for demo purposes)...");
-    const closeTx = buildCloseTx(config, {
+    const closeTx = new Transaction();
+    stream.close({
       coinType: SUI_COIN_TYPE,
       meterId: meterId!,
       sender: payer.toSuiAddress(),
-    });
+    })(closeTx);
     const closeDigest = await signAndExecute(payer, closeTx);
     log("recover", `Cleaned up: ${closeDigest}`);
   }

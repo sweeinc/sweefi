@@ -1,10 +1,15 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { buildAdminPauseTx, buildAdminUnpauseTx, buildBurnAdminCapTx, buildAutoUnpauseTx } from "@sweefi/sui/ptb";
+import { Transaction } from "@mysten/sui/transactions";
+import { AdminContract, createBuilderConfig } from "@sweefi/sui";
 import type { SweefiContext } from "../context.js";
 import { requireSigner } from "../context.js";
 import { assertTxSuccess, suiObjectId } from "../utils/format.js";
 
 export function registerAdminTools(server: McpServer, ctx: SweefiContext) {
+  const admin = new AdminContract(createBuilderConfig({
+    packageId: ctx.config.packageId,
+    protocolState: ctx.config.protocolStateId,
+  }));
   // ─── Read-only: check protocol status ───
   server.registerTool(
     "sweefi_protocol_status",
@@ -74,10 +79,11 @@ export function registerAdminTools(server: McpServer, ctx: SweefiContext) {
     async ({ adminCapId }) => {
       const signer = requireSigner(ctx);
 
-      const tx = buildAdminPauseTx(ctx.config, {
+      const tx = new Transaction();
+      admin.pause({
         adminCapId,
         sender: signer.toSuiAddress(),
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,
@@ -111,10 +117,11 @@ export function registerAdminTools(server: McpServer, ctx: SweefiContext) {
     async ({ adminCapId }) => {
       const signer = requireSigner(ctx);
 
-      const tx = buildAdminUnpauseTx(ctx.config, {
+      const tx = new Transaction();
+      admin.unpause({
         adminCapId,
         sender: signer.toSuiAddress(),
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,
@@ -149,10 +156,11 @@ export function registerAdminTools(server: McpServer, ctx: SweefiContext) {
     async ({ adminCapId }) => {
       const signer = requireSigner(ctx);
 
-      const tx = buildBurnAdminCapTx(ctx.config, {
+      const tx = new Transaction();
+      admin.burnCap({
         adminCapId,
         sender: signer.toSuiAddress(),
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,
@@ -186,9 +194,10 @@ export function registerAdminTools(server: McpServer, ctx: SweefiContext) {
     async () => {
       const signer = requireSigner(ctx);
 
-      const tx = buildAutoUnpauseTx(ctx.config, {
+      const tx = new Transaction();
+      admin.autoUnpause({
         sender: signer.toSuiAddress(),
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,

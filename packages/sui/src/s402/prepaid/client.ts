@@ -20,18 +20,26 @@ import type {
   s402PrepaidPayload,
 } from 's402';
 import { S402_VERSION } from 's402';
+import { Transaction } from '@mysten/sui/transactions';
 import type { ClientSuiSigner } from '../../signer.js';
 import type { SweefiConfig } from '../../ptb/types.js';
-import { buildDepositTx, buildDepositWithReceiptsTx } from '../../ptb/prepaid.js';
 import { bpsToMicroPercent } from '../../ptb/assert.js';
+import { PrepaidContract } from '../../transactions/prepaid.js';
+import { createBuilderConfig } from '../../utils/config.js';
 
 export class PrepaidSuiClientScheme implements s402ClientScheme {
   readonly scheme = 'prepaid' as const;
+  readonly #contract: PrepaidContract;
 
   constructor(
     private readonly signer: ClientSuiSigner,
-    private readonly config: SweefiConfig,
-  ) {}
+    config: SweefiConfig,
+  ) {
+    this.#contract = new PrepaidContract(createBuilderConfig({
+      packageId: config.packageId,
+      protocolState: config.protocolStateId,
+    }));
+  }
 
   async createPayment(
     requirements: s402PaymentRequirements,
@@ -58,7 +66,8 @@ export class PrepaidSuiClientScheme implements s402ClientScheme {
     const feeMicroPercent = bpsToMicroPercent(requirements.protocolFeeBps ?? 0);
     const feeRecipient = requirements.protocolFeeAddress ?? payTo;
 
-    let tx;
+    const tx = new Transaction();
+    tx.setSender(this.signer.address);
 
     if (prepaid.providerPubkey) {
       // v0.2: signed receipts + fraud proofs
@@ -66,14 +75,13 @@ export class PrepaidSuiClientScheme implements s402ClientScheme {
       const withdrawalDelay = BigInt(withdrawalDelayMs);
 
       // Client-side validation: mirrors Move's EWithdrawalDelayTooShort assert
-      // for a better error message than a cryptic on-chain failure
       if (withdrawalDelay < disputeWindowMs) {
         throw new Error(
           `withdrawalDelayMs (${withdrawalDelay}) must be >= disputeWindowMs (${disputeWindowMs})`
         );
       }
 
-      tx = buildDepositWithReceiptsTx(this.config, {
+      this.#contract.depositWithReceipts({
         coinType: asset,
         sender: this.signer.address,
         provider: payTo,
@@ -85,10 +93,10 @@ export class PrepaidSuiClientScheme implements s402ClientScheme {
         feeRecipient,
         providerPubkey: prepaid.providerPubkey,
         disputeWindowMs,
-      });
+      })(tx);
     } else {
-      // v0.1: economic security only — existing path, completely unchanged
-      tx = buildDepositTx(this.config, {
+      // v0.1: economic security only
+      this.#contract.deposit({
         coinType: asset,
         sender: this.signer.address,
         provider: payTo,
@@ -98,7 +106,7 @@ export class PrepaidSuiClientScheme implements s402ClientScheme {
         withdrawalDelayMs: BigInt(withdrawalDelayMs),
         feeMicroPercent,
         feeRecipient,
-      });
+      })(tx);
     }
 
     // Sign but do NOT execute — the facilitator broadcasts during settle

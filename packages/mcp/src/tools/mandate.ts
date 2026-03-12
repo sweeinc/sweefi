@@ -1,14 +1,8 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SuiObjectChange } from "@mysten/sui/jsonRpc";
-import {
-  buildCreateMandateTx,
-  buildCreateAgentMandateTx,
-  buildMandatedPayTx,
-  buildAgentMandatedPayTx,
-  buildRevokeMandateTx,
-  buildCreateRegistryTx,
-} from "@sweefi/sui/ptb";
+import { Transaction } from "@mysten/sui/transactions";
+import { MandateContract, AgentMandateContract, createBuilderConfig } from "@sweefi/sui";
 import type { SweefiContext } from "../context.js";
 import { requireSigner, checkSpendingLimit, recordSpend } from "../context.js";
 import { resolveCoinType, formatBalance, parseAmount, parseAmountOrZero, assertTxSuccess, ZERO_ADDRESS, suiAddress, suiObjectId, optionalSuiAddress } from "../utils/format.js";
@@ -21,6 +15,12 @@ const LEVEL_NAMES: Record<number, string> = {
 };
 
 export function registerMandateTools(server: McpServer, ctx: SweefiContext) {
+  const builderConfig = createBuilderConfig({
+    packageId: ctx.config.packageId,
+    protocolState: ctx.config.protocolStateId,
+  });
+  const mandate = new MandateContract(builderConfig);
+  const agentMandate = new AgentMandateContract(builderConfig);
   // ── Create Registry ──────────────────────────────────────────
   server.registerTool(
     "sweefi_create_registry",
@@ -37,9 +37,10 @@ export function registerMandateTools(server: McpServer, ctx: SweefiContext) {
     async () => {
       const signer = requireSigner(ctx);
 
-      const tx = buildCreateRegistryTx(ctx.config, {
+      const tx = new Transaction();
+      mandate.createRegistry({
         sender: signer.toSuiAddress(),
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,
@@ -94,14 +95,15 @@ export function registerMandateTools(server: McpServer, ctx: SweefiContext) {
       const signer = requireSigner(ctx);
       const resolvedType = resolveCoinType(coinType, ctx.network);
 
-      const tx = buildCreateMandateTx(ctx.config, {
+      const tx = new Transaction();
+      mandate.create({
         coinType: resolvedType,
         sender: signer.toSuiAddress(),
         delegate,
         maxPerTx: parseAmount(maxPerTx, "maxPerTx"),
         maxTotal: parseAmount(maxTotal, "maxTotal"),
         expiresAtMs: parseAmount(expiresAtMs, "expiresAtMs"),
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,
@@ -173,7 +175,8 @@ export function registerMandateTools(server: McpServer, ctx: SweefiContext) {
       const signer = requireSigner(ctx);
       const resolvedType = resolveCoinType(coinType, ctx.network);
 
-      const tx = buildCreateAgentMandateTx(ctx.config, {
+      const tx = new Transaction();
+      agentMandate.create({
         coinType: resolvedType,
         sender: signer.toSuiAddress(),
         delegate,
@@ -183,7 +186,7 @@ export function registerMandateTools(server: McpServer, ctx: SweefiContext) {
         weeklyLimit: parseAmountOrZero(weeklyLimit, "weeklyLimit"),
         maxTotal: parseAmount(maxTotal, "maxTotal"),
         expiresAtMs: parseAmount(expiresAtMs, "expiresAtMs"),
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,
@@ -256,7 +259,8 @@ export function registerMandateTools(server: McpServer, ctx: SweefiContext) {
 
       checkSpendingLimit(ctx, payAmount);
 
-      const tx = buildMandatedPayTx(ctx.config, {
+      const tx = new Transaction();
+      mandate.mandatedPay({
         coinType: resolvedType,
         sender: signer.toSuiAddress(),
         recipient,
@@ -266,7 +270,7 @@ export function registerMandateTools(server: McpServer, ctx: SweefiContext) {
         memo,
         mandateId,
         registryId,
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,
@@ -337,7 +341,8 @@ export function registerMandateTools(server: McpServer, ctx: SweefiContext) {
 
       checkSpendingLimit(ctx, payAmount);
 
-      const tx = buildAgentMandatedPayTx(ctx.config, {
+      const tx = new Transaction();
+      agentMandate.pay({
         coinType: resolvedType,
         sender: signer.toSuiAddress(),
         recipient,
@@ -347,7 +352,7 @@ export function registerMandateTools(server: McpServer, ctx: SweefiContext) {
         memo,
         mandateId,
         registryId,
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,
@@ -403,12 +408,13 @@ export function registerMandateTools(server: McpServer, ctx: SweefiContext) {
       const signer = requireSigner(ctx);
       const resolvedType = resolveCoinType(coinType, ctx.network);
 
-      const tx = buildRevokeMandateTx(ctx.config, {
+      const tx = new Transaction();
+      mandate.revoke({
         sender: signer.toSuiAddress(),
         registryId,
         mandateId,
         coinType: resolvedType,
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,

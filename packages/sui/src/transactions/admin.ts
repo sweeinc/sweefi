@@ -1,12 +1,12 @@
 import type { Transaction } from '@mysten/sui/transactions';
-import type { SweefiPluginConfig } from '../utils/config.js';
+import type { TransactionBuilderConfig } from '../utils/config.js';
 import type { AdminParams } from '../ptb/types.js';
 import type { AutoUnpauseParams } from '../ptb/admin.js';
 
 export class AdminContract {
-  #config: SweefiPluginConfig;
+  #config: TransactionBuilderConfig;
 
-  constructor(config: SweefiPluginConfig) {
+  constructor(config: TransactionBuilderConfig) {
     this.#config = config;
   }
 

@@ -1,12 +1,18 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SuiObjectChange } from "@mysten/sui/jsonRpc";
-import { buildCreateStreamTx, buildCreateStreamWithTimeoutTx, buildCloseTx, buildRecipientCloseTx } from "@sweefi/sui/ptb";
+import { Transaction } from "@mysten/sui/transactions";
+import { StreamContract, createBuilderConfig } from "@sweefi/sui";
 import type { SweefiContext } from "../context.js";
 import { requireSigner, checkSpendingLimit, recordSpend } from "../context.js";
 import { resolveCoinType, formatBalance, parseAmount, assertTxSuccess, ZERO_ADDRESS, suiAddress, suiObjectId, optionalSuiAddress } from "../utils/format.js";
 
 export function registerStreamTools(server: McpServer, ctx: SweefiContext) {
+  const stream = new StreamContract(createBuilderConfig({
+    packageId: ctx.config.packageId,
+    protocolState: ctx.config.protocolStateId,
+  }));
+
   server.registerTool(
     "sweefi_start_stream",
     {
@@ -46,7 +52,8 @@ export function registerStreamTools(server: McpServer, ctx: SweefiContext) {
       checkSpendingLimit(ctx, deposit);
       const rate = parseAmount(ratePerSecond, "ratePerSecond");
 
-      const tx = buildCreateStreamTx(ctx.config, {
+      const tx = new Transaction();
+      stream.create({
         coinType: resolvedType,
         sender: signer.toSuiAddress(),
         recipient,
@@ -55,7 +62,7 @@ export function registerStreamTools(server: McpServer, ctx: SweefiContext) {
         budgetCap: budgetCap ? parseAmount(budgetCap, "budgetCap") : deposit,
         feeMicroPercent: feeMicroPercent ?? 0,
         feeRecipient: feeRecipient ?? ZERO_ADDRESS,
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,
@@ -123,7 +130,8 @@ export function registerStreamTools(server: McpServer, ctx: SweefiContext) {
       const rate = parseAmount(ratePerSecond, "ratePerSecond");
       const timeout = parseAmount(recipientCloseTimeoutMs, "recipientCloseTimeoutMs");
 
-      const tx = buildCreateStreamWithTimeoutTx(ctx.config, {
+      const tx = new Transaction();
+      stream.createWithTimeout({
         coinType: resolvedType,
         sender: signer.toSuiAddress(),
         recipient,
@@ -133,7 +141,7 @@ export function registerStreamTools(server: McpServer, ctx: SweefiContext) {
         feeMicroPercent: feeMicroPercent ?? 0,
         feeRecipient: feeRecipient ?? ZERO_ADDRESS,
         recipientCloseTimeoutMs: timeout,
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,
@@ -178,11 +186,12 @@ export function registerStreamTools(server: McpServer, ctx: SweefiContext) {
       const signer = requireSigner(ctx);
       const resolvedType = resolveCoinType(coinType, ctx.network);
 
-      const tx = buildCloseTx(ctx.config, {
+      const tx = new Transaction();
+      stream.close({
         coinType: resolvedType,
         meterId,
         sender: signer.toSuiAddress(),
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,
@@ -221,11 +230,12 @@ export function registerStreamTools(server: McpServer, ctx: SweefiContext) {
       const signer = requireSigner(ctx);
       const resolvedType = resolveCoinType(coinType, ctx.network);
 
-      const tx = buildRecipientCloseTx(ctx.config, {
+      const tx = new Transaction();
+      stream.recipientClose({
         coinType: resolvedType,
         meterId,
         sender: signer.toSuiAddress(),
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,

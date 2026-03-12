@@ -1,11 +1,17 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { buildPayAndProveTx } from "@sweefi/sui/ptb";
+import { Transaction } from "@mysten/sui/transactions";
+import { PaymentContract, createBuilderConfig } from "@sweefi/sui";
 import type { SweefiContext } from "../context.js";
 import { requireSigner, checkSpendingLimit, recordSpend } from "../context.js";
 import { resolveCoinType, formatBalance, parseAmount, assertTxSuccess, ZERO_ADDRESS, suiAddress, optionalSuiAddress } from "../utils/format.js";
 
 export function registerProveTool(server: McpServer, ctx: SweefiContext) {
+  const payment = new PaymentContract(createBuilderConfig({
+    packageId: ctx.config.packageId,
+    protocolState: ctx.config.protocolStateId,
+  }));
+
   server.registerTool(
     "sweefi_pay_and_prove",
     {
@@ -47,16 +53,17 @@ export function registerProveTool(server: McpServer, ctx: SweefiContext) {
       checkSpendingLimit(ctx, amountBigint);
       const senderAddr = signer.toSuiAddress();
 
-      const tx = buildPayAndProveTx(ctx.config, {
+      const tx = new Transaction();
+      const receipt = payment.payComposable({
         coinType: resolvedType,
         sender: senderAddr,
         recipient,
         amount: amountBigint,
         feeMicroPercent: feeMicroPercent ?? 0,
         feeRecipient: feeRecipient ?? ZERO_ADDRESS,
-        receiptDestination: receiptDestination ?? senderAddr,
         memo,
-      });
+      })(tx);
+      tx.transferObjects([receipt], receiptDestination ?? senderAddr);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,

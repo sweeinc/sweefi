@@ -1,17 +1,17 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SuiObjectChange } from "@mysten/sui/jsonRpc";
-import {
-  buildCreateEscrowTx,
-  buildReleaseEscrowTx,
-  buildRefundEscrowTx,
-  buildDisputeEscrowTx,
-} from "@sweefi/sui/ptb";
+import { Transaction } from "@mysten/sui/transactions";
+import { EscrowContract, createBuilderConfig } from "@sweefi/sui";
 import type { SweefiContext } from "../context.js";
 import { requireSigner, checkSpendingLimit, recordSpend } from "../context.js";
 import { resolveCoinType, formatBalance, parseAmount, assertTxSuccess, ZERO_ADDRESS, suiAddress, suiObjectId, optionalSuiAddress } from "../utils/format.js";
 
 export function registerEscrowTools(server: McpServer, ctx: SweefiContext) {
+  const escrow = new EscrowContract(createBuilderConfig({
+    packageId: ctx.config.packageId,
+    protocolState: ctx.config.protocolStateId,
+  }));
   // ── Create Escrow ──────────────────────────────────────────
   server.registerTool(
     "sweefi_create_escrow",
@@ -53,7 +53,8 @@ export function registerEscrowTools(server: McpServer, ctx: SweefiContext) {
       const depositAmount = parseAmount(amount);
       checkSpendingLimit(ctx, depositAmount);
 
-      const tx = buildCreateEscrowTx(ctx.config, {
+      const tx = new Transaction();
+      escrow.create({
         coinType: resolvedType,
         sender: signer.toSuiAddress(),
         seller,
@@ -63,7 +64,7 @@ export function registerEscrowTools(server: McpServer, ctx: SweefiContext) {
         feeMicroPercent: feeMicroPercent ?? 0,
         feeRecipient: feeRecipient ?? ZERO_ADDRESS,
         memo,
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,
@@ -120,11 +121,12 @@ export function registerEscrowTools(server: McpServer, ctx: SweefiContext) {
       const signer = requireSigner(ctx);
       const resolvedType = resolveCoinType(coinType, ctx.network);
 
-      const tx = buildReleaseEscrowTx(ctx.config, {
+      const tx = new Transaction();
+      escrow.release({
         coinType: resolvedType,
         escrowId,
         sender: signer.toSuiAddress(),
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,
@@ -176,11 +178,12 @@ export function registerEscrowTools(server: McpServer, ctx: SweefiContext) {
       const signer = requireSigner(ctx);
       const resolvedType = resolveCoinType(coinType, ctx.network);
 
-      const tx = buildRefundEscrowTx(ctx.config, {
+      const tx = new Transaction();
+      escrow.refund({
         coinType: resolvedType,
         escrowId,
         sender: signer.toSuiAddress(),
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,
@@ -225,11 +228,12 @@ export function registerEscrowTools(server: McpServer, ctx: SweefiContext) {
       const signer = requireSigner(ctx);
       const resolvedType = resolveCoinType(coinType, ctx.network);
 
-      const tx = buildDisputeEscrowTx(ctx.config, {
+      const tx = new Transaction();
+      escrow.dispute({
         coinType: resolvedType,
         escrowId,
         sender: signer.toSuiAddress(),
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,

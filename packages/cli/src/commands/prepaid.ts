@@ -6,7 +6,8 @@
  * Reduces 1,000 API calls from 1,000 on-chain TXs to just 2.
  */
 
-import { buildPrepaidDepositTx } from "@sweefi/sui/ptb";
+import { Transaction } from "@mysten/sui/transactions";
+import { PrepaidContract, createBuilderConfig } from "@sweefi/sui";
 import type { CliContext } from "../context.js";
 import { requireSigner, CliError, debug, withTimeout } from "../context.js";
 import { outputSuccess, formatBalance, explorerUrl, computeGas, gasUsedSui } from "../output.js";
@@ -34,7 +35,12 @@ export async function prepaidDeposit(
   const ratePerCall = flags.rate ? parseBigIntFlag(flags.rate, "rate", { min: 1n }) : parseAmount("0.01", coinType); // default: 0.01 of coin
   const maxCalls = flags.maxCalls ? parseBigIntFlag(flags.maxCalls, "max-calls", { min: 1n }) : BigInt(UNLIMITED_CALLS);
 
-  const tx = buildPrepaidDepositTx(ctx.config, {
+  const prepaid = new PrepaidContract(createBuilderConfig({
+    packageId: ctx.config.packageId,
+    protocolState: ctx.config.protocolStateId,
+  }));
+  const tx = new Transaction();
+  prepaid.deposit({
     coinType,
     sender: signer.toSuiAddress(),
     provider,
@@ -44,7 +50,7 @@ export async function prepaidDeposit(
     withdrawalDelayMs: DEFAULT_WITHDRAWAL_DELAY_MS,
     feeMicroPercent: 0,
     feeRecipient: ZERO_ADDRESS,
-  });
+  })(tx);
 
   if (flags.dryRun) {
     debug(ctx, "dry-run: inspecting prepaid deposit");

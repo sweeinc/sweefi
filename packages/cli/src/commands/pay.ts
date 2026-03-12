@@ -8,8 +8,8 @@
  *   - --dry-run: now includes affordability check (balance vs total cost)
  */
 
-import { buildPayTx, buildMandatedPayTx } from "@sweefi/sui/ptb";
-import { COIN_TYPES } from "@sweefi/sui";
+import { Transaction } from "@mysten/sui/transactions";
+import { PaymentContract, MandateContract, createBuilderConfig, COIN_TYPES } from "@sweefi/sui";
 import type { CliContext } from "../context.js";
 import { requireSigner, CliError, debug, withTimeout } from "../context.js";
 import { outputSuccess, formatBalance, explorerUrl, computeGas, gasUsedSui } from "../output.js";
@@ -106,9 +106,18 @@ export async function pay(
     memo,
   };
 
-  const tx = mandateId
-    ? buildMandatedPayTx(ctx.config, { ...baseParams, mandateId, registryId: registryId! })
-    : buildPayTx(ctx.config, baseParams);
+  const builderConfig = createBuilderConfig({
+    packageId: ctx.config.packageId,
+    protocolState: ctx.config.protocolStateId,
+  });
+  const tx = new Transaction();
+  if (mandateId) {
+    const mandate = new MandateContract(builderConfig);
+    mandate.mandatedPay({ ...baseParams, mandateId, registryId: registryId! })(tx);
+  } else {
+    const payment = new PaymentContract(builderConfig);
+    payment.pay(baseParams)(tx);
+  }
 
   if (flags.dryRun) {
     const isSui = coinType === COIN_TYPES.SUI || coinType.endsWith("::sui::SUI");

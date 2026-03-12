@@ -13,18 +13,26 @@
 
 import type { s402ClientScheme, s402PaymentRequirements, s402UnlockPayload } from 's402';
 import { S402_VERSION } from 's402';
+import { Transaction } from '@mysten/sui/transactions';
 import type { ClientSuiSigner } from '../../signer.js';
 import type { SweefiConfig } from '../../ptb/types.js';
-import { buildCreateEscrowTx } from '../../ptb/escrow.js';
 import { bpsToMicroPercent } from '../../ptb/assert.js';
+import { EscrowContract } from '../../transactions/escrow.js';
+import { createBuilderConfig } from '../../utils/config.js';
 
 export class UnlockSuiClientScheme implements s402ClientScheme {
   readonly scheme = 'unlock' as const;
+  readonly #contract: EscrowContract;
 
   constructor(
     private readonly signer: ClientSuiSigner,
-    private readonly config: SweefiConfig,
-  ) {}
+    config: SweefiConfig,
+  ) {
+    this.#contract = new EscrowContract(createBuilderConfig({
+      packageId: config.packageId,
+      protocolState: config.protocolStateId,
+    }));
+  }
 
   async createPayment(
     requirements: s402PaymentRequirements,
@@ -39,7 +47,10 @@ export class UnlockSuiClientScheme implements s402ClientScheme {
     const seller = escrow?.seller ?? requirements.payTo;
     const deadlineMs = escrow?.deadlineMs ?? String(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    const tx = buildCreateEscrowTx(this.config, {
+    const tx = new Transaction();
+    tx.setSender(this.signer.address);
+
+    this.#contract.create({
       coinType: requirements.asset,
       sender: this.signer.address,
       seller,
@@ -48,7 +59,7 @@ export class UnlockSuiClientScheme implements s402ClientScheme {
       deadlineMs: BigInt(deadlineMs),
       feeMicroPercent: bpsToMicroPercent(requirements.protocolFeeBps ?? 0),
       feeRecipient: requirements.payTo,
-    });
+    })(tx);
 
     const { signature, bytes } = await this.signer.signTransaction(tx);
 

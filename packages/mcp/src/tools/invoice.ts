@@ -1,12 +1,18 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SuiObjectChange } from "@mysten/sui/jsonRpc";
-import { buildCreateInvoiceTx, buildPayInvoiceTx } from "@sweefi/sui/ptb";
+import { Transaction } from "@mysten/sui/transactions";
+import { PaymentContract, createBuilderConfig } from "@sweefi/sui";
 import type { SweefiContext } from "../context.js";
 import { requireSigner, checkSpendingLimit, recordSpend } from "../context.js";
 import { resolveCoinType, formatBalance, parseAmount, assertTxSuccess, ZERO_ADDRESS, suiAddress, suiObjectId, optionalSuiAddress } from "../utils/format.js";
 
 export function registerInvoiceTools(server: McpServer, ctx: SweefiContext) {
+  const payment = new PaymentContract(createBuilderConfig({
+    packageId: ctx.config.packageId,
+    protocolState: ctx.config.protocolStateId,
+  }));
+
   server.registerTool(
     "sweefi_create_invoice",
     {
@@ -32,14 +38,15 @@ export function registerInvoiceTools(server: McpServer, ctx: SweefiContext) {
     async ({ recipient, amount, feeMicroPercent, feeRecipient, sendTo }) => {
       const signer = requireSigner(ctx);
 
-      const tx = buildCreateInvoiceTx(ctx.config, {
+      const tx = new Transaction();
+      payment.createInvoice({
         sender: signer.toSuiAddress(),
         recipient,
         expectedAmount: parseAmount(amount),
         feeMicroPercent: feeMicroPercent ?? 0,
         feeRecipient: feeRecipient ?? ZERO_ADDRESS,
         sendTo,
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,
@@ -87,12 +94,13 @@ export function registerInvoiceTools(server: McpServer, ctx: SweefiContext) {
       const amountBigint = parseAmount(amount);
       checkSpendingLimit(ctx, amountBigint);
 
-      const tx = buildPayInvoiceTx(ctx.config, {
+      const tx = new Transaction();
+      payment.payInvoice({
         coinType: resolvedType,
         sender: signer.toSuiAddress(),
         invoiceId,
         amount: amountBigint,
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,

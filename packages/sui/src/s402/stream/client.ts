@@ -4,24 +4,30 @@
  * Two-phase streaming protocol:
  *   Phase 1 (402 exchange): Client builds stream creation PTB → submits
  *   Phase 2 (ongoing): Client includes X-STREAM-ID header on subsequent requests
- *
- * Reuses existing buildCreateStreamTx PTB builder.
  */
 
 import type { s402ClientScheme, s402PaymentRequirements, s402StreamPayload } from 's402';
 import { S402_VERSION } from 's402';
+import { Transaction } from '@mysten/sui/transactions';
 import type { ClientSuiSigner } from '../../signer.js';
 import type { SweefiConfig } from '../../ptb/types.js';
-import { buildCreateStreamTx } from '../../ptb/stream.js';
 import { bpsToMicroPercent } from '../../ptb/assert.js';
+import { StreamContract } from '../../transactions/stream.js';
+import { createBuilderConfig } from '../../utils/config.js';
 
 export class StreamSuiClientScheme implements s402ClientScheme {
   readonly scheme = 'stream' as const;
+  readonly #contract: StreamContract;
 
   constructor(
     private readonly signer: ClientSuiSigner,
-    private readonly config: SweefiConfig,
-  ) {}
+    config: SweefiConfig,
+  ) {
+    this.#contract = new StreamContract(createBuilderConfig({
+      packageId: config.packageId,
+      protocolState: config.protocolStateId,
+    }));
+  }
 
   async createPayment(
     requirements: s402PaymentRequirements,
@@ -31,7 +37,10 @@ export class StreamSuiClientScheme implements s402ClientScheme {
       throw new Error('Stream requirements missing from s402PaymentRequirements');
     }
 
-    const tx = buildCreateStreamTx(this.config, {
+    const tx = new Transaction();
+    tx.setSender(this.signer.address);
+
+    this.#contract.create({
       coinType: requirements.asset,
       sender: this.signer.address,
       recipient: requirements.payTo,
@@ -40,7 +49,7 @@ export class StreamSuiClientScheme implements s402ClientScheme {
       budgetCap: BigInt(stream.budgetCap),
       feeMicroPercent: bpsToMicroPercent(requirements.protocolFeeBps ?? 0),
       feeRecipient: requirements.protocolFeeAddress ?? requirements.payTo,
-    });
+    })(tx);
 
     const { signature, bytes } = await this.signer.signTransaction(tx);
 

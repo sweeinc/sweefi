@@ -1,21 +1,18 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SuiObjectChange } from "@mysten/sui/jsonRpc";
-import {
-  buildPrepaidDepositTx,
-  buildPrepaidClaimTx,
-  buildRequestWithdrawalTx,
-  buildFinalizeWithdrawalTx,
-  buildCancelWithdrawalTx,
-  buildPrepaidTopUpTx,
-  buildPrepaidAgentCloseTx,
-  UNLIMITED_CALLS,
-} from "@sweefi/sui/ptb";
+import { Transaction } from "@mysten/sui/transactions";
+import { PrepaidContract, createBuilderConfig } from "@sweefi/sui";
+import { UNLIMITED_CALLS } from "@sweefi/sui/ptb";
 import type { SweefiContext } from "../context.js";
 import { requireSigner, checkSpendingLimit, recordSpend } from "../context.js";
 import { resolveCoinType, formatBalance, parseAmount, parseAmountOrZero, assertTxSuccess, ZERO_ADDRESS, suiAddress, suiObjectId, optionalSuiAddress } from "../utils/format.js";
 
 export function registerPrepaidTools(server: McpServer, ctx: SweefiContext) {
+  const prepaid = new PrepaidContract(createBuilderConfig({
+    packageId: ctx.config.packageId,
+    protocolState: ctx.config.protocolStateId,
+  }));
   // ── Prepaid Deposit ──────────────────────────────────────────
   server.registerTool(
     "sweefi_prepaid_deposit",
@@ -61,7 +58,8 @@ export function registerPrepaidTools(server: McpServer, ctx: SweefiContext) {
 
       checkSpendingLimit(ctx, depositAmount);
 
-      const tx = buildPrepaidDepositTx(ctx.config, {
+      const tx = new Transaction();
+      prepaid.deposit({
         coinType: resolvedType,
         sender: signer.toSuiAddress(),
         provider,
@@ -71,7 +69,7 @@ export function registerPrepaidTools(server: McpServer, ctx: SweefiContext) {
         withdrawalDelayMs: delay,
         feeMicroPercent: feeMicroPercent ?? 0,
         feeRecipient: feeRecipient ?? ZERO_ADDRESS,
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,
@@ -130,11 +128,12 @@ export function registerPrepaidTools(server: McpServer, ctx: SweefiContext) {
       const signer = requireSigner(ctx);
       const resolvedType = resolveCoinType(coinType, ctx.network);
 
-      const tx = buildRequestWithdrawalTx(ctx.config, {
+      const tx = new Transaction();
+      prepaid.requestWithdrawal({
         coinType: resolvedType,
         balanceId,
         sender: signer.toSuiAddress(),
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,
@@ -181,11 +180,12 @@ export function registerPrepaidTools(server: McpServer, ctx: SweefiContext) {
       const signer = requireSigner(ctx);
       const resolvedType = resolveCoinType(coinType, ctx.network);
 
-      const tx = buildFinalizeWithdrawalTx(ctx.config, {
+      const tx = new Transaction();
+      prepaid.finalizeWithdrawal({
         coinType: resolvedType,
         balanceId,
         sender: signer.toSuiAddress(),
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,
@@ -228,11 +228,12 @@ export function registerPrepaidTools(server: McpServer, ctx: SweefiContext) {
       const signer = requireSigner(ctx);
       const resolvedType = resolveCoinType(coinType, ctx.network);
 
-      const tx = buildCancelWithdrawalTx(ctx.config, {
+      const tx = new Transaction();
+      prepaid.cancelWithdrawal({
         coinType: resolvedType,
         balanceId,
         sender: signer.toSuiAddress(),
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,
@@ -279,12 +280,13 @@ export function registerPrepaidTools(server: McpServer, ctx: SweefiContext) {
 
       checkSpendingLimit(ctx, topUpAmount);
 
-      const tx = buildPrepaidTopUpTx(ctx.config, {
+      const tx = new Transaction();
+      prepaid.topUp({
         coinType: resolvedType,
         balanceId,
         sender: signer.toSuiAddress(),
         amount: topUpAmount,
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,
@@ -333,11 +335,12 @@ export function registerPrepaidTools(server: McpServer, ctx: SweefiContext) {
       const signer = requireSigner(ctx);
       const resolvedType = resolveCoinType(coinType, ctx.network);
 
-      const tx = buildPrepaidAgentCloseTx(ctx.config, {
+      const tx = new Transaction();
+      prepaid.agentClose({
         coinType: resolvedType,
         balanceId,
         sender: signer.toSuiAddress(),
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,
@@ -454,6 +457,10 @@ export function registerPrepaidTools(server: McpServer, ctx: SweefiContext) {
  * Enable via `enableProviderTools: true` in config or MCP_ENABLE_PROVIDER_TOOLS=true.
  */
 export function registerPrepaidProviderTools(server: McpServer, ctx: SweefiContext) {
+  const prepaid = new PrepaidContract(createBuilderConfig({
+    packageId: ctx.config.packageId,
+    protocolState: ctx.config.protocolStateId,
+  }));
   // ── Prepaid Claim ────────────────────────────────────────────
   server.registerTool(
     "sweefi_prepaid_claim",
@@ -479,12 +486,13 @@ export function registerPrepaidProviderTools(server: McpServer, ctx: SweefiConte
       const resolvedType = resolveCoinType(coinType, ctx.network);
       const callCount = parseAmountOrZero(cumulativeCallCount, "cumulativeCallCount");
 
-      const tx = buildPrepaidClaimTx(ctx.config, {
+      const tx = new Transaction();
+      prepaid.claim({
         coinType: resolvedType,
         balanceId,
         sender: signer.toSuiAddress(),
         cumulativeCallCount: callCount,
-      });
+      })(tx);
 
       const result = await ctx.suiClient.signAndExecuteTransaction({
         signer,

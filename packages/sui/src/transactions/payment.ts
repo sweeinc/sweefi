@@ -1,6 +1,6 @@
 import type { Transaction, TransactionResult } from '@mysten/sui/transactions';
 import { coinWithBalance } from '@mysten/sui/transactions';
-import type { SweefiPluginConfig } from '../utils/config.js';
+import type { TransactionBuilderConfig } from '../utils/config.js';
 import type { PayParams, CreateInvoiceParams, PayInvoiceParams } from '../ptb/types.js';
 import { assertFeeMicroPercent, assertPositive } from '../ptb/assert.js';
 
@@ -11,9 +11,9 @@ import { assertFeeMicroPercent, assertPositive } from '../ptb/assert.js';
  * Each method returns a thunk compatible with `tx.add()`.
  */
 export class PaymentContract {
-  #config: SweefiPluginConfig;
+  #config: TransactionBuilderConfig;
 
-  constructor(config: SweefiPluginConfig) {
+  constructor(config: TransactionBuilderConfig) {
     this.#config = config;
   }
 

@@ -7,7 +7,8 @@
  * No other payment skill has this.
  */
 
-import { buildCreateMandateTx } from "@sweefi/sui/ptb";
+import { Transaction } from "@mysten/sui/transactions";
+import { MandateContract, createBuilderConfig } from "@sweefi/sui";
 import type { CliContext } from "../context.js";
 import { requireSigner, CliError, debug, withTimeout } from "../context.js";
 import { outputSuccess, formatBalance, explorerUrl, computeGas, gasUsedSui } from "../output.js";
@@ -40,14 +41,19 @@ export async function mandateCreate(
   const durationMs = parseDuration(args[3]);
   const expiresAtMs = BigInt(Date.now()) + durationMs;
 
-  const tx = buildCreateMandateTx(ctx.config, {
+  const mandate = new MandateContract(createBuilderConfig({
+    packageId: ctx.config.packageId,
+    protocolState: ctx.config.protocolStateId,
+  }));
+  const tx = new Transaction();
+  mandate.create({
     coinType,
     sender: signer.toSuiAddress(),
     delegate,
     maxPerTx,
     maxTotal,
     expiresAtMs,
-  });
+  })(tx);
 
   if (flags.dryRun) {
     debug(ctx, "dry-run: inspecting mandate create");

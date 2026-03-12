@@ -27,13 +27,64 @@ export interface CoinConfig {
 }
 
 /**
+ * Minimal config interface for transaction builder contracts.
+ * Decoupled from SweefiPluginConfig so contracts can be used without
+ * the full $extend() machinery (e.g., s402 scheme clients).
+ */
+export interface TransactionBuilderConfig {
+  readonly packageId: string;
+  readonly protocolState?: string;
+  readonly adminCap?: string;
+  readonly SUI_CLOCK: string;
+  requireProtocolState(): string;
+  requireAdminCap(): string;
+}
+
+/**
+ * Create a TransactionBuilderConfig from plain fields.
+ * Use this when you don't have a SweefiPluginConfig (e.g., s402 scheme clients).
+ */
+export function createBuilderConfig(opts: {
+  packageId: string;
+  protocolState?: string;
+  adminCap?: string;
+}): TransactionBuilderConfig {
+  return {
+    packageId: opts.packageId,
+    protocolState: opts.protocolState,
+    adminCap: opts.adminCap,
+    SUI_CLOCK: '0x6',
+    requireProtocolState() {
+      if (!this.protocolState) {
+        throw new ConfigurationError(
+          SweefiErrorCode.PROTOCOL_STATE_NOT_SET,
+          ErrorMessages[SweefiErrorCode.PROTOCOL_STATE_NOT_SET],
+        );
+      }
+      return this.protocolState;
+    },
+    requireAdminCap() {
+      if (!this.adminCap) {
+        throw new ConfigurationError(
+          SweefiErrorCode.ADMIN_CAP_NOT_SET,
+          ErrorMessages[SweefiErrorCode.ADMIN_CAP_NOT_SET],
+        );
+      }
+      return this.adminCap;
+    },
+  };
+}
+
+/**
  * Configuration for the $extend() plugin. Resolves network-specific defaults
  * from deployments.ts and validates required fields.
  *
  * Not to be confused with the legacy SweefiConfig interface in ptb/types.ts —
  * this class replaces it for the new $extend() API.
+ *
+ * Implements TransactionBuilderConfig — can be passed directly to contract classes.
  */
-export class SweefiPluginConfig {
+export class SweefiPluginConfig implements TransactionBuilderConfig {
   readonly packageId: string;
   readonly protocolState?: string;
   readonly adminCap?: string;

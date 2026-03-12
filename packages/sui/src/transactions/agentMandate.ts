@@ -1,6 +1,6 @@
 import type { Transaction } from '@mysten/sui/transactions';
 import { coinWithBalance } from '@mysten/sui/transactions';
-import type { SweefiPluginConfig } from '../utils/config.js';
+import type { TransactionBuilderConfig } from '../utils/config.js';
 import {
   MandateLevel,
   type CreateAgentMandateParams,
@@ -11,9 +11,9 @@ import {
 import { assertFeeMicroPercent, assertPositive } from '../ptb/assert.js';
 
 export class AgentMandateContract {
-  #config: SweefiPluginConfig;
+  #config: TransactionBuilderConfig;
 
-  constructor(config: SweefiPluginConfig) {
+  constructor(config: TransactionBuilderConfig) {
     this.#config = config;
   }
 

@@ -1,6 +1,6 @@
 import type { Transaction } from '@mysten/sui/transactions';
 import { coinWithBalance } from '@mysten/sui/transactions';
-import type { SweefiPluginConfig } from '../utils/config.js';
+import type { TransactionBuilderConfig } from '../utils/config.js';
 import type {
   PrepaidDepositParams,
   PrepaidClaimParams,
@@ -34,9 +34,9 @@ function hexToBytes(hex: string): number[] {
 }
 
 export class PrepaidContract {
-  #config: SweefiPluginConfig;
+  #config: TransactionBuilderConfig;
 
-  constructor(config: SweefiPluginConfig) {
+  constructor(config: TransactionBuilderConfig) {
     this.#config = config;
   }
 

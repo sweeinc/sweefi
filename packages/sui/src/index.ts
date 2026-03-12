@@ -55,8 +55,8 @@ export { PrepaidContract } from "./transactions/prepaid";
 export { MandateContract } from "./transactions/mandate";
 export { AgentMandateContract } from "./transactions/agentMandate";
 export { AdminContract } from "./transactions/admin";
-export { SweefiPluginConfig } from "./utils/config";
-export type { CoinConfig } from "./utils/config";
+export { SweefiPluginConfig, createBuilderConfig } from "./utils/config";
+export type { CoinConfig, TransactionBuilderConfig } from "./utils/config";
 export { SweefiError, ConfigurationError, ResourceNotFoundError, ValidationError, SweefiErrorCode } from "./utils/errors";
 
 // BCS type definitions for on-chain object parsing
