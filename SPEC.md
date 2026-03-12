@@ -17,20 +17,17 @@ An AI agent discovers an API. The API responds with HTTP 402 and its price. The 
 
 ## The Swee Ecosystem
 
-SweeFi is part of a three-product ecosystem, each with a distinct role:
+SweeFi is part of the Swee ecosystem:
 
 | Brand | What | Audience | Priority |
 |-------|------|----------|----------|
 | **SweeFi** | Payment protocol + SDK (s402) | Developers | **Now** — shipping |
-| **SweeAgent** | Agent identity, reputation, commerce network | AI agents + developers | **Next** — architect seams now, build when agent commerce ignites |
-| **SweeWorld** | Geo-location mobile app (pins, tipping, SEAL content, creator economy) | Consumers | **Soon** — brainstorm + prototype |
+| **SweeWorld** | Free dashboard for SweeFi-powered agents | Agent operators + developers | **Next** — vision phase |
 
-**SweeFi** is the foundation — the payment rails everything else builds on. **SweeAgent** (`@sweeagent/*` packages) implements agent identity (`did:sui`), on-chain reputation, and agent discovery — the intelligence layer that makes agent-to-agent commerce trustworthy. **SweeWorld** is a consumer-facing Tauri mobile app where humans and agents interact in the physical world via geo-located pins, tipping, and SEAL-gated content.
+**SweeFi** is the foundation — the payment rails everything else builds on. **SweeWorld** is a free, mission-centric dashboard where humans see their agents spend and know they cannot overspend.
 
-The three compose cleanly:
-- SweeAgent depends on SweeFi for payments (never the reverse)
-- SweeWorld imports from both SweeFi and SweeAgent
-- `s402` remains chain-agnostic and ecosystem-agnostic — it knows nothing about identity or mobile apps
+- SweeWorld depends on SweeFi for payments (never the reverse)
+- `s402` remains chain-agnostic and ecosystem-agnostic
 
 ## Payment Schemes
 
@@ -332,7 +329,7 @@ AI Agent (Claude, GPT, Cursor, etc.)
 | [`@sweefi/solana`](packages/solana) | Solana adapter (exact scheme only) | 40 |
 | [`sweefi-contracts`](contracts) | 10 Move modules on Sui testnet | 264 |
 
-**Total: 1,569 tests (1,143 TypeScript + 426 Move)**
+**Total: 1,654 tests (1,228 TypeScript + 426 Move)**
 
 ### External Dependencies
 

@@ -83,7 +83,7 @@ body {
 }
 
 /* ── CSS @property Counter Animation ── */
-@property --num-1073 {
+@property --num-1654 {
   syntax: '<integer>';
   initial-value: 0;
   inherits: false;
@@ -109,13 +109,13 @@ body {
   inherits: false;
 }
 
-@keyframes count-1073 { to { --num-1073: 1073; } }
+@keyframes count-1654 { to { --num-1654: 1654; } }
 @keyframes count-7 { to { --num-7: 7; } }
 @keyframes count-10b { to { --num-10b: 10; } }
 @keyframes count-35 { to { --num-35: 35; } }
 @keyframes count-5 { to { --num-5: 5; } }
 
-.counter-1073,
+.counter-1654,
 .counter-7,
 .counter-10b,
 .counter-35,
@@ -123,14 +123,14 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.counter-1073 {
-  counter-reset: num var(--num-1073);
+.counter-1654 {
+  counter-reset: num var(--num-1654);
 }
-.counter-1073::after {
+.counter-1654::after {
   content: counter(num);
 }
-.counter-1073.counting {
-  animation: count-1073 2s ease-out forwards;
+.counter-1654.counting {
+  animation: count-1654 2s ease-out forwards;
 }
 
 .counter-7 {

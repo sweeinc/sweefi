@@ -144,7 +144,7 @@ AI Agent (Claude, GPT, Cursor, etc.)
 | [`@sweefi/ap2-adapter`](/guide/ap2-adapter) | AP2 mandate mapper + bridge | 52 |
 | [`sweefi-contracts`](/guide/contracts) | 10 Move modules on Sui testnet | 264 |
 
-**Total: 1,569 tests (1,143 TypeScript + 426 Move)**
+**Total: 1,654 tests (1,228 TypeScript + 426 Move)**
 
 **External**: [`s402`](https://www.npmjs.com/package/s402) (HTTP 402 protocol, v0.2.2), `@mysten/sui@2.6.0`, `@mysten/seal@1.0.1`
 

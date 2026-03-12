@@ -14,8 +14,8 @@ Cross-layer type verification found 2 CRITICAL bugs (Option<u64> serialization m
 
 **Before → After:**
 - Move tests: 293 → 426 (+133)
-- TS tests: ~810 → 1,143 (+333)
-- Total: ~1,103 → 1,569
+- TS tests: ~810 → 1,228 (+418)
+- Total: ~1,103 → 1,654
 
 ---
 

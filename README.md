@@ -2,7 +2,7 @@
 
 > Give your AI agents a budget, not a blank check.
 
-**Five payment schemes for AI agents on Sui — exact, prepaid, escrow, streaming, and SEAL pay-to-decrypt. 1,569 tests. 10 packages. Apache 2.0.**
+**Five payment schemes for AI agents on Sui — exact, prepaid, escrow, streaming, and SEAL pay-to-decrypt. 1,654 tests. 10 packages. Apache 2.0.**
 
 ```typescript
 // 3 lines: AI agent auto-pays for premium data
@@ -20,17 +20,17 @@ SweeFi is an open-source payment SDK for AI agents on Sui. Agents discover prici
 Unlike raw crypto wallets, SweeFi gives humans control over what agents spend. Unlike Stripe or x402, that control is enforced on-chain — not by a platform:
 
 - **Set a budget**: AP2 mandates with per-transaction, daily, and weekly caps
-- **Four authorization levels**: L0 (single-use) through L3 (autonomous with caps) — no competitor has this
+- **Four authorization levels**: L0 (single-use) through L3 (autonomous with caps) — unique in the HTTP 402 ecosystem
 - **Verify independently**: Every payment produces an on-chain receipt. Sui validators verify — not a platform.
 - **Revoke instantly**: Kill agent access via on-chain registry. Takes effect immediately.
 
-SweeFi is the payment layer of the **Swee ecosystem**: **SweeFi** (payments + authorization) + **SweeAgent** (agent identity & reputation, `@sweeagent/*`) + **SweeWorld** (geo-location consumer app). This monorepo contains SweeFi — the foundation everything else builds on.
+SweeFi is the payment layer of the **Swee ecosystem**. This monorepo contains SweeFi — the foundation everything else builds on.
 
 **s402** is a Sui-native HTTP 402 protocol that is wire-compatible with [x402](https://x402.org) but architecturally superior:
 
 <!-- Architecture diagram source: docs/x402-vs-s402.mmd (Mermaid) — regenerate with: mmdc -i docs/x402-vs-s402.mmd -o docs/x402-vs-s402.png -->
 
-| Feature | x402 (EVM) | s402 (Sui) |
+| Feature | x402 (Coinbase) | s402 (Sui) |
 |---------|-----------|-----------|
 | Settlement | Verify first, settle later (temporal gap) | Atomic PTBs (no gap) |
 | Payment modes | Exact only | Exact, Prepaid, Escrow, Stream, Seal |
@@ -41,6 +41,9 @@ SweeFi is the payment layer of the **Swee ecosystem**: **SweeFi** (payments + au
 | Facilitator | Required (trust bottleneck) | Optional (direct settlement) |
 | Receipts | Off-chain | On-chain NFTs |
 | Security model | Sign-first (facilitator holds signed txs) | Settle-first (atomic on-chain) |
+| Production usage | 35M+ transactions (EVM + Solana) | Testnet only |
+| Ecosystem backing | Coinbase | Independent |
+| Chain support | EVM + Solana | Sui (more chains planned) |
 
 ## Which Package Do I Need?
 
@@ -104,7 +107,7 @@ Agent                    Server                  Sui Testnet
 | **Unlock** | Receipt-gated SEAL decryption | Client scheme exists, facilitator handler planned |
 | **Split** | Multi-party settlement (royalties, affiliates) | Planned |
 
-**Together these enable autonomous digital commerce with human control.** A human sets a mandate ("spend up to $10/day on weather APIs"). An AI agent operates within those bounds — calling APIs (exact), depositing budgets (prepaid), trading trustlessly (escrow), streaming micropayments (stream), and decrypting content (seal). Every action produces an on-chain receipt. Mandates expire on schedule and can be revoked instantly. No platform taking 30%. See [SPEC.md](SPEC.md) for the full vision.
+**Together these enable autonomous digital commerce with human control.** A human sets a mandate ("spend up to $10/day on weather APIs"). An AI agent operates within those bounds — calling APIs (exact), depositing budgets (prepaid), trading trustlessly (escrow), streaming micropayments (stream), and decrypting content (seal). Every action produces an on-chain receipt. Mandates expire on schedule and can be revoked instantly. No platform middleman. See [SPEC.md](SPEC.md) for the full vision.
 
 ### Why This Matters (The Authorization Gap)
 
@@ -113,7 +116,7 @@ Every payment primitive above is backed by the same authorization architecture:
 | What you need | How SweeFi does it | What others do |
 |---|---|---|
 | **Set spending intent** | AP2 mandates ("$10/day on these APIs") | Stripe: platform-controlled limits. x402: none. |
-| **Bound what agents can do** | L0-L3 levels + per-tx/daily/weekly caps | No competitor has tiered authorization |
+| **Bound what agents can do** | L0-L3 levels + per-tx/daily/weekly caps | No tiered authorization in the HTTP 402 ecosystem |
 | **Verify what happened** | On-chain receipts, Sui validators | Off-chain logs (trust the platform) |
 | **Revoke access** | On-chain registry, instant | API key rotation (delayed, error-prone) |
 
@@ -143,10 +146,6 @@ AI Agent (Claude, GPT, Cursor, etc.)
     +-- Vue UI ------------------> @sweefi/vue + @sweefi/ui-core
     +-- React UI ----------------> @sweefi/react + @sweefi/ui-core
     |
-    +-- Agent identity ----------> @sweeagent/identity   [FUTURE]
-    +-- Agent reputation --------> @sweeagent/reputation [FUTURE]
-    +-- Agent discovery ---------> @sweeagent/registry   [FUTURE]
-                                        |
                               Sui blockchain (10 Move modules, testnet)
                                         |
                                  +------+------+
@@ -179,7 +178,7 @@ AI Agent (Claude, GPT, Cursor, etc.)
 | [`@sweefi/ap2-adapter`](packages/ap2-adapter) | Google AP2 ↔ SweeFi mandate bridge | 52 |
 | [`sweefi-contracts`](contracts) | 10 Move modules on Sui testnet | 426 |
 
-**Total: 1,569 passing tests (1,143 TypeScript + 426 Move)**
+**Total: 1,654 passing tests (1,228 TypeScript + 426 Move)**
 
 **External**: [`s402`](https://www.npmjs.com/package/s402) (HTTP 402 protocol, v0.2.2), `@mysten/sui@2.6.0`, `@mysten/seal@1.0.1`
 
@@ -408,7 +407,7 @@ cd demos/agent-pays-api && SUI_PRIVATE_KEY=<key> pnpm demo
 
 - [s402](https://github.com/s402-protocol/core) — Sui-native HTTP 402 protocol ([npm](https://www.npmjs.com/package/s402))
 - [Sui](https://sui.io) — High-performance L1 with PTBs and ~400ms finality
-- [SEAL](https://docs.sui.io/concepts/cryptography/seal) — Sui's threshold encryption for programmable access control
+- [SEAL](https://docs.sui.io/concepts/cryptography) — Sui's threshold encryption for programmable access control
 - [x402](https://x402.org) — Coinbase's HTTP 402 payment protocol (wire-compatible)
 - [MCP](https://modelcontextprotocol.io) — Anthropic's Model Context Protocol
 - [Hono](https://hono.dev) — Lightweight web framework
@@ -422,8 +421,7 @@ SweeFi is the payment layer. The broader ecosystem includes:
 |-------|------|--------|
 | **s402** | Open protocol standard (`s402` npm package) | Shipped, Apache 2.0 |
 | **SweeFi** | Open source payment SDK (`@sweefi/*`) | Shipping, Apache 2.0 |
-| **SweeWorld** | Free agent dashboard — see your agents spend, know they can't overspend | Vision |
-| **SweeCard** | TradFi/crypto bridge card | Phase 3+, backburner |
+| **SweeWorld** | Free dashboard for SweeFi-powered agents | Vision |
 
 See [SPEC.md](SPEC.md) for the full vision and roadmap.
 
@@ -446,7 +444,7 @@ SweeFi is fully open source. Every developer-facing package is published under *
 | `@sweefi/facilitator` | Apache 2.0 | Self-hostable (not on npm) |
 | `sweefi-contracts` | Apache 2.0 | Deployed on Sui |
 
-The facilitator source is open — you can read it, audit it, and self-host it. SweeFi also runs a **managed facilitator** as a hosted service (the default in `@sweefi/server` and `@sweefi/sui`). Self-hosting is always an option. See [`packages/facilitator`](packages/facilitator) for Docker and Fly.io deployment instructions.
+The facilitator source is open — you can read it, audit it, and self-host it. No default hosted facilitator is assumed — callers must provide their own facilitator URL or use direct settlement. See [`packages/facilitator`](packages/facilitator) for Docker and Fly.io deployment instructions.
 
 ## License
 

@@ -22,7 +22,7 @@
               Every transaction flows through Stripe, AWS, or a centralized API gateway.
             </p>
             <p class="text-text font-semibold">
-              30% platform fees. Account creation. Subscription lock-in.
+              Platform fees. Account creation. Subscription lock-in.
             </p>
           </div>
         </div>

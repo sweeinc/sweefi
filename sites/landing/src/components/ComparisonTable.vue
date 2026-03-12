@@ -66,6 +66,24 @@ const rows = [
     s402: 'Yes (Docker + Fly.io)',
     advantage: false,
   },
+  {
+    feature: 'Production usage',
+    x402: '35M+ transactions (EVM + Solana)',
+    s402: 'Testnet only',
+    advantage: false,
+  },
+  {
+    feature: 'Ecosystem backing',
+    x402: 'Coinbase',
+    s402: 'Independent',
+    advantage: false,
+  },
+  {
+    feature: 'Chain support',
+    x402: 'EVM + Solana',
+    s402: 'Sui (more chains planned)',
+    advantage: false,
+  },
 ]
 </script>
 
@@ -84,7 +102,7 @@ const rows = [
           <thead>
             <tr class="border-b border-border">
               <th class="py-4 px-4 text-sm font-semibold text-text-muted uppercase tracking-wider">Feature</th>
-              <th class="py-4 px-4 text-sm font-semibold text-text-muted uppercase tracking-wider">x402 (EVM)</th>
+              <th class="py-4 px-4 text-sm font-semibold text-text-muted uppercase tracking-wider">x402 (Coinbase)</th>
               <th class="py-4 px-4 text-sm font-semibold text-brand uppercase tracking-wider">
                 s402 (Sui)
                 <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-brand/10 text-brand border border-brand/20 normal-case tracking-normal">
