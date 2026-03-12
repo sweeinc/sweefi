@@ -42,3 +42,34 @@ export type { SuiPaymentAdapterConfig } from "./adapter/SuiPaymentAdapter";
 // Receipt HTTP helpers (v0.2 signed usage receipts)
 export { signUsageReceipt, parseUsageReceipt, ReceiptAccumulator, S402_RECEIPT_HEADER } from "./receipt-http";
 export type { VerifiedReceipt, ParsedReceipt } from "./receipt-http";
+
+// $extend() plugin — the new primary entry point
+export { sweefi, SweefiClient } from "./extend";
+export type { SweefiOptions, SweefiPublicAPI, SweefiCompatibleClient } from "./extend";
+
+// $extend() transaction builder contracts (for advanced use / testing)
+export { PaymentContract } from "./transactions/payment";
+export { StreamContract } from "./transactions/stream";
+export { EscrowContract } from "./transactions/escrow";
+export { PrepaidContract } from "./transactions/prepaid";
+export { MandateContract } from "./transactions/mandate";
+export { AgentMandateContract } from "./transactions/agentMandate";
+export { AdminContract } from "./transactions/admin";
+export { SweefiPluginConfig } from "./utils/config";
+export type { CoinConfig } from "./utils/config";
+export { SweefiError, ConfigurationError, ResourceNotFoundError, ValidationError, SweefiErrorCode } from "./utils/errors";
+
+// BCS type definitions for on-chain object parsing
+export {
+  StreamingMeterBcs, EscrowBcs, PrepaidBalanceBcs,
+  InvoiceBcs, MandateBcs, ProtocolStateBcs, AgentMandateBcs,
+} from "./types/bcs";
+
+// Query module types (for consumers who need to type query results)
+export type { QueryContext } from "./queries/context";
+export type { StreamState } from "./queries/streamQueries";
+export type { EscrowData, EscrowStateValue } from "./queries/escrowQueries";
+export { EscrowState } from "./queries/escrowQueries";
+export type { PrepaidState } from "./queries/prepaidQueries";
+export type { MandateState } from "./queries/mandateQueries";
+export type { ProtocolStateData } from "./queries/protocolQueries";
