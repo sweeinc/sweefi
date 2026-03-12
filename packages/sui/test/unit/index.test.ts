@@ -19,6 +19,31 @@ import {
   PrepaidSuiFacilitatorScheme,
   toClientSuiSigner,
   adaptWallet,
+  // $extend() plugin API
+  sweefi,
+  SweefiClient,
+  // Transaction builder contracts
+  PaymentContract,
+  StreamContract,
+  EscrowContract,
+  PrepaidContract,
+  MandateContract,
+  AgentMandateContract,
+  AdminContract,
+  // Config
+  SweefiPluginConfig,
+  createBuilderConfig,
+  // Errors
+  SweefiError,
+  ConfigurationError,
+  SweefiErrorCode,
+  // BCS
+  StreamingMeterBcs,
+  EscrowBcs,
+  PrepaidBalanceBcs,
+  ProtocolStateBcs,
+  // Query state enum
+  EscrowState,
 } from "../../src/index";
 
 describe("@sweefi/sui", () => {
@@ -123,6 +148,51 @@ describe("@sweefi/sui", () => {
         ),
       ).toBe(true);
     });
+  });
+
+  // ─────────────────────────────────────────────
+  // $extend() Plugin API
+  // ─────────────────────────────────────────────
+
+  it("should export $extend() plugin factory and client", () => {
+    expect(sweefi).toBeDefined();
+    expect(typeof sweefi).toBe("function");
+    expect(SweefiClient).toBeDefined();
+  });
+
+  it("should export all transaction builder contracts", () => {
+    expect(PaymentContract).toBeDefined();
+    expect(StreamContract).toBeDefined();
+    expect(EscrowContract).toBeDefined();
+    expect(PrepaidContract).toBeDefined();
+    expect(MandateContract).toBeDefined();
+    expect(AgentMandateContract).toBeDefined();
+    expect(AdminContract).toBeDefined();
+  });
+
+  it("should export config utilities", () => {
+    expect(SweefiPluginConfig).toBeDefined();
+    expect(createBuilderConfig).toBeDefined();
+    expect(typeof createBuilderConfig).toBe("function");
+  });
+
+  it("should export error classes and codes", () => {
+    expect(SweefiError).toBeDefined();
+    expect(ConfigurationError).toBeDefined();
+    expect(SweefiErrorCode).toBeDefined();
+  });
+
+  it("should export BCS type definitions for on-chain parsing", () => {
+    expect(StreamingMeterBcs).toBeDefined();
+    expect(EscrowBcs).toBeDefined();
+    expect(PrepaidBalanceBcs).toBeDefined();
+    expect(ProtocolStateBcs).toBeDefined();
+  });
+
+  it("should export query state enums", () => {
+    expect(EscrowState).toBeDefined();
+    expect(EscrowState.Active).toBeDefined();
+    expect(EscrowState.Disputed).toBeDefined();
   });
 
   describe("Constants", () => {

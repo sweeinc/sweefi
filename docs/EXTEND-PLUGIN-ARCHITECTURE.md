@@ -733,7 +733,7 @@ export class SweefiConfig {
 
 ## Implementation Plan
 
-### Phase 1: Skeleton + Payment + TEST (prove the pattern end-to-end)
+### Phase 1: Skeleton + Payment + TEST (prove the pattern end-to-end) ✅
 1. Create `utils/errors.ts` — error hierarchy
 2. Create `SweefiConfig` class with validation
 3. Create `sweefi()` factory + `SweefiClient` class (payment only initially)
@@ -745,7 +745,7 @@ export class SweefiConfig {
 9. **VERIFY: TypeScript inference** — confirm `client.sweefi.payment.pay` resolves to correct signature in VS Code (not `any`)
 10. `pnpm typecheck && pnpm test` — green before proceeding
 
-### Phase 2: All Transaction Builders (each with tests)
+### Phase 2: All Transaction Builders (each with tests) ✅
 11. `StreamContract` (9 methods) + `stream-contract.test.ts`
 12. `EscrowContract` (5 methods) + `escrow-contract.test.ts`
 13. `PrepaidContract` (11 methods) + `prepaid-contract.test.ts`
@@ -754,7 +754,7 @@ export class SweefiConfig {
 16. `AdminContract` (4 methods) + `admin-contract.test.ts`
 17. `IdentityContract` (2 methods) + `identity-contract.test.ts`
 
-### Phase 3: Query Modules (with BCS parsing)
+### Phase 3: Query Modules (with BCS parsing) ✅
 18. `StreamQueries` — getStream (BCS-parsed)
 19. `EscrowQueries` — getEscrow (BCS-parsed)
 20. `PrepaidQueries` — getPrepaidBalance, getClaimStatus
@@ -762,7 +762,7 @@ export class SweefiConfig {
 22. `ProtocolQueries` — isPaused, getProtocolState
 23. `BalanceQueries` — getBalance (uses `client.core.listCoins`)
 
-### Phase 4: Clean Up + Internal Consumers
+### Phase 4: Clean Up + Internal Consumers ✅
 24. Remove old `buildXxxTx()` functions entirely (alpha — clean break)
 25. Update `@sweefi/mcp` to use new client internally
 26. Update `SuiPaymentAdapter` to delegate to contract classes
@@ -777,9 +777,8 @@ export class SweefiConfig {
 
 | Component | Why untouched |
 |-----------|---------------|
-| `s402/` scheme classes | Chain-agnostic protocol — separate concern |
+| `s402/` scheme classes | Chain-agnostic protocol — separate concern (schemes migrated to use contract classes in Phase 4) |
 | `SuiPaymentAdapter` | Different abstraction layer (ui-core interface) |
-| `@sweefi/server`, `@sweefi/mcp`, `@sweefi/facilitator` | Separate packages — may adopt the client internally later (Phase 4) |
 | Move contracts, `receipts.ts`, `assert.ts` | Infrastructure, unchanged |
 
 ---
@@ -915,4 +914,13 @@ For testnet validation, verify actual transaction execution:
 
 ---
 
-*Last updated: 2026-03-11 (Waves v2.0 complete — 3 waves structural + section + coherence polish. SHIPPED.)*
+## Status
+
+- **Phases 1–4 complete.** All consumers migrated to the contract class pattern.
+- **1,168 tests passing** across 4 packages (`@sweefi/sui`, `@sweefi/mcp`, `@sweefi/cli`, `@sweefi/facilitator`).
+- Old `ptb/` builder functions preserved but **deprecated** — contract classes are the canonical API.
+- Phase 5 (codegen integration) remains future work.
+
+---
+
+*Last updated: 2026-03-11 (Phases 1–4 complete. All consumers migrated to contract class pattern.)*

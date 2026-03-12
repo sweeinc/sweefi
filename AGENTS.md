@@ -9,7 +9,7 @@
 - Monorepo with 10 TS packages + Move smart contracts
 - Built on top of `s402` (HTTP 402 protocol, published on npm as `s402@0.2.2`)
 - Competing with BEEP (justbeep.it) — proprietary alternative
-- 1,569 passing tests (1,143 TypeScript + 426 Move) — see STATUS.md for per-package breakdown
+- 1,654 passing tests (1,228 TypeScript + 426 Move) — see STATUS.md for per-package breakdown
 
 ## Repository Structure
 
@@ -30,12 +30,12 @@ sweefi-project/
 ├── packages/
 │   ├── ui-core/                  # Framework-agnostic state machine + PaymentAdapter interface (13 tests)
 │   ├── server/                   # Chain-agnostic HTTP: s402Gate, wrapFetchWithS402 (integration only)
-│   ├── sui/                      # 42 PTB builders + SuiPaymentAdapter + s402 schemes (252 tests)
+│   ├── sui/                      # $extend() plugin + curried contract classes + query modules (662 tests)
 │   ├── vue/                      # Vue 3 plugin + useSweefiPayment() composable (10 tests)
 │   ├── react/                    # React context + useSweefiPayment() hook (12 tests)
 │   ├── facilitator/              # Self-hostable payment verification — private, Docker only (57 tests)
-│   ├── mcp/                      # MCP server, 35 AI agent tools (124 tests)
-│   ├── cli/                      # CLI tool — wallet, pay, prepaid, mandates (43 tests)
+│   ├── mcp/                      # MCP server, 35 AI agent tools (222 tests)
+│   ├── cli/                      # CLI tool — wallet, pay, prepaid, mandates (238 tests)
 │   ├── ap2-adapter/              # AP2 ↔ SweeFi mandate mapper + bridge (52 tests)
 │   └── solana/                   # Solana s402 exact scheme adapter
 ├── demos/
@@ -149,7 +149,7 @@ export default async function setup(project) {
 ```
 Move Contracts (on-chain)          TypeScript SDK (off-chain)
 ─────────────────────────          ────────────────────────────
-payment.move   → receipts          @sweefi/sui  → PTB builders
+payment.move   → receipts          @sweefi/sui  → $extend() plugin + contract classes
 stream.move    → streaming         @sweefi/server → s402Gate middleware
 escrow.move    → time-locked       @sweefi/ui-core → state machine
 seal_policy.move → pay-to-decrypt  @sweefi/vue, react → UI bindings
@@ -523,9 +523,12 @@ For any function with N boolean conditions that guards money or authorization:
 | mandate | `validate_and_spend` | 6 (C1-C6) | Complete | 6 tests | 0 (MC-1 fixed) |
 | prepaid | `claim` | 6 (C1-C6) | Complete | 4 tests | 0 (MC-2 fixed) |
 | escrow | `refund` | 4 (C1-C4) | Complete | 2 tests | C1 unreachable (linear types) |
-| stream | `claim` | ~5 | **TODO** | **TODO** | — |
-| payment | `pay` | ~3 | **TODO** | **TODO** | — |
-| admin | all guards | ~2-3 each | **TODO** | **TODO** | 5 tests exist, no matrix |
+| stream | `claim` + guards | ~5 | Complete | 4 mutation kills | 0 (Mar 10) |
+| payment | `pay` + `pay_with_invoice` | ~3 | Complete | — | 0 (Mar 10) |
+| math | `calculate_fee` + `calculate_fee_min` | ~2 | Complete | — | 0 (Mar 10) |
+| admin | `pause`/`unpause`/`auto_unpause`/`burn` | ~2-3 each | Complete | — | 0 (Mar 10) |
+| identity | `register`/`record_receipt` | — | Skipped | — | No money flows |
+| seal_policy | `seal_approve`/`check_policy` | — | Skipped | — | Read-only (dry-run) |
 
 ### Formal Verification
 

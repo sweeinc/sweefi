@@ -1,5 +1,8 @@
 // PTB construction layer for SweeFi contracts
 // Builds Sui Programmable Transaction Blocks against deployed Move contracts.
+//
+// NOTE: The buildXxxTx() exports below are LEGACY. Prefer the contract classes
+// (PaymentContract, StreamContract, EscrowContract, etc.) from `@sweefi/sui`.
 
 // Config + parameter types
 export type {
@@ -19,6 +22,7 @@ export type {
 export { SUI_CLOCK, TESTNET_PACKAGE_ID, TESTNET_ADMIN_CAP, TESTNET_PROTOCOL_STATE, TESTNET_UPGRADE_CAP, testnetConfig } from "./deployments";
 
 // Payment PTB builders
+/** @deprecated Use {@link PaymentContract} from `@sweefi/sui` instead. */
 export {
   buildPayTx,
   buildPayComposableTx,
@@ -27,6 +31,7 @@ export {
 } from "./payment";
 
 // Stream PTB builders
+/** @deprecated Use {@link StreamContract} from `@sweefi/sui` instead. */
 export {
   buildCreateStreamTx,
   buildCreateStreamWithTimeoutTx,
@@ -41,6 +46,7 @@ export {
 
 // Composable PTB builders (atomic multi-step flows)
 export type { PayAndProveParams } from "./composable";
+/** @deprecated Use {@link PaymentContract.payComposable} from `@sweefi/sui` instead. */
 export { buildPayAndProveTx } from "./composable";
 
 // Escrow PTB builders
@@ -48,6 +54,7 @@ export type {
   CreateEscrowParams,
   EscrowOpParams,
 } from "./escrow";
+/** @deprecated Use {@link EscrowContract} from `@sweefi/sui` instead. */
 export {
   buildCreateEscrowTx,
   buildReleaseEscrowTx,
@@ -58,6 +65,7 @@ export {
 
 // Admin PTB builders (emergency pause circuit breaker)
 export type { AutoUnpauseParams } from "./admin";
+/** @deprecated Use {@link AdminContract} from `@sweefi/sui` instead. */
 export {
   buildAdminPauseTx,
   buildAdminUnpauseTx,
@@ -72,6 +80,7 @@ export type {
   RevokeMandateParams,
   CreateRegistryParams,
 } from "./mandate";
+/** @deprecated Use {@link MandateContract} from `@sweefi/sui` instead. */
 export {
   buildCreateMandateTx,
   buildMandatedPayTx,
@@ -88,6 +97,7 @@ export type {
   UpdateMandateCapsParams,
   MandateLevelValue,
 } from "./agent-mandate";
+/** @deprecated Use {@link AgentMandateContract} from `@sweefi/sui` instead. */
 export {
   MandateLevel,
   buildCreateAgentMandateTx,
@@ -108,6 +118,7 @@ export type {
   PrepaidDisputeClaimParams,
   PrepaidWithdrawDisputedParams,
 } from "./types";
+/** @deprecated Use {@link PrepaidContract} from `@sweefi/sui` instead. */
 export {
   UNLIMITED_CALLS,
   buildDepositTx as buildPrepaidDepositTx,
