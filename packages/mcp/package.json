@@ -1,6 +1,6 @@
 {
   "name": "@sweefi/mcp",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "type": "module",
   "description": "MCP server exposing SweeFi payment tools for AI agents — the safety layer for autonomous agent commerce",
   "license": "Apache-2.0",
