@@ -281,7 +281,7 @@ AI Agent (Claude, GPT, Cursor, etc.)
     |                                   |
     +-- MCP tool discovery -------> @sweefi/mcp (30+5 opt-in tools)
     |                                   |
-    +-- Direct PTB --------------> @sweefi/sui (40 PTB builders)
+    +-- Direct PTB --------------> @sweefi/sui ($extend() plugin + 7 curried contract classes)
     |                                   |
     |                         s402 (protocol spec, zero deps)
     |                                   |
@@ -319,17 +319,17 @@ AI Agent (Claude, GPT, Cursor, etc.)
 |---------|-------------|-------|
 | [`@sweefi/ui-core`](packages/ui-core) | Framework-agnostic state machine + PaymentAdapter interface | 13 |
 | [`@sweefi/server`](packages/server) | Chain-agnostic HTTP: s402Gate, wrapFetchWithS402 | — |
-| [`@sweefi/sui`](packages/sui) | 42 PTB builders + SuiPaymentAdapter + s402 schemes | 252 |
+| [`@sweefi/sui`](packages/sui) | $extend() plugin + 7 curried contract classes + SuiPaymentAdapter + s402 schemes | 662 |
 | [`@sweefi/vue`](packages/vue) | Vue 3 plugin + useSweefiPayment() composable | 10 |
 | [`@sweefi/react`](packages/react) | React context + useSweefiPayment() hook | 12 |
-| [`@sweefi/facilitator`](packages/facilitator) | Self-hostable payment verification + settlement — Docker/Fly.io | 57 |
-| [`@sweefi/mcp`](packages/mcp) | MCP server — 35 AI agent tools | 124 |
-| [`@sweefi/cli`](packages/cli) | CLI for wallet, pay, prepaid, mandate operations | 43 |
+| [`@sweefi/facilitator`](packages/facilitator) | Self-hostable payment verification + settlement — Docker/Fly.io | 91 |
+| [`@sweefi/mcp`](packages/mcp) | MCP server — 35 AI agent tools | 222 |
+| [`@sweefi/cli`](packages/cli) | CLI for wallet, pay, prepaid, mandate operations | 238 |
 | [`@sweefi/ap2-adapter`](packages/ap2-adapter) | Google AP2 ↔ SweeFi mandate bridge | 52 |
 | [`@sweefi/solana`](packages/solana) | Solana adapter (exact scheme only) | 40 |
-| [`sweefi-contracts`](contracts) | 10 Move modules on Sui testnet | 264 |
+| [`sweefi-contracts`](contracts) | 10 Move modules on Sui testnet | 426 |
 
-**Total: 1,654 tests (1,228 TypeScript + 426 Move)**
+**Total: 1,766 tests (1,340 TypeScript + 426 Move)**
 
 ### External Dependencies
 
@@ -358,16 +358,16 @@ Everything below is DONE. Contracts deployed to testnet. All packages build, typ
 - [x] Mandates: basic + agent (L0-L3) contracts + 9 PTB builders + MCP tools
 - [x] Admin: pause/unpause/burn contracts + 3 PTB builders
 - [x] Identity + math helper modules
-- [x] @sweefi/mcp: 30+5 opt-in MCP tools (79 tests)
-- [x] @sweefi/cli: CLI for wallet, pay, prepaid, mandate operations (43 tests)
+- [x] @sweefi/mcp: 30+5 opt-in MCP tools (222 tests)
+- [x] @sweefi/cli: CLI for wallet, pay, prepaid, mandate operations (238 tests)
 - [x] @sweefi/ui-core: state machine + PaymentAdapter interface (13 tests)
 - [x] @sweefi/vue: Vue 3 plugin + useSweefiPayment() composable (10 tests)
 - [x] @sweefi/react: React context + useSweefiPayment() hook (12 tests)
 - [x] @sweefi/facilitator: settles 4 schemes (exact, prepaid, stream, escrow)
 - [x] Migrated to @mysten/sui 2.x + @mysten/seal 1.x
-- [x] 849 total tests (603 TypeScript + 246 Move)
+- [x] 1,766 total tests (1,340 TypeScript + 426 Move)
 - [x] SDK architecture restructure complete: sdk→server, widget deleted, ui-core/vue/react added
-- [x] Full adversarial audit complete: 10-phase audit + 7-expert coders council, 10 security/behavioral fixes applied, all 382 TS tests green
+- [x] Full adversarial audit complete: 10-phase audit + 7-expert coders council, 10 security/behavioral fixes applied, all 1,340 TS tests green
 
 ### Next — Ship It
 
@@ -726,10 +726,10 @@ Payment schemes are the foundation. Platform capabilities are the moat. The prot
 
 | Capability | What It Does | Status |
 |------------|-------------|--------|
-| **Facilitator Network** | Verify + settle. Self-hostable or use SweeFi's hosted service | Built, 37 tests, settles 4 schemes |
+| **Facilitator Network** | Verify + settle. Self-hostable or use SweeFi's hosted service | Built, 91 tests, settles 4 schemes |
 | **Agent SDK** | `client.fetch(url)` — 3 lines to auto-pay for anything | Built, 6 tests |
-| **MCP Server** | AI agents discover payment tools natively via MCP protocol | Built, 35 tools, 79 tests |
-| **CLI** | Terminal tool for wallet, pay, prepaid, mandate operations | Built, 43 tests |
+| **MCP Server** | AI agents discover payment tools natively via MCP protocol | Built, 35 tools, 222 tests |
+| **CLI** | Terminal tool for wallet, pay, prepaid, mandate operations | Built, 238 tests |
 
 Table stakes. Not a moat, but nothing works without them.
 
@@ -840,19 +840,19 @@ The protocol is open. The schemes are open. **The reputation graph is the moat.*
 |---------|-------------|-------|
 | `@sweefi/ui-core` | Framework-agnostic state machine + PaymentAdapter interface | 13 |
 | `@sweefi/server` | Chain-agnostic HTTP: s402Gate, wrapFetchWithS402 | — |
-| `@sweefi/sui` | 42 PTB builders + SuiPaymentAdapter + s402 schemes | 252 |
+| `@sweefi/sui` | $extend() plugin + 7 curried contract classes + SuiPaymentAdapter + s402 schemes | 662 |
 | `@sweefi/vue` | Vue 3 plugin + useSweefiPayment() composable | 10 |
 | `@sweefi/react` | React context + useSweefiPayment() hook | 12 |
-| `@sweefi/facilitator` | Self-hostable payment verification (Docker/Fly.io) | 57 |
-| `@sweefi/mcp` | MCP server — 35 AI agent tools | 124 |
-| `@sweefi/cli` | CLI for wallet, payments, and provider management | 43 |
+| `@sweefi/facilitator` | Self-hostable payment verification (Docker/Fly.io) | 91 |
+| `@sweefi/mcp` | MCP server — 35 AI agent tools | 222 |
+| `@sweefi/cli` | CLI for wallet, payments, and provider management | 238 |
 | `@sweefi/ap2-adapter` | Google AP2 ↔ SweeFi mandate bridge | 52 |
 | `@sweefi/solana` | Solana adapter (exact scheme only) | 40 |
-| `sweefi-contracts` | 10 Move modules on Sui testnet | 264 |
+| `sweefi-contracts` | 10 Move modules on Sui testnet | 426 |
 
 **External dependencies**: `s402@0.2.1` (HTTP 402 protocol), `@mysten/sui@2.4.0`, `@mysten/seal@1.0.1`
 
-**Totals**: 603 TypeScript tests + 246 Move tests = 849
+**Totals**: 1,340 TypeScript tests + 426 Move tests = 1,766
 
 ### SweeAgent (future — architect seams now)
 

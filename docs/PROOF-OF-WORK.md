@@ -14,8 +14,8 @@ cd contracts && sui move test
 
 ## Verified Test Counts
 
-- TypeScript tests: **1,228 passing**
-  - `@sweefi/sui`: 550
+- TypeScript tests: **1,340 passing**
+  - `@sweefi/sui`: 662
   - `@sweefi/cli`: 238
   - `@sweefi/mcp`: 222
   - `@sweefi/facilitator`: 91
@@ -26,7 +26,7 @@ cd contracts && sui move test
   - `@sweefi/vue`: 10
   - `@sweefi/server`: 0 (integration-only tests — no offline unit tests)
 - Move tests: **426 functions** (all passing)
-- **Grand total: 1,654 tests**
+- **Grand total: 1,766 tests**
 - **Hardening audit**: [HARDENING-AUDIT-2026-03-10.md](HARDENING-AUDIT-2026-03-10.md) — DO-178B MC/DC, mutation testing, metamorphic verification
 
 ## Hardening Stories
@@ -71,9 +71,9 @@ The March 2026 hardening session applied DO-178B aviation-grade techniques (MC/D
 
 | Metric | Before | After | Delta |
 |--------|--------|-------|-------|
-| Total tests | 1,102 | 1,654 | +552 |
+| Total tests | 1,102 | 1,766 | +664 |
 | Move tests | 293 | 426 | +133 |
-| TypeScript tests | ~810 | 1,228 | +418 |
+| TypeScript tests | ~810 | 1,340 | +530 |
 | Mutation survivors | 12 | 0 | All killed |
 | Findings fixed | — | 11 | 2 CRITICAL, 4 MEDIUM, 5 LOW |
 

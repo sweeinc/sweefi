@@ -15,7 +15,7 @@
 
 ```
 sweefi-project/
-├── contracts/                    # Move smart contracts (10 modules, 264 test functions)
+├── contracts/                    # Move smart contracts (10 modules, 426 test functions)
 │   └── sources/
 │       ├── payment.move          # Direct payments, invoices, receipts
 │       ├── stream.move           # Streaming micropayments + budget caps
@@ -33,7 +33,7 @@ sweefi-project/
 │   ├── sui/                      # $extend() plugin + curried contract classes + query modules (662 tests)
 │   ├── vue/                      # Vue 3 plugin + useSweefiPayment() composable (10 tests)
 │   ├── react/                    # React context + useSweefiPayment() hook (12 tests)
-│   ├── facilitator/              # Self-hostable payment verification — private, Docker only (57 tests)
+│   ├── facilitator/              # Self-hostable payment verification — private, Docker only (91 tests)
 │   ├── mcp/                      # MCP server, 35 AI agent tools (222 tests)
 │   ├── cli/                      # CLI tool — wallet, pay, prepaid, mandates (238 tests)
 │   ├── ap2-adapter/              # AP2 ↔ SweeFi mandate mapper + bridge (52 tests)
@@ -153,7 +153,7 @@ payment.move   → receipts          @sweefi/sui  → $extend() plugin + contrac
 stream.move    → streaming         @sweefi/server → s402Gate middleware
 escrow.move    → time-locked       @sweefi/ui-core → state machine
 seal_policy.move → pay-to-decrypt  @sweefi/vue, react → UI bindings
-mandate.move   → basic delegation  @sweefi/mcp → 30 AI agent tools
+mandate.move   → basic delegation  @sweefi/mcp → 35 AI agent tools
 agent_mandate.move → L0-L3 auth    @sweefi/facilitator → verifier service
 prepaid.move   → batch budgets     @sweefi/cli → dev CLI tool
 identity.move  → did:sui profiles  s402 (external) → HTTP 402 protocol
@@ -312,7 +312,7 @@ These are hard rules. Do not debate them; read the ADR if you want context.
 Package ID: `0xb83e50365ba460aaa02e240902a40890bec88cd35bd2fc09afb6c79ec8ea9ac5`
 Contract version: 0.1.0 (pre-mainnet). 11th testnet iteration (auto-unpause + MC/DC). Full history in git log.
 
-10 modules, 293 Move test functions (all passing). MC/DC coverage on 4 authorization-critical functions (agent_mandate, mandate, prepaid, escrow).
+10 modules, 426 Move test functions (all passing). MC/DC coverage on 4 authorization-critical functions (agent_mandate, mandate, prepaid, escrow).
 
 **Key design patterns:**
 - All payment functions are `public` (composable in PTBs), not `entry`
@@ -383,7 +383,7 @@ Dependency direction (strict — never reverse):
 3. **Hono over Express**: Lighter, edge-compatible
 4. **tsdown bundler**: NOT tsup (tsup is EOL)
 5. **Composable PTBs**: `buildPayAndProveTx()` combines pay + receipt transfer atomically (see ADR-001 in packages/sui/)
-6. **MCP-native**: 30 tools (+ 5 opt-in) registered on MCP server for AI agent discovery
+6. **MCP-native**: 35 tools (30 default + 5 opt-in) registered on MCP server for AI agent discovery
 7. **Role-based packages**: ui-core (state machine) + sui (adapter) + vue/react (bindings) — not framework-coupled
 8. **PaymentAdapter interface**: `@sweefi/ui-core` defines the interface; `@sweefi/sui` implements it. Adding Solana is a new adapter, not a new framework dependency.
 9. **PaymentController state ordering**: `setState({ status: "broadcasting" })` MUST be called BEFORE `await adapter.signAndBroadcast()`. The `broadcasting` state represents work in progress during the network round-trip — if set after the `await`, the UI transitions directly from `awaiting_signature` to `settled` with no observable `broadcasting` state.
@@ -418,9 +418,9 @@ Dependency direction (strict — never reverse):
 
 ---
 
-## MCP Server (30 Default + 5 Opt-In Tools)
+## MCP Server (35 Tools: 30 Default + 5 Opt-In)
 
-The MCP package registers 30 tools by default + 5 opt-in (admin + provider).
+The MCP package registers 35 tools total: 30 by default + 5 opt-in (admin + provider).
 
 **Payments** (4): `pay`, `pay_and_prove`, `create_invoice`, `pay_invoice`
 **Streaming** (4): `start_stream`, `start_stream_with_timeout`, `stop_stream`, `recipient_close_stream`

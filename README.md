@@ -133,7 +133,7 @@ AI Agent (Claude, GPT, Cursor, etc.)
     |                                   |
     +-- MCP tool discovery -------> @sweefi/mcp (35 tools)
     |                                   |
-    +-- Direct PTB --------------> @sweefi/sui (40 PTB builders)
+    +-- Direct PTB --------------> @sweefi/sui ($extend() plugin + contract classes)
     |                                   |
     +-- CLI ----------------------> @sweefi/cli
     |                                   |

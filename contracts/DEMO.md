@@ -5,8 +5,8 @@
 **Package (testnet):** `0xb83e50365ba460aaa02e240902a40890bec88cd35bd2fc09afb6c79ec8ea9ac5`
 **Modules:** `payment`, `stream`, `escrow`, `seal_policy`, `mandate`, `agent_mandate`, `prepaid`, `admin`, `math`, `identity`
 **Move tests:** 426 passing
-**TypeScript tests:** 1,228 passing
-**Total:** 1,654 tests across Move + TypeScript
+**TypeScript tests:** 1,340 passing
+**Total:** 1,766 tests across Move + TypeScript
 
 ---
 

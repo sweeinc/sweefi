@@ -908,7 +908,7 @@ For testnet validation, verify actual transaction execution:
 3. **s402 stays chain-agnostic**: Shows you understand separation of concerns
 4. **Query modules use `client.core`**: Transport-agnostic — works with gRPC, GraphQL, or JSON-RPC
 5. **Narrowed public API interface**: Factory returns `SweefiPublicAPI`, not the raw class — explicit surface boundary, same pattern a Mysten senior would design
-6. **Real published packages**: This isn't a toy — 7 packages on npm, 1,569 tests
+6. **Real published packages**: This isn't a toy — 10 packages on npm, 1,766 tests
 7. **Error hierarchy with stable codes**: `SweefiError` → `ConfigurationError` / `ResourceNotFoundError` / `ValidationError`, all with `SweefiErrorCode` for programmatic handling
 8. **BCS parsing with concrete type defs**: Every Move struct has a matching `bcs.struct()` definition — type-safe on-chain data parsing, not `fields as any`
 9. **Cross-extension composition proven**: Works alongside DeepBook, Walrus, any `$extend()` SDK
