@@ -2,7 +2,7 @@
 
 > Give your AI agents a budget, not a blank check.
 
-**Five payment schemes for AI agents on Sui — exact, prepaid, escrow, streaming, and SEAL pay-to-decrypt. 1,654 tests. 10 packages. Apache 2.0.**
+**Five payment schemes for AI agents on Sui — exact, prepaid, escrow, streaming, and SEAL pay-to-decrypt. 1,766 tests. 10 packages. Apache 2.0.**
 
 ```typescript
 // 3 lines: AI agent auto-pays for premium data
@@ -168,17 +168,17 @@ AI Agent (Claude, GPT, Cursor, etc.)
 |---------|-------------|-------|
 | [`@sweefi/ui-core`](packages/ui-core) | Framework-agnostic state machine + `PaymentAdapter` interface | 13 |
 | [`@sweefi/server`](packages/server) | Chain-agnostic HTTP: `s402Gate` middleware + `wrapFetchWithS402` | — |
-| [`@sweefi/sui`](packages/sui) | 40 PTB builders + `SuiPaymentAdapter` + s402 client | 257 |
+| [`@sweefi/sui`](packages/sui) | $extend() plugin + curried contract classes + s402 client | 662 |
 | [`@sweefi/vue`](packages/vue) | Vue 3 plugin + `useSweefiPayment()` composable | 10 |
 | [`@sweefi/react`](packages/react) | React context + `useSweefiPayment()` hook (`useSyncExternalStore`) | 12 |
-| [`@sweefi/facilitator`](packages/facilitator) | Self-hostable payment verification — Docker/Fly.io (not on npm) | 63 |
-| [`@sweefi/mcp`](packages/mcp) | MCP server with 35 AI agent tools | 124 |
+| [`@sweefi/facilitator`](packages/facilitator) | Self-hostable payment verification — Docker/Fly.io (not on npm) | 91 |
+| [`@sweefi/mcp`](packages/mcp) | MCP server with 35 AI agent tools | 222 |
 | [`@sweefi/cli`](packages/cli) | CLI tool — wallet, pay, prepaid, mandates | 238 |
 | [`@sweefi/solana`](packages/solana) | Solana s402 payment adapter | 40 |
 | [`@sweefi/ap2-adapter`](packages/ap2-adapter) | Google AP2 ↔ SweeFi mandate bridge | 52 |
 | [`sweefi-contracts`](contracts) | 10 Move modules on Sui testnet | 426 |
 
-**Total: 1,654 passing tests (1,228 TypeScript + 426 Move)**
+**Total: 1,766 passing tests (1,340 TypeScript + 426 Move)**
 
 **External**: [`s402`](https://www.npmjs.com/package/s402) (HTTP 402 protocol, v0.2.2), `@mysten/sui@2.6.0`, `@mysten/seal@1.0.1`
 

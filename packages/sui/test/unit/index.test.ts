@@ -36,12 +36,17 @@ import {
   // Errors
   SweefiError,
   ConfigurationError,
+  ResourceNotFoundError,
+  ValidationError,
   SweefiErrorCode,
   // BCS
   StreamingMeterBcs,
   EscrowBcs,
   PrepaidBalanceBcs,
   ProtocolStateBcs,
+  MandateBcs,
+  InvoiceBcs,
+  AgentMandateBcs,
   // Query state enum
   EscrowState,
 } from "../../src/index";
@@ -179,6 +184,8 @@ describe("@sweefi/sui", () => {
   it("should export error classes and codes", () => {
     expect(SweefiError).toBeDefined();
     expect(ConfigurationError).toBeDefined();
+    expect(ResourceNotFoundError).toBeDefined();
+    expect(ValidationError).toBeDefined();
     expect(SweefiErrorCode).toBeDefined();
   });
 
@@ -187,6 +194,9 @@ describe("@sweefi/sui", () => {
     expect(EscrowBcs).toBeDefined();
     expect(PrepaidBalanceBcs).toBeDefined();
     expect(ProtocolStateBcs).toBeDefined();
+    expect(MandateBcs).toBeDefined();
+    expect(InvoiceBcs).toBeDefined();
+    expect(AgentMandateBcs).toBeDefined();
   });
 
   it("should export query state enums", () => {

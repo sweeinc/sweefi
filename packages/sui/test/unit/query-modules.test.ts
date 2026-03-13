@@ -149,7 +149,7 @@ describe('EscrowQueries', () => {
   it('maps disputed state correctly', async () => {
     const ctx = createMockCtx();
     ctx.getObjectMock.mockResolvedValue(
-      mockObjectResponse(EscrowBcs, { ...escrowData, state: 3 }),
+      mockObjectResponse(EscrowBcs, { ...escrowData, state: 1 }),
     );
     const queries = new EscrowQueries(ctx);
 

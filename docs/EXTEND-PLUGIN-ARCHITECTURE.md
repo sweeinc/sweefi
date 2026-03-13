@@ -722,7 +722,10 @@ export class SweefiConfig {
 | `buildAutoUnpauseTx` | `.autoUnpause(params)` | `admin::auto_unpause` |
 | `buildBurnAdminCapTx` | `.burnCap(params)` | `admin::burn_admin_cap` |
 
-### `client.sweefi.identity.*` (IdentityContract)
+### `client.sweefi.identity.*` (IdentityContract) — NOT YET IMPLEMENTED
+
+> **Note**: IdentityContract is not yet implemented. The `identity.move` module has no money flows
+> and was deprioritized. These methods are planned for a future phase.
 
 | Current Function | Extension Method | Move Target |
 |-----------------|-----------------|-------------|
@@ -917,10 +920,10 @@ For testnet validation, verify actual transaction execution:
 ## Status
 
 - **Phases 1–4 complete.** All consumers migrated to the contract class pattern.
-- **1,168 tests passing** across 4 packages (`@sweefi/sui`, `@sweefi/mcp`, `@sweefi/cli`, `@sweefi/facilitator`).
+- **1,213 tests passing** across 4 packages (`@sweefi/sui` 662, `@sweefi/mcp` 222, `@sweefi/cli` 238, `@sweefi/facilitator` 91).
 - Old `ptb/` builder functions preserved but **deprecated** — contract classes are the canonical API.
 - Phase 5 (codegen integration) remains future work.
 
 ---
 
-*Last updated: 2026-03-11 (Phases 1–4 complete. All consumers migrated to contract class pattern.)*
+*Last updated: 2026-03-12 (Phases 1–4 complete. All consumers migrated to contract class pattern. IdentityContract deferred.)*

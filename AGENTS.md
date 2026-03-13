@@ -9,7 +9,7 @@
 - Monorepo with 10 TS packages + Move smart contracts
 - Built on top of `s402` (HTTP 402 protocol, published on npm as `s402@0.2.2`)
 - Competing with BEEP (justbeep.it) — proprietary alternative
-- 1,654 passing tests (1,228 TypeScript + 426 Move) — see STATUS.md for per-package breakdown
+- 1,766 passing tests (1,340 TypeScript + 426 Move) — see STATUS.md for per-package breakdown
 
 ## Repository Structure
 
