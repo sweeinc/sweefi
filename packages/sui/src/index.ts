@@ -52,6 +52,7 @@ export { PaymentContract } from "./transactions/payment";
 export { StreamContract } from "./transactions/stream";
 export { EscrowContract } from "./transactions/escrow";
 export { PrepaidContract } from "./transactions/prepaid";
+export { UNLIMITED_CALLS } from "./ptb/prepaid";
 export { MandateContract } from "./transactions/mandate";
 export { AgentMandateContract } from "./transactions/agentMandate";
 export { AdminContract } from "./transactions/admin";
