@@ -40,7 +40,7 @@ Pay-to-decrypt using Sui's SEAL threshold encryption. Agent pays → receives on
 ## Package Architecture
 
 ### @sweefi/sui (core)
-- 42 PTB (Programmable Transaction Block) builders
+- $extend() plugin + 7 contract classes
 - s402 client with auto-retry on 402 responses
 - SuiPaymentAdapter for wallet integration
 - Constants: ZERO_ADDRESS, fee utilities

@@ -19,7 +19,7 @@ Domain-specific terms used across SweeFi's codebase and documentation.
 : Chain-Agnostic Improvement Proposal 2 — standard format for identifying blockchain networks. SweeFi uses CAIP-2 strings (`sui:testnet`, `sui:mainnet`) as the canonical network identifier.
 
 **PTB (Programmable Transaction Block)**
-: Sui's composable transaction model. A PTB bundles multiple Move calls into a single atomic transaction — if any step fails, everything reverts. SweeFi exposes ~42 PTB builders that return a `Transaction` object ready to sign. See [ADR-001](/adr/001-composable-ptb-pattern).
+: Sui's composable transaction model. A PTB bundles multiple Move calls into a single atomic transaction — if any step fails, everything reverts. SweeFi exposes a `$extend()` plugin with 7 curried contract classes that return a `Transaction` object ready to sign. See [ADR-001](/adr/001-composable-ptb-pattern).
 
 **MIST**
 : The base unit of SUI. 1 SUI = 1,000,000,000 (10^9) MIST. All on-chain amounts in SweeFi contracts are denominated in MIST. Example: `MIN_DEPOSIT = 1,000,000 MIST` (~0.001 SUI).

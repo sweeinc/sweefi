@@ -5,7 +5,7 @@ hero:
   text: Give your AI agents a budget, not a blank check.
   tagline: >-
     Five payment schemes on Sui with on-chain spending controls.
-    42 PTB builders. AP2 mandates. L0-L3 authorization levels.
+    $extend() plugin + contract classes. AP2 mandates. L0-L3 authorization levels.
     From one-shot payments to prepaid agent budgets — all open source.
   actions:
     - theme: brand
@@ -58,4 +58,4 @@ SweeFi handles the s402 negotiation, PTB construction, signing, and settlement. 
 
 ---
 
-**v0.1.0** · 7 published packages · 1,654 tests (426 Move + 1,228 TS) · 10 Move modules · Apache 2.0 · Built on [s402](https://www.npmjs.com/package/s402) and [Sui](https://sui.io)
+**v0.1.0** · 10 published packages · 1,766 tests (426 Move + 1,340 TS) · 10 Move modules · Apache 2.0 · Built on [s402](https://www.npmjs.com/package/s402) and [Sui](https://sui.io)

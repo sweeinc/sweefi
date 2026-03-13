@@ -1,10 +1,10 @@
 # SweeFi
 
-> Open-source payment protocol for AI agents on Sui. Five on-chain payment primitives, 42 PTB builders, 35 MCP tools. Apache 2.0.
+> Open-source payment protocol for AI agents on Sui. Five on-chain payment primitives, $extend() plugin + contract classes, 35 MCP tools. Apache 2.0.
 
 SweeFi implements the s402 HTTP 402 protocol — when an AI agent hits a payment-gated API, it auto-detects the price, signs a Sui transaction, and retries without human intervention. The protocol is wire-compatible with Coinbase's x402 at the HTTP layer, but uses Sui's Programmable Transaction Blocks for atomic, composable settlement impossible on EVM.
 
-Ten Move modules deployed to Sui testnet. 1,654 tests (426 Move + 1,228 TS). Builds for: autonomous AI agents, API monetization without API keys, streaming micropayments for AI inference, trustless escrow for digital goods, pay-to-decrypt via SEAL threshold encryption.
+Ten Move modules deployed to Sui testnet. 1,766 tests (426 Move + 1,340 TS). Builds for: autonomous AI agents, API monetization without API keys, streaming micropayments for AI inference, trustless escrow for digital goods, pay-to-decrypt via SEAL threshold encryption.
 
 ## Getting Started
 
@@ -22,7 +22,7 @@ Ten Move modules deployed to Sui testnet. 1,654 tests (426 Move + 1,228 TS). Bui
 
 ## Packages
 
-- [@sweefi/sui](https://docs.sweefi.xyz/guide/sui): 42 PTB builder functions, s402 client with auto-pay
+- [@sweefi/sui](https://docs.sweefi.xyz/guide/sui): $extend() plugin + 7 contract classes, s402 client with auto-pay
 - [@sweefi/server](https://docs.sweefi.xyz/guide/server): s402Gate middleware for Hono / Express / any HTTP framework
 - [@sweefi/mcp](https://docs.sweefi.xyz/guide/mcp): 35 MCP tools — Claude, Cursor, and MCP-compatible AI agents pay directly
 - [@sweefi/cli](https://docs.sweefi.xyz/guide/cli): Terminal: pay, stream, escrow, mandate management

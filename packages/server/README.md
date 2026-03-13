@@ -196,7 +196,7 @@ This package has **no blockchain peer dependencies** — chain-specific logic li
 | Package | Purpose |
 |---|---|
 | [`@sweefi/server`](https://www.npmjs.com/package/@sweefi/server) | This package — chain-agnostic HTTP middleware + fetch wrapper |
-| [`@sweefi/sui`](https://www.npmjs.com/package/@sweefi/sui) | Full Sui client: `createS402Client`, 40 PTB builders, `SuiPaymentAdapter` |
+| [`@sweefi/sui`](https://www.npmjs.com/package/@sweefi/sui) | Full Sui client: `createS402Client`, $extend() plugin + contract classes, `SuiPaymentAdapter` |
 | [`@sweefi/ui-core`](https://www.npmjs.com/package/@sweefi/ui-core) | Framework-agnostic payment state machine + `PaymentAdapter` interface |
 | [`@sweefi/mcp`](https://www.npmjs.com/package/@sweefi/mcp) | 35 payment tools for Claude, Cursor, and any MCP-compatible AI (30 default + 5 opt-in) |
 

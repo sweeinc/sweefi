@@ -98,7 +98,7 @@ class MyChainAdapter implements PaymentAdapter {
 | Package | Purpose |
 |---------|---------|
 | [`@sweefi/ui-core`](https://www.npmjs.com/package/@sweefi/ui-core) | This package — state machine + adapter interface |
-| [`@sweefi/sui`](https://www.npmjs.com/package/@sweefi/sui) | Sui adapter + 40 PTB builders + `createS402Client` |
+| [`@sweefi/sui`](https://www.npmjs.com/package/@sweefi/sui) | Sui adapter + $extend() plugin + contract classes + `createS402Client` |
 | [`@sweefi/vue`](https://www.npmjs.com/package/@sweefi/vue) | Vue 3 composable + plugin |
 | [`@sweefi/react`](https://www.npmjs.com/package/@sweefi/react) | React hook + context provider |
 

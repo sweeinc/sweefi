@@ -95,7 +95,7 @@ AI Agent (Claude, GPT, Cursor, etc.)
     |                                   |
     +-- MCP tool discovery -------> @sweefi/mcp (30+5 opt-in tools)
     |                                   |
-    +-- Direct PTB --------------> @sweefi/sui (42 PTB builders)
+    +-- Direct PTB --------------> @sweefi/sui ($extend() plugin + contract classes)
     |                                   |
     +-- CLI ----------------------> @sweefi/cli
     |                                   |
@@ -134,7 +134,7 @@ AI Agent (Claude, GPT, Cursor, etc.)
 |---------|-------------|-------|
 | [`@sweefi/ui-core`](/guide/ui-core) | Framework-agnostic state machine + PaymentAdapter interface | 13 |
 | [`@sweefi/server`](/guide/server) | Chain-agnostic HTTP: s402Gate, wrapFetchWithS402 | 11 |
-| [`@sweefi/sui`](/guide/sui) | 42 PTB builders + SuiPaymentAdapter + s402 schemes | 202 |
+| [`@sweefi/sui`](/guide/sui) | $extend() plugin + 7 contract classes + s402 schemes | 662 |
 | [`@sweefi/vue`](/guide/vue) | Vue 3 plugin + useSweefiPayment() composable | 10 |
 | [`@sweefi/react`](/guide/react) | React context + useSweefiPayment() hook | 12 |
 | [`@sweefi/facilitator`](/guide/facilitator) | Self-hostable payment verification — Docker/Fly.io (not on npm) | 55 |
@@ -144,7 +144,7 @@ AI Agent (Claude, GPT, Cursor, etc.)
 | [`@sweefi/ap2-adapter`](/guide/ap2-adapter) | AP2 mandate mapper + bridge | 52 |
 | [`sweefi-contracts`](/guide/contracts) | 10 Move modules on Sui testnet | 264 |
 
-**Total: 1,654 tests (1,228 TypeScript + 426 Move)**
+**Total: 1,766 tests (1,340 TypeScript + 426 Move)**
 
 **External**: [`s402`](https://www.npmjs.com/package/s402) (HTTP 402 protocol, v0.2.2), `@mysten/sui@2.6.0`, `@mysten/seal@1.0.1`
 
