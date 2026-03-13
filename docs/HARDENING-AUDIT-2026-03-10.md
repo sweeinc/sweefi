@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-Cross-layer type verification found 2 CRITICAL bugs (Option<u64> serialization mismatch) that survived 3 prior audit waves. Mutation testing found 12 boundary mutants surviving in Move contracts. All findings fixed, all tests green.
+Cross-layer type verification found 2 CRITICAL bugs (`Option<u64>` serialization mismatch) that survived 3 prior audit waves. Mutation testing found 12 boundary mutants surviving in Move contracts. All findings fixed, all tests green.
 
 **Before → After:**
 - Move tests: 293 → 426 (+133)
@@ -26,7 +26,7 @@ Cross-layer type verification found 2 CRITICAL bugs (Option<u64> serialization m
 | ID | File | Title | Fix |
 |----|------|-------|-----|
 | F-01 | `ptb/mandate.ts` | `expiresAtMs` serialized as `u64` but Move expects `Option<u64>` — BCS deserialization failure at tx time | Changed to `tx.pure.option("u64", ...)`, TS type to `bigint \| null` |
-| F-02 | `ptb/agent-mandate.ts` | Same Option<u64> mismatch in `buildCreateAgentMandateTx` | Same fix as F-01 |
+| F-02 | `ptb/agent-mandate.ts` | Same `Option<u64>` mismatch in `buildCreateAgentMandateTx` | Same fix as F-01 |
 
 ### MEDIUM
 
