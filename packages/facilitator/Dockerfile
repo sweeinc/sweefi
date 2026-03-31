@@ -10,15 +10,15 @@
 #              --dockerfile packages/facilitator/Dockerfile
 
 FROM node:22-slim AS base
-RUN corepack enable pnpm
+RUN npm install -g pnpm@10.32.0
 
 FROM base AS build
 WORKDIR /app
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
 COPY packages/ ./packages/
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @sweefi/facilitator... build
-RUN pnpm --filter @sweefi/facilitator deploy /deploy --prod
+RUN pnpm --filter @sweefi/facilitator deploy /deploy --prod --legacy
 
 FROM node:22-slim AS runtime
 WORKDIR /app

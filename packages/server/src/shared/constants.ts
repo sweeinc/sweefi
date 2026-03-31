@@ -1,8 +1,8 @@
 /**
  * Default facilitator URL.
  *
- * Set to empty string — callers MUST provide their own facilitator URL.
- * Self-host with Docker/Fly.io (see packages/facilitator) or use direct settlement.
- * This avoids implicit trust of a third-party facilitator endpoint.
+ * Points to the hosted SweeFi facilitator at https://swee-facilitator.fly.dev.
+ * Callers can override by passing `facilitatorUrl` to createS402Client().
+ * Self-host with Docker/Fly.io using packages/facilitator.
  */
-export const DEFAULT_FACILITATOR_URL = "";
+export const DEFAULT_FACILITATOR_URL = "https://swee-facilitator.fly.dev";

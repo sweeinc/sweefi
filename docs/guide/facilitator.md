@@ -1,6 +1,34 @@
-# Self-Hosting the Facilitator
+# The SweeFi Facilitator
 
 The facilitator is the settlement service that verifies signed payments and broadcasts them to Sui. It sits between your API server and the blockchain.
+
+## Hosted Facilitator (Recommended)
+
+The easiest way to get started is to use the hosted SweeFi facilitator:
+
+```
+https://swee-facilitator.fly.dev
+```
+
+This is the **default** when you use `createS402Client()` without specifying a `facilitatorUrl`. No setup required — any agent using `@sweefi/sui` is automatically routed here.
+
+Check its live status and fee schedule:
+
+```bash
+curl https://swee-facilitator.fly.dev/.well-known/s402-facilitator
+```
+
+The hosted facilitator charges a **0.5% fee** on settled payments (currently testnet + exact scheme on mainnet).
+
+To opt out and use your own facilitator, pass `facilitatorUrl` explicitly:
+
+```typescript
+const client = createS402Client({
+  wallet,
+  network: 'sui:testnet',
+  facilitatorUrl: 'https://your-own-facilitator.example.com',
+});
+```
 
 ## What It Does
 
@@ -48,15 +76,15 @@ curl http://localhost:4022/.well-known/s402-facilitator
 
 ```dockerfile
 FROM node:22-slim AS base
-RUN corepack enable pnpm
+RUN npm install -g pnpm@10.32.0
 
 FROM base AS build
 WORKDIR /app
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
 COPY packages/ ./packages/
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @sweefi/facilitator... build
-RUN pnpm --filter @sweefi/facilitator deploy /deploy --prod
+RUN pnpm --filter @sweefi/facilitator deploy /deploy --prod --legacy
 
 FROM node:22-slim AS runtime
 WORKDIR /app

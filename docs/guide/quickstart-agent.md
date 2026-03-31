@@ -20,6 +20,7 @@ const { secretKey } = decodeSuiPrivateKey(process.env.SUI_PRIVATE_KEY!);
 const wallet = Ed25519Keypair.fromSecretKey(secretKey);
 
 // 2. Create an s402-aware fetch client
+// Uses the hosted SweeFi facilitator (https://swee-facilitator.fly.dev) by default
 const client = createS402Client({ wallet, network: 'sui:testnet' });
 
 // 3. Fetch — if the server returns 402, the client auto-pays and retries
