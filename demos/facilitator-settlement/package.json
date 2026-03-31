@@ -1,6 +1,6 @@
 {
   "name": "@sweefi/facilitator-demo",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "Demo: facilitator-as-a-service — three-party s402 settlement with metering",

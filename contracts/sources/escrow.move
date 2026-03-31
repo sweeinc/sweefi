@@ -273,7 +273,7 @@ module sweefi::escrow {
             arbiter,
             balance,
             amount,
-            deadline_ms: _,
+            deadline_ms,
             state,
             fee_micro_pct,
             fee_recipient,
@@ -290,8 +290,13 @@ module sweefi::escrow {
         if (state == STATE_ACTIVE) {
             assert!(sender == buyer, ENotBuyer);
         } else {
-            // STATE_DISPUTED — only arbiter can release
+            // STATE_DISPUTED — only arbiter can release, and must act before deadline.
+            // After deadline, permissionless refund is the buyer's unconditional safety net.
+            // Without this check, a post-deadline arbiter release would race the buyer's
+            // refund — weakening the guarantee documented in the state machine comment.
+            // Found by Allium behavioral spec (sweefi.allium, 2026-03-28).
             assert!(sender == arbiter, ENotArbiter);
+            assert!(clock.timestamp_ms() < deadline_ms, EDeadlineReached);
         };
 
         let now_ms = clock.timestamp_ms();

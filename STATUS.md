@@ -1,6 +1,6 @@
 # SweeFi — Current Status
 
-> Last updated: 2026-03-10
+> Last updated: 2026-03-21
 
 ## Deployment State
 
@@ -17,7 +17,7 @@
 - **Demo 3** (escrow via `escrow::create`): PASSED on v11
   - TX: [`EcYFG3FTSwxM49UckuBhg2gYBPMzRBTNzmKy5Aq6UbzR`](https://suiscan.xyz/testnet/tx/EcYFG3FTSwxM49UckuBhg2gYBPMzRBTNzmKy5Aq6UbzR) — 1M MIST escrow, Escrow object created
 - All 10 TS packages build and typecheck
-- **1,340 TypeScript tests** passing across 10 packages
+- **1,349 TypeScript tests** passing across 10 packages
 - **426 Move test functions** passing (10 modules)
 - MCP server: 35 tools, all tested
 - Facilitator service: verify, settle, process, discovery, metering
@@ -47,15 +47,15 @@
 
 | Package | Tests |
 |---------|-------|
-| `@sweefi/sui` | 662 |
+| `@sweefi/sui` | 669 |
 | `@sweefi/cli` | 238 |
 | `@sweefi/mcp` | 222 |
 | `@sweefi/facilitator` | 91 |
 | `@sweefi/ap2-adapter` | 52 |
-| `@sweefi/solana` | 40 |
+| `@sweefi/solana` | 42 |
 | `@sweefi/ui-core` | 13 |
 | `@sweefi/react` | 12 |
 | `@sweefi/vue` | 10 |
-| **TypeScript total** | **1,340 passing** |
+| **TypeScript total** | **1,349 passing** |
 | Move contracts | 426 |
-| **Grand total** | **1,766 passing** |
+| **Grand total** | **1,775 passing** |

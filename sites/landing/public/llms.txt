@@ -38,7 +38,7 @@ SweeFi enables machine-to-machine commerce. An AI agent discovers a paid API, th
 
 ## Technical Details
 
-- 847 tests (601 TypeScript + 246 Move)
+- 1,775 tests (1,349 TypeScript + 426 Move)
 - 10 Move smart contract modules
 - Apache 2.0 license with patent grant
 - ~400ms settlement finality on Sui

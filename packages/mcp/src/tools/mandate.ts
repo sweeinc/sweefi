@@ -211,8 +211,8 @@ export function registerMandateTools(server: McpServer, ctx: SweefiContext) {
               `Delegate: ${delegate}\n` +
               `Level: ${levelName}\n` +
               `Max per TX: ${formatBalance(maxPerTx, resolvedType)}\n` +
-              `Daily limit: ${dailyLimit === "0" ? "unlimited" : formatBalance(dailyLimit, resolvedType)}\n` +
-              `Weekly limit: ${weeklyLimit === "0" ? "unlimited" : formatBalance(weeklyLimit, resolvedType)}\n` +
+              `Daily limit: ${formatBalance(dailyLimit, resolvedType)}\n` +
+              `Weekly limit: ${formatBalance(weeklyLimit, resolvedType)}\n` +
               `Lifetime cap: ${formatBalance(maxTotal, resolvedType)}\n` +
               `Expires: ${new Date(Number(expiresAtMs)).toISOString()}\n` +
               `TX Digest: ${result.digest}\n` +
@@ -513,9 +513,9 @@ export function registerMandateTools(server: McpServer, ctx: SweefiContext) {
         details +=
           `\nAgent Mandate Details:\n` +
           `Level: ${levelName}\n` +
-          `Daily limit: ${dailyLimit === "0" ? "unlimited" : `${dailyLimit} base units`}\n` +
+          `Daily limit: ${dailyLimit} base units\n` +
           `Daily spent: ${dailySpent} base units\n` +
-          `Weekly limit: ${weeklyLimit === "0" ? "unlimited" : `${weeklyLimit} base units`}\n` +
+          `Weekly limit: ${weeklyLimit} base units\n` +
           `Weekly spent: ${weeklySpent} base units\n`;
       }
 

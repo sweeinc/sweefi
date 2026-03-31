@@ -14,19 +14,19 @@ cd contracts && sui move test
 
 ## Verified Test Counts
 
-- TypeScript tests: **1,340 passing**
-  - `@sweefi/sui`: 662
+- TypeScript tests: **1,349 passing**
+  - `@sweefi/sui`: 669
   - `@sweefi/cli`: 238
   - `@sweefi/mcp`: 222
   - `@sweefi/facilitator`: 91
   - `@sweefi/ap2-adapter`: 52
-  - `@sweefi/solana`: 40
+  - `@sweefi/solana`: 42
   - `@sweefi/ui-core`: 13
   - `@sweefi/react`: 12
   - `@sweefi/vue`: 10
   - `@sweefi/server`: 0 (integration-only tests — no offline unit tests)
 - Move tests: **426 functions** (all passing)
-- **Grand total: 1,766 tests**
+- **Grand total: 1,775 tests**
 - **Hardening audit**: [HARDENING-AUDIT-2026-03-10.md](HARDENING-AUDIT-2026-03-10.md) — DO-178B MC/DC, mutation testing, metamorphic verification
 
 ## Hardening Stories

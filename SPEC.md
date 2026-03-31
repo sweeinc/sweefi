@@ -319,17 +319,17 @@ AI Agent (Claude, GPT, Cursor, etc.)
 |---------|-------------|-------|
 | [`@sweefi/ui-core`](packages/ui-core) | Framework-agnostic state machine + PaymentAdapter interface | 13 |
 | [`@sweefi/server`](packages/server) | Chain-agnostic HTTP: s402Gate, wrapFetchWithS402 | — |
-| [`@sweefi/sui`](packages/sui) | $extend() plugin + 7 curried contract classes + SuiPaymentAdapter + s402 schemes | 662 |
+| [`@sweefi/sui`](packages/sui) | $extend() plugin + 7 curried contract classes + SuiPaymentAdapter + s402 schemes | 669 |
 | [`@sweefi/vue`](packages/vue) | Vue 3 plugin + useSweefiPayment() composable | 10 |
 | [`@sweefi/react`](packages/react) | React context + useSweefiPayment() hook | 12 |
 | [`@sweefi/facilitator`](packages/facilitator) | Self-hostable payment verification + settlement — Docker/Fly.io | 91 |
 | [`@sweefi/mcp`](packages/mcp) | MCP server — 35 AI agent tools | 222 |
 | [`@sweefi/cli`](packages/cli) | CLI for wallet, pay, prepaid, mandate operations | 238 |
 | [`@sweefi/ap2-adapter`](packages/ap2-adapter) | Google AP2 ↔ SweeFi mandate bridge | 52 |
-| [`@sweefi/solana`](packages/solana) | Solana adapter (exact scheme only) | 40 |
+| [`@sweefi/solana`](packages/solana) | Solana adapter (exact scheme only) | 42 |
 | [`sweefi-contracts`](contracts) | 10 Move modules on Sui testnet | 426 |
 
-**Total: 1,766 tests (1,340 TypeScript + 426 Move)**
+**Total: 1,775 tests (1,349 TypeScript + 426 Move)**
 
 ### External Dependencies
 
@@ -365,9 +365,9 @@ Everything below is DONE. Contracts deployed to testnet. All packages build, typ
 - [x] @sweefi/react: React context + useSweefiPayment() hook (12 tests)
 - [x] @sweefi/facilitator: settles 4 schemes (exact, prepaid, stream, escrow)
 - [x] Migrated to @mysten/sui 2.x + @mysten/seal 1.x
-- [x] 1,766 total tests (1,340 TypeScript + 426 Move)
+- [x] 1,775 total tests (1,349 TypeScript + 426 Move)
 - [x] SDK architecture restructure complete: sdk→server, widget deleted, ui-core/vue/react added
-- [x] Full adversarial audit complete: 10-phase audit + 7-expert coders council, 10 security/behavioral fixes applied, all 1,340 TS tests green
+- [x] Full adversarial audit complete: 10-phase audit + 7-expert coders council, 10 security/behavioral fixes applied, all 1,349 TS tests green
 
 ### Next — Ship It
 
@@ -852,7 +852,7 @@ The protocol is open. The schemes are open. **The reputation graph is the moat.*
 
 **External dependencies**: `s402@0.2.1` (HTTP 402 protocol), `@mysten/sui@2.4.0`, `@mysten/seal@1.0.1`
 
-**Totals**: 1,340 TypeScript tests + 426 Move tests = 1,766
+**Totals**: 1,349 TypeScript tests + 426 Move tests = 1,775
 
 ### SweeAgent (future — architect seams now)
 

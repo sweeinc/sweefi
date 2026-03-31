@@ -12,7 +12,7 @@ Goal: first successful paid request in under 15 minutes.
 ## 1) Install and Build
 
 ```bash
-cd /Users/dannydevs/repos/danny/projects/sweefi-project
+cd sweefi    # your local clone of https://github.com/sweeinc/sweefi
 pnpm install
 pnpm -r build
 ```

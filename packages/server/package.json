@@ -1,6 +1,6 @@
 {
   "name": "@sweefi/server",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "s402 server middleware (chain-agnostic) and Sui client fetch wrapper for Hono and Node.js",
   "keywords": [

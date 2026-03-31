@@ -178,7 +178,7 @@ describe("mandate tools", () => {
       expect(result.content[0].text).toContain("Remaining: unknown");
     });
 
-    it("shows 'unlimited' for zero daily/weekly limits on AgentMandate", async () => {
+    it("shows zero budget for zero daily/weekly limits on AgentMandate", async () => {
       const ctx = makeAgentMandateCtx();
       (ctx.suiClient.getObject as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: {
@@ -207,8 +207,8 @@ describe("mandate tools", () => {
 
       const result = await handler({ mandateId: "0x" + "d".repeat(64) });
       const text = result.content[0].text;
-      expect(text).toContain("Daily limit: unlimited");
-      expect(text).toContain("Weekly limit: unlimited");
+      expect(text).toContain("Daily limit: 0 base units");
+      expect(text).toContain("Weekly limit: 0 base units");
       expect(text).toContain("L3 (Autonomous)");
     });
   });

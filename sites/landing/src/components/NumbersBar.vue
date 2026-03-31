@@ -21,7 +21,7 @@ onMounted(() => {
 })
 
 const stats = [
-  { counter: 'counter-1654', label: 'Tests' },
+  { counter: 'counter-1775', label: 'Tests' },
   { counter: 'counter-7', label: 'Packages (npm)' },
   { counter: 'counter-10b', label: 'Move Modules' },
   { counter: 'counter-35', label: 'MCP Tools' },

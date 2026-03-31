@@ -54,8 +54,8 @@ export function parseAmount(value: string, fieldName: string = "amount"): bigint
 
 /**
  * Like parseAmount but allows zero values.
- * Used for fields where zero is semantically valid (e.g., dailyLimit=0 means "unlimited",
- * cumulativeCallCount=0 is a safe no-op).
+ * Used for fields where zero is semantically valid (e.g., cumulativeCallCount=0 is a valid
+ * initial state). Note: on-chain, dailyLimit=0 means zero budget, NOT unlimited (use u64::MAX).
  */
 export function parseAmountOrZero(value: string, fieldName: string = "amount"): bigint {
   if (!value || value.trim() === "") {

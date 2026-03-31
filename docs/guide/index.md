@@ -133,18 +133,18 @@ AI Agent (Claude, GPT, Cursor, etc.)
 | Package | Description | Tests |
 |---------|-------------|-------|
 | [`@sweefi/ui-core`](/guide/ui-core) | Framework-agnostic state machine + PaymentAdapter interface | 13 |
-| [`@sweefi/server`](/guide/server) | Chain-agnostic HTTP: s402Gate, wrapFetchWithS402 | 11 |
-| [`@sweefi/sui`](/guide/sui) | $extend() plugin + 7 contract classes + s402 schemes | 662 |
+| [`@sweefi/server`](/guide/server) | Chain-agnostic HTTP: s402Gate, wrapFetchWithS402 | — |
+| [`@sweefi/sui`](/guide/sui) | $extend() plugin + 7 contract classes + s402 schemes | 669 |
 | [`@sweefi/vue`](/guide/vue) | Vue 3 plugin + useSweefiPayment() composable | 10 |
 | [`@sweefi/react`](/guide/react) | React context + useSweefiPayment() hook | 12 |
-| [`@sweefi/facilitator`](/guide/facilitator) | Self-hostable payment verification — Docker/Fly.io (not on npm) | 55 |
-| [`@sweefi/mcp`](/guide/mcp) | MCP server — 30 default + 5 opt-in AI agent tools | 123 |
-| [`@sweefi/cli`](/guide/cli) | CLI tool — wallet, pay, prepaid, mandates | 42 |
-| [`@sweefi/solana`](/guide/solana) | Solana s402 adapter (exact scheme, SPL tokens) | 40 |
+| [`@sweefi/facilitator`](/guide/facilitator) | Self-hostable payment verification — Docker/Fly.io (not on npm) | 91 |
+| [`@sweefi/mcp`](/guide/mcp) | MCP server — 35 AI agent tools | 222 |
+| [`@sweefi/cli`](/guide/cli) | CLI tool — wallet, pay, prepaid, mandates | 238 |
+| [`@sweefi/solana`](/guide/solana) | Solana s402 adapter (exact scheme, SPL tokens) | 42 |
 | [`@sweefi/ap2-adapter`](/guide/ap2-adapter) | AP2 mandate mapper + bridge | 52 |
-| [`sweefi-contracts`](/guide/contracts) | 10 Move modules on Sui testnet | 264 |
+| [`sweefi-contracts`](/guide/contracts) | 10 Move modules on Sui testnet | 426 |
 
-**Total: 1,766 tests (1,340 TypeScript + 426 Move)**
+**Total: 1,775 tests (1,349 TypeScript + 426 Move)**
 
 **External**: [`s402`](https://www.npmjs.com/package/s402) (HTTP 402 protocol, v0.2.2), `@mysten/sui@2.6.0`, `@mysten/seal@1.0.1`
 
