@@ -42,7 +42,7 @@
     "@mysten/sui": "^2.6.0",
     "@sweefi/sui": "workspace:^",
     "hono": "^4.0.0",
-    "s402": "^0.2.0",
+    "s402": "^0.3.0",
     "sui-gas-station": "^0.2.0",
     "zod": "^3.22.0"
   },

@@ -56,7 +56,7 @@
     "access": "public"
   },
   "dependencies": {
-    "s402": "^0.2.0"
+    "s402": "^0.3.0"
   },
   "devDependencies": {
     "@types/node": "^22.13.4",

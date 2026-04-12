@@ -58,7 +58,7 @@
   },
   "dependencies": {
     "@sweefi/ui-core": "workspace:^",
-    "s402": "^0.2.0"
+    "s402": "^0.3.0"
   },
   "peerDependencies": {
     "vue": "^3.4.0"
