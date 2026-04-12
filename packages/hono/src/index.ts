@@ -1,18 +1,18 @@
 /**
- * @module @sweefi/server
+ * @module @sweefi/hono
  *
  * Chain-agnostic s402 server middleware and client fetch wrapper.
  *
  * Quick start (server):
- *   import { s402Gate } from '@sweefi/server';
+ *   import { s402Gate } from '@sweefi/hono';
  *
  * Quick start (client / agent):
- *   import { wrapFetchWithS402 } from '@sweefi/server/client';
+ *   import { wrapFetchWithS402 } from '@sweefi/hono/client';
  *
  * Subpath exports:
- *   @sweefi/server         — server middleware + fetch wrapper (no Sui deps)
- *   @sweefi/server/client  — fetch wrapper only (no blockchain deps)
- *   @sweefi/server/server  — Hono middleware only (Node.js / edge)
+ *   @sweefi/hono         — server middleware + fetch wrapper (no Sui deps)
+ *   @sweefi/hono/client  — fetch wrapper only (no blockchain deps)
+ *   @sweefi/hono/server  — Hono middleware only (Node.js / edge)
  */
 
 // Server-side Hono middleware

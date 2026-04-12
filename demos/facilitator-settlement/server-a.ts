@@ -15,7 +15,7 @@
 
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
-import { s402Gate } from "@sweefi/server";
+import { s402Gate } from "@sweefi/hono";
 import type { s402PaymentRequirements, s402SettleResponse } from "s402";
 
 // ══════════════════════════════════════════════════════════════

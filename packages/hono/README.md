@@ -1,8 +1,8 @@
-# @sweefi/server
+# @sweefi/hono
 
 Chain-agnostic s402 HTTP middleware and fetch wrapper.
 
-`@sweefi/server` implements the [s402 protocol](https://github.com/sweeinc/sweefi) at the HTTP layer — **without any blockchain dependency**. It works with any chain adapter (Sui, Solana, etc.) via the `PaymentAdapter` interface.
+`@sweefi/hono` implements the [s402 protocol](https://github.com/sweeinc/sweefi) at the HTTP layer — **without any blockchain dependency**. It works with any chain adapter (Sui, Solana, etc.) via the `PaymentAdapter` interface.
 
 **Apache 2.0 open source.** Part of the [SweeFi](https://github.com/sweeinc/sweefi) ecosystem.
 
@@ -12,8 +12,8 @@ Chain-agnostic s402 HTTP middleware and fetch wrapper.
 
 | Who you are | What you need | Import |
 |---|---|---|
-| Running an API that should charge per call | Gate routes with 402 | `@sweefi/server` or `@sweefi/server/server` |
-| Building an AI agent or client app | Wrap fetch to auto-pay 402s | `@sweefi/server/client` |
+| Running an API that should charge per call | Gate routes with 402 | `@sweefi/hono` or `@sweefi/hono/server` |
+| Building an AI agent or client app | Wrap fetch to auto-pay 402s | `@sweefi/hono/client` |
 
 > **Note:** For a complete Sui client with wallet signing, use [`@sweefi/sui`](https://www.npmjs.com/package/@sweefi/sui) which builds on this package and adds `createS402Client` and `adaptWallet`.
 
@@ -22,7 +22,7 @@ Chain-agnostic s402 HTTP middleware and fetch wrapper.
 ## Install
 
 ```bash
-npm install @sweefi/server
+npm install @sweefi/hono
 # For server-side gating with Hono:
 npm install hono
 ```
@@ -35,7 +35,7 @@ npm install hono
 
 ```typescript
 import { Hono } from 'hono';
-import { s402Gate } from '@sweefi/server';
+import { s402Gate } from '@sweefi/hono';
 
 const app = new Hono();
 
@@ -108,7 +108,7 @@ app.get('/api/data', (c) => {
 `wrapFetchWithS402` upgrades any fetch function with automatic 402 handling. This is the chain-agnostic layer — it detects 402 responses and delegates to a `PaymentAdapter` to build and sign the payment.
 
 ```typescript
-import { wrapFetchWithS402 } from '@sweefi/server/client';
+import { wrapFetchWithS402 } from '@sweefi/hono/client';
 
 const paidFetch = wrapFetchWithS402(globalThis.fetch, s402Client, {
   facilitatorUrl: 'https://your-facilitator.example.com',
@@ -165,15 +165,15 @@ The package ships three entry points so you only bundle what you use:
 
 ```typescript
 // Root — server middleware + client fetch wrapper (no blockchain deps)
-import { s402Gate, wrapFetchWithS402 } from '@sweefi/server';
+import { s402Gate, wrapFetchWithS402 } from '@sweefi/hono';
 
 // Client only — fetch wrapper (browser / agent / edge safe, no blockchain deps)
-import { wrapFetchWithS402 } from '@sweefi/server/client';
-import type { s402FetchOptions } from '@sweefi/server/client';
+import { wrapFetchWithS402 } from '@sweefi/hono/client';
+import type { s402FetchOptions } from '@sweefi/hono/client';
 
 // Server only — Hono middleware (Node.js and edge runtimes)
-import { s402Gate } from '@sweefi/server/server';
-import type { s402GateConfig } from '@sweefi/server/server';
+import { s402Gate } from '@sweefi/hono/server';
+import type { s402GateConfig } from '@sweefi/hono/server';
 
 // Wallet adapting is in @sweefi/sui (not here — keeps this package chain-agnostic)
 import { adaptWallet } from '@sweefi/sui';
@@ -195,7 +195,7 @@ This package has **no blockchain peer dependencies** — chain-specific logic li
 
 | Package | Purpose |
 |---|---|
-| [`@sweefi/server`](https://www.npmjs.com/package/@sweefi/server) | This package — chain-agnostic HTTP middleware + fetch wrapper |
+| [`@sweefi/hono`](https://www.npmjs.com/package/@sweefi/hono) | This package — chain-agnostic HTTP middleware + fetch wrapper |
 | [`@sweefi/sui`](https://www.npmjs.com/package/@sweefi/sui) | Full Sui client: `createS402Client`, $extend() plugin + contract classes, `SuiPaymentAdapter` |
 | [`@sweefi/ui-core`](https://www.npmjs.com/package/@sweefi/ui-core) | Framework-agnostic payment state machine + `PaymentAdapter` interface |
 | [`@sweefi/mcp`](https://www.npmjs.com/package/@sweefi/mcp) | 35 payment tools for Claude, Cursor, and any MCP-compatible AI (30 default + 5 opt-in) |

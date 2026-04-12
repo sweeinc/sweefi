@@ -9,7 +9,7 @@
  * @example
  * ```typescript
  * import { Hono } from 'hono';
- * import { s402Gate } from '@sweefi/server';
+ * import { s402Gate } from '@sweefi/hono';
  *
  * const app = new Hono();
  *

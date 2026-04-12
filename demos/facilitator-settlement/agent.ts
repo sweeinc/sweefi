@@ -18,7 +18,7 @@ import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 import { s402Client, S402_VERSION } from "s402";
 import { ExactSuiClientScheme, toClientSuiSigner } from "@sweefi/sui";
-import { wrapFetchWithS402 } from "@sweefi/server";
+import { wrapFetchWithS402 } from "@sweefi/hono";
 
 // ══════════════════════════════════════════════════════════════
 // Configuration

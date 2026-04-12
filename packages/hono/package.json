@@ -1,8 +1,8 @@
 {
-  "name": "@sweefi/server",
-  "version": "0.1.1",
+  "name": "@sweefi/hono",
+  "version": "0.2.0",
   "type": "module",
-  "description": "s402 server middleware (chain-agnostic) and Sui client fetch wrapper for Hono and Node.js",
+  "description": "Chain-agnostic s402 middleware and client fetch wrapper for Hono. Successor to @sweefi/server (renamed for honesty — this package IS the Hono middleware).",
   "keywords": [
     "sui",
     "s402",
@@ -72,13 +72,13 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/sweeinc/sweefi.git",
-    "directory": "packages/server"
+    "directory": "packages/hono"
   },
   "publishConfig": {
     "access": "public"
   },
   "dependencies": {
-    "s402": "^0.2.0"
+    "s402": "^0.3.0"
   },
   "devDependencies": {
     "@types/node": "^22.13.4",
