@@ -42,7 +42,7 @@ against source during this audit.
 | 8 | Facilitator Dockerfile broken | `packages/facilitator/Dockerfile` | Verified: pnpm deploy pattern |
 | 9 | No graceful shutdown | `packages/facilitator/src/index.ts:12-19` | Verified: SIGTERM/SIGINT + 10s timeout |
 | 10 | AGENTS.md error code table wrong | `AGENTS.md` | Verified: matches source constants |
-| 11 | Server package missing CJS exports | `packages/server/package.json` | Verified: require entries present |
+| 11 | Server package missing CJS exports | `packages/hono/package.json` | Verified: require entries present |
 
 ---
 
@@ -101,18 +101,18 @@ synchronous and calls listeners inline.
 
 ## BLOCK Findings (2)
 
-### [BLOCK] F-02: `@sweefi/server` root import crashes for npm consumers
+### [BLOCK] F-02: `@sweefi/hono` root import crashes for npm consumers
 
-**File**: `packages/server/package.json`, `packages/server/src/index.ts:23`,
-`packages/server/src/client/index.ts:4`, `packages/server/src/client/wallet-adapter.ts:3`
+**File**: `packages/hono/package.json`, `packages/hono/src/index.ts:23`,
+`packages/hono/src/client/index.ts:4`, `packages/hono/src/client/wallet-adapter.ts:3`
 
-**Description**: The root entry point of `@sweefi/server` re-exports `adaptWallet` from
+**Description**: The root entry point of `@sweefi/hono` re-exports `adaptWallet` from
 the client subpath, which has an undeclared runtime dependency on `@sweefi/sui`.
 
 Import chain (each arrow = ESM module load, evaluated at import time):
 
 ```
-import { s402Gate } from '@sweefi/server'
+import { s402Gate } from '@sweefi/hono'
   → dist/index.mjs
     → export { adaptWallet } from "./client/index.mjs"    [src/index.ts:23]
       → export { adaptWallet } from "./wallet-adapter"     [src/client/index.ts:4]
@@ -120,18 +120,18 @@ import { s402Gate } from '@sweefi/server'
           → MODULE_NOT_FOUND ❌
 ```
 
-`@sweefi/sui` is not in `@sweefi/server`'s dependencies or peerDependencies
+`@sweefi/sui` is not in `@sweefi/hono`'s dependencies or peerDependencies
 (`package.json:63-77`). ESM resolves all module-level imports at load time — even
 re-exports the consumer didn't import. So `import { s402Gate }` triggers the
 `@sweefi/sui` resolution and crashes.
 
-**Workaround**: `import { s402Gate } from '@sweefi/server/server'` works — this subpath
+**Workaround**: `import { s402Gate } from '@sweefi/hono/server'` works — this subpath
 only loads `s402-gate.ts` which depends on `s402` (declared dep) and `hono` (peer dep).
 
 **Impact**: The default, documented import path is broken for all npm consumers who don't
 also install `@sweefi/sui`. First-time users hit MODULE_NOT_FOUND immediately.
 
-**Fix (option A — minimal)**: Add to `packages/server/package.json`:
+**Fix (option A — minimal)**: Add to `packages/hono/package.json`:
 ```json
 "peerDependencies": {
     "hono": ">=4.0.0",
@@ -141,14 +141,14 @@ also install `@sweefi/sui`. First-time users hit MODULE_NOT_FOUND immediately.
 ```
 
 **Fix (option B — cleaner)**: Remove `adaptWallet` from the root re-export. Keep it in
-`@sweefi/server/client` only. Server-side consumers use `@sweefi/server/server` or
-`@sweefi/server`; client-side consumers use `@sweefi/server/client`.
+`@sweefi/hono/client` only. Server-side consumers use `@sweefi/hono/server` or
+`@sweefi/hono`; client-side consumers use `@sweefi/hono/client`.
 
 **Verify**: Read these files in order:
-1. `packages/server/src/index.ts` — line 23 re-exports `adaptWallet` from `./client/index`
-2. `packages/server/src/client/index.ts` — line 4 re-exports `adaptWallet` from `./wallet-adapter`
-3. `packages/server/src/client/wallet-adapter.ts` — line 3: `import { toClientSuiSigner } from "@sweefi/sui"` (runtime import, not `import type`)
-4. `packages/server/package.json` — lines 63-77: no `@sweefi/sui` in deps or peerDeps
+1. `packages/hono/src/index.ts` — line 23 re-exports `adaptWallet` from `./client/index`
+2. `packages/hono/src/client/index.ts` — line 4 re-exports `adaptWallet` from `./wallet-adapter`
+3. `packages/hono/src/client/wallet-adapter.ts` — line 3: `import { toClientSuiSigner } from "@sweefi/sui"` (runtime import, not `import type`)
+4. `packages/hono/package.json` — lines 63-77: no `@sweefi/sui` in deps or peerDeps
 
 ---
 
@@ -199,7 +199,7 @@ app.get("/ready", async (c) => {
 
 **Files**: `packages/sui/src/s402/exact/client.ts:22-33`,
 `packages/sui/src/s402/exact/facilitator.ts:62-75`,
-`packages/server/src/server/s402-gate.ts:87-103`
+`packages/hono/src/server/s402-gate.ts:87-103`
 
 **Description**: Protocol fees for exact payments don't work. The full flow:
 
@@ -422,15 +422,15 @@ kill_timeout = 15
 
 ## LOW Findings (5)
 
-### [LOW] F-01: `@sweefi/sui` depends on `@sweefi/server` — dep bloat
+### [LOW] F-01: `@sweefi/sui` depends on `@sweefi/hono` — dep bloat
 
 **File**: `packages/sui/package.json:58`
 
-`@sweefi/sui` declares `"@sweefi/server": "workspace:^"` as a production dependency. This
-pulls `@sweefi/server` + `hono` (via peer dep) for consumers who only want PTB builders
+`@sweefi/sui` declares `"@sweefi/hono": "workspace:^"` as a production dependency. This
+pulls `@sweefi/hono` + `hono` (via peer dep) for consumers who only want PTB builders
 (`import from '@sweefi/sui/ptb'`). Not broken — just unnecessary weight.
 
-**Verify**: Read `packages/sui/package.json:56-60`. Confirm `@sweefi/server` is in
+**Verify**: Read `packages/sui/package.json:56-60`. Confirm `@sweefi/hono` is in
 `dependencies`.
 
 ---
@@ -476,9 +476,9 @@ When `totalAmount * protocolFeeBps < 10000`, `feeAmount = 0n`. The code creates
 
 ---
 
-### [LOW] F-18: `@sweefi/server` description says "chain-agnostic" but client subpath has Sui imports
+### [LOW] F-18: `@sweefi/hono` description says "chain-agnostic" but client subpath has Sui imports
 
-**File**: `packages/server/package.json:5`
+**File**: `packages/hono/package.json:5`
 
 Description: "Chain-agnostic s402 server middleware and fetch wrapper for Hono and Node.js".
 But `src/client/wallet-adapter.ts` imports from `@mysten/sui`, and `src/clients/` has
@@ -496,7 +496,7 @@ imports). Read `server/s402-gate.ts` (no Sui imports).
 
 | ID | Severity | Title | Verify File(s) |
 |----|----------|-------|----------------|
-| **F-02** | **BLOCK** | `@sweefi/server` root import crashes (undeclared @sweefi/sui dep) | `server/src/index.ts:23` → `client/index.ts:4` → `wallet-adapter.ts:3` |
+| **F-02** | **BLOCK** | `@sweefi/hono` root import crashes (undeclared @sweefi/sui dep) | `server/src/index.ts:23` → `client/index.ts:4` → `wallet-adapter.ts:3` |
 | **F-03** | **BLOCK** | `/ready` unauthenticated RPC amplification | `facilitator/src/app.ts:77-100` |
 | F-04 | HIGH | Exact scheme fee mechanism non-functional | `exact/client.ts:22-33`, `exact/facilitator.ts:62-75`, `s402-gate.ts:41-103` |
 | F-05 | HIGH | `resolveCoinType()` returns mainnet USDC on testnet | `mcp/src/utils/format.ts:266-273`, `sui/src/constants.ts:55-67` |
@@ -505,11 +505,11 @@ imports). Read `server/s402-gate.ts` (no Sui imports).
 | F-11 | MEDIUM | Runbook publishes `private: true` package | `facilitator/package.json:4`, `TESTNET-DEPLOY-RUNBOOK.md:302` |
 | F-13 | MEDIUM | Event suffix matching enables spoofing without packageId | `stream/facilitator.ts:247-249` |
 | F-15 | MEDIUM | Fly.io kill_timeout (5s) < shutdown drain (10s) | `fly.toml`, `facilitator/src/index.ts:15` |
-| F-01 | LOW | `@sweefi/sui` → `@sweefi/server` dep bloat | `sui/package.json:58` |
+| F-01 | LOW | `@sweefi/sui` → `@sweefi/hono` dep bloat | `sui/package.json:58` |
 | F-14 | LOW | "0=unlimited" inconsistency between mandate types | `mandate.move:158`, `agent_mandate.move:279` |
 | F-16 | LOW | No `.dockerignore` | monorepo root |
 | F-17 | LOW | Dust 0-value feeCoin on small payments | `exact/client.ts:29-39` |
-| F-18 | LOW | `@sweefi/server` "chain-agnostic" but has Sui imports | `server/package.json:5`, `client/wallet-adapter.ts` |
+| F-18 | LOW | `@sweefi/hono` "chain-agnostic" but has Sui imports | `server/package.json:5`, `client/wallet-adapter.ts` |
 
 ---
 
@@ -531,11 +531,11 @@ imports). Read `server/s402-gate.ts` (no Sui imports).
 - [x] F-15: Added `kill_signal = "SIGTERM"` and `kill_timeout = 15` to fly.toml
 
 **LOWs (fixed):**
-- [x] F-01: Moved `@sweefi/server` to peerDependencies in `@sweefi/sui`
+- [x] F-01: Moved `@sweefi/hono` to peerDependencies in `@sweefi/sui`
 - [x] F-14: Added doc comments clarifying 0=unlimited convention difference in mandate.move
 - [x] F-16: Created `.dockerignore` at monorepo root
 - [x] F-17: Added `feeAmount === 0n` guard to skip dust coin creation
-- [x] F-18: Updated `@sweefi/server` description to clarify Sui-specific client subpath
+- [x] F-18: Updated `@sweefi/hono` description to clarify Sui-specific client subpath
 
 **Verification:** All 4 affected packages typecheck clean. 332 TS tests pass. 241 Move tests pass.
 
@@ -549,7 +549,7 @@ Copy this to record your validation:
 ## Reviewer: [Name/Model]
 ## Date: [Date]
 
-### F-02 (BLOCK): @sweefi/server root import
+### F-02 (BLOCK): @sweefi/hono root import
 - [ ] Read server/src/index.ts:23 — re-exports adaptWallet?
 - [ ] Read client/index.ts:4 — re-exports from wallet-adapter?
 - [ ] Read wallet-adapter.ts:3 — runtime import of @sweefi/sui?

@@ -19,7 +19,7 @@ SweeFi enables machine-to-machine commerce. An AI agent discovers a paid API, th
 ## Packages
 
 - @sweefi/sui: Sui PTB builders, s402 client, wallet adapters
-- @sweefi/server: Hono middleware for s402-gated APIs
+- @sweefi/hono: Hono middleware for s402-gated APIs
 - @sweefi/mcp: 35 MCP tools for Claude Desktop
 - @sweefi/cli: Terminal interface for agent payments
 - @sweefi/ui-core: Framework-agnostic payment UI core

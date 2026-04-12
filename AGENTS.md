@@ -7,9 +7,9 @@
 
 **SweeFi** is open-source agentic payment infrastructure for Sui.
 - Monorepo with 10 TS packages + Move smart contracts
-- Built on top of `s402` (HTTP 402 protocol, published on npm as `s402@0.2.2`)
+- Built on top of `s402` (HTTP 402 protocol, published on npm as `s402@0.3.0`)
 - Competing with BEEP (justbeep.it) — proprietary alternative
-- 1,775 passing tests (1,349 TypeScript + 426 Move) — see STATUS.md for per-package breakdown
+- 1,780 passing tests (1,354 TypeScript + 426 Move) — see STATUS.md for per-package breakdown
 
 ## Repository Structure
 
@@ -29,7 +29,7 @@ sweefi-project/
 │       └── admin.move            # Emergency pause, admin capabilities
 ├── packages/
 │   ├── ui-core/                  # Framework-agnostic state machine + PaymentAdapter interface (13 tests)
-│   ├── server/                   # Chain-agnostic HTTP: s402Gate, wrapFetchWithS402 (integration only)
+│   ├── hono/                     # Chain-agnostic HTTP: s402Gate, wrapFetchWithS402 (integration only)
 │   ├── sui/                      # $extend() plugin + curried contract classes + query modules (662 tests)
 │   ├── vue/                      # Vue 3 plugin + useSweefiPayment() composable (10 tests)
 │   ├── react/                    # React context + useSweefiPayment() hook (12 tests)
@@ -150,7 +150,7 @@ export default async function setup(project) {
 Move Contracts (on-chain)          TypeScript SDK (off-chain)
 ─────────────────────────          ────────────────────────────
 payment.move   → receipts          @sweefi/sui  → $extend() plugin + contract classes
-stream.move    → streaming         @sweefi/server → s402Gate middleware
+stream.move    → streaming         @sweefi/hono → s402Gate middleware
 escrow.move    → time-locked       @sweefi/ui-core → state machine
 seal_policy.move → pay-to-decrypt  @sweefi/vue, react → UI bindings
 mandate.move   → basic delegation  @sweefi/mcp → 35 AI agent tools
@@ -190,6 +190,8 @@ proposing a change that touches any of these areas, **read the relevant ADR firs
 | ADR-006 | Object Ownership Model | Owned = one-party mutations (fast path). Shared = multi-party mutations (consensus). |
 | ADR-007 | Prepaid Trust Model | v0.1 = economic trust bounds. v0.2 = signed receipts + fraud proofs. v0.3 = provider-submitted receipts (self-enforcing). v0.4 = TEE attestation. |
 | ADR-008 | Facilitator API Gaps | `GET /ready` checks RPC (not just config). `/settlements` is per-key only (fleet-wide = info leak). Dedup key must include apiKey (cross-tenant collision). 4xx/5xx not cached. |
+| ADR-009 | AP2 Agent Mandate Integration | SweeFi is the Sui-native settlement rail for AP2 mandates. `@sweefi/ap2-adapter` maps AP2 mandates to on-chain enforcement. |
+| ADR-010 | Facilitator Causal Binding (S8) | `createS402Client` MUST verify settlement after every `SettleResponse` via `verifySuiSettlement()` — local blake2b-256 digest recomputation, no RPC. All 5 client-signed scheme adapters expose `verifySettlement()` which delegates to the shared helper. |
 
 ---
 
@@ -288,6 +290,45 @@ Both `stream.recipient_close()` and `escrow` deadline refunds are permissionless
 Anyone can call them (after the timeout/deadline). This ensures funds cannot be
 locked forever by payer inaction.
 
+### 8. Depend on Shape, Not Library (Boundary Discipline)
+
+**Rule**: When importing a third-party SDK at a public API boundary, FIRST define
+a minimal local interface with only the methods you actually use. Let the real
+SDK satisfy that interface structurally. Never re-export a third-party type or
+schema from your own public API unless you intend to be hostage to it forever.
+
+**Gold-standard example** (from `@sweeagent/adapters`):
+
+```typescript
+// packages/adapters/src/mcp/types.ts
+// Compatible with @modelcontextprotocol/sdk Client — depends on shape, not library.
+export interface MCPClient {
+  listTools(): Promise<{ tools: MCPToolDefinition[] }>;
+  callTool(params: { name: string; arguments?: Record<string, unknown> }): Promise<MCPToolResult>;
+  listResources?(): Promise<{ resources: MCPResourceDefinition[] }>;
+}
+```
+
+The real `@modelcontextprotocol/sdk` `Client` satisfies this shape, so it slots in
+without an import. When MCP SDK v2 breaks, or a competitor ships a better client,
+SweeFi swaps implementations and consumers notice nothing.
+
+**The test**: can you rip out the third-party SDK and replace it with hand-written
+code (or a competitor library) WITHOUT changing a single public type in the SweeFi
+package? If yes, you're free. If no, you're hostage — fix before shipping.
+
+**When this rule does NOT apply**:
+- **Internal implementation details** consumers never see (e.g., `@sweeagent/cli`'s
+  Zod use for YAML config validation is fine — it's not on the public surface).
+- **Framework integrations that are intentional and scoped**. `@sweefi/hono`
+  hard-peers on Hono because it IS the Hono middleware — the coupling is honest
+  and the package name advertises it. A future `@sweefi/express` would be a NEW
+  package, not an abstraction.
+- **The Mysten Sui SDK** — this IS our chain. We don't pretend it's replaceable.
+  But: every `@sweefi/*` package that peer-depends on `@mysten/sui` MUST use the
+  same semver range, or the stack stops composing (this bit us with
+  `@sweeagent/sui` drifting to `^1.18.0` while SweeFi was on `^2.0.0`).
+
 ---
 
 ## What NOT to Do
@@ -362,15 +403,15 @@ aborts at `create()`, not at assertions — the failure is confusing. Always use
 @sweefi/cli ────────────► @sweefi/sui
 @sweefi/facilitator ────► @sweefi/sui     (private: true — not on npm)
                               ▲
-@sweefi/sui ────────────► @sweefi/server
+@sweefi/sui ────────────► @sweefi/hono
                          @sweefi/ui-core
 @sweefi/vue ────────────► @sweefi/ui-core
 @sweefi/react ──────────► @sweefi/ui-core
 
-External: s402@0.2.0 (npm), @mysten/sui@2.4.0, @mysten/seal@1.0.1
+External: s402@0.3.0 (npm), @mysten/sui@2.4.0, @mysten/seal@1.0.1
 
 Dependency direction (strict — never reverse):
-  s402 ← @sweefi/server ← @sweefi/sui ← @sweefi/mcp, @sweefi/cli
+  s402 ← @sweefi/hono ← @sweefi/sui ← @sweefi/mcp, @sweefi/cli
   s402 ← @sweefi/ui-core ← @sweefi/sui, @sweefi/vue, @sweefi/react
 ```
 
@@ -435,7 +476,7 @@ Dependency direction (strict — never reverse):
 
 - `@mysten/sui` — Sui TypeScript SDK (peerDep: `^2.0.0`)
 - `@modelcontextprotocol/sdk@^1.26.0` — MCP server SDK
-- `s402@^0.2.0` — s402 payment protocol core
+- `s402@^0.3.0` — s402 payment protocol core
 - `hono@^4.0.0` — Web framework (facilitator)
 - `zod@^3.22.0` — Runtime validation
 
@@ -462,7 +503,7 @@ All tool names prefixed with `sweefi_`. Transaction tools require `SUI_PRIVATE_K
 
 **Publish order** (dependencies must publish before consumers):
 ```
-s402 → @sweefi/ui-core → @sweefi/server → @sweefi/sui → @sweefi/vue → @sweefi/react → @sweefi/mcp → @sweefi/cli
+s402 → @sweefi/ui-core → @sweefi/hono → @sweefi/sui → @sweefi/vue → @sweefi/react → @sweefi/mcp → @sweefi/cli
 ```
 
 Note: `@sweefi/facilitator` is `private: true` — self-hostable via Docker/Fly.io, NOT published to npm.

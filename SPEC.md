@@ -318,7 +318,7 @@ AI Agent (Claude, GPT, Cursor, etc.)
 | Package | Description | Tests |
 |---------|-------------|-------|
 | [`@sweefi/ui-core`](packages/ui-core) | Framework-agnostic state machine + PaymentAdapter interface | 13 |
-| [`@sweefi/server`](packages/server) | Chain-agnostic HTTP: s402Gate, wrapFetchWithS402 | — |
+| [`@sweefi/hono`](packages/hono) | Chain-agnostic HTTP: s402Gate, wrapFetchWithS402 | — |
 | [`@sweefi/sui`](packages/sui) | $extend() plugin + 7 curried contract classes + SuiPaymentAdapter + s402 schemes | 669 |
 | [`@sweefi/vue`](packages/vue) | Vue 3 plugin + useSweefiPayment() composable | 10 |
 | [`@sweefi/react`](packages/react) | React context + useSweefiPayment() hook | 12 |
@@ -647,7 +647,7 @@ s402 is the protocol. SweeFi is the multi-chain runtime — the thing that makes
 s402 (npm, chain-agnostic — the protocol)
     ↑                          ↑
 @sweefi/sui              @sweefi/solana          (future: @sweefi/aptos, etc.)
-@sweefi/server           (chain selected at runtime via network field)
+@sweefi/hono             (chain selected at runtime via network field)
 @sweefi/cli              (--chain sui | solana flag)
 @sweefi/mcp              (same MCP tools, different adapter)
 ```
@@ -839,7 +839,7 @@ The protocol is open. The schemes are open. **The reputation graph is the moat.*
 | Package | Description | Tests |
 |---------|-------------|-------|
 | `@sweefi/ui-core` | Framework-agnostic state machine + PaymentAdapter interface | 13 |
-| `@sweefi/server` | Chain-agnostic HTTP: s402Gate, wrapFetchWithS402 | — |
+| `@sweefi/hono` | Chain-agnostic HTTP: s402Gate, wrapFetchWithS402 | — |
 | `@sweefi/sui` | $extend() plugin + 7 curried contract classes + SuiPaymentAdapter + s402 schemes | 662 |
 | `@sweefi/vue` | Vue 3 plugin + useSweefiPayment() composable | 10 |
 | `@sweefi/react` | React context + useSweefiPayment() hook | 12 |

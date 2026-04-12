@@ -1,22 +1,22 @@
-# @sweefi/server
+# @sweefi/hono
 
 Chain-agnostic HTTP middleware for s402 payments. Two exports: `s402Gate` for servers and `wrapFetchWithS402` for clients.
 
 ## Install
 
 ```bash
-pnpm add @sweefi/server
+pnpm add @sweefi/hono
 ```
 
-No blockchain dependencies — `@sweefi/server` only handles HTTP. Bring `@sweefi/sui` or `@sweefi/solana` for chain-specific settlement.
+No blockchain dependencies — `@sweefi/hono` only handles HTTP. Bring `@sweefi/sui` or `@sweefi/solana` for chain-specific settlement.
 
 ## Subpath Exports
 
 | Import | What It Provides |
 |--------|-----------------|
-| `@sweefi/server` | Everything (server + client) |
-| `@sweefi/server/server` | `s402Gate` only |
-| `@sweefi/server/client` | `wrapFetchWithS402` only |
+| `@sweefi/hono` | Everything (server + client) |
+| `@sweefi/hono/server` | `s402Gate` only |
+| `@sweefi/hono/client` | `wrapFetchWithS402` only |
 
 ## Server: `s402Gate`
 
@@ -24,7 +24,7 @@ Hono middleware that gates routes behind s402 payments.
 
 ```typescript
 import { Hono } from 'hono';
-import { s402Gate } from '@sweefi/server';
+import { s402Gate } from '@sweefi/hono';
 
 const app = new Hono();
 
@@ -69,7 +69,7 @@ interface s402GateConfig {
 Wraps any `fetch` function to auto-handle 402 responses.
 
 ```typescript
-import { wrapFetchWithS402 } from '@sweefi/server';
+import { wrapFetchWithS402 } from '@sweefi/hono';
 import { createS402Client } from '@sweefi/sui';
 
 const client = createS402Client({ wallet: keypair, network: 'sui:testnet' });
@@ -101,7 +101,7 @@ interface s402FetchOptions {
 ## Error Handling
 
 ```typescript
-import { s402PaymentSentError } from '@sweefi/server';
+import { s402PaymentSentError } from '@sweefi/hono';
 
 try {
   const res = await paidFetch('https://api.example.com/premium');

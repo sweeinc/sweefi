@@ -68,7 +68,7 @@ const data = await client.fetch('https://api.example.com/premium');
 ### Server Side
 
 ```typescript
-import { s402Gate } from '@sweefi/server';
+import { s402Gate } from '@sweefi/hono';
 
 app.use('/premium', s402Gate({
   price: '1000000',

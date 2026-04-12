@@ -80,7 +80,7 @@ export default defineConfig({
         text: 'Packages',
         items: [
           { text: '@sweefi/sui', link: '/guide/sui' },
-          { text: '@sweefi/server', link: '/guide/server' },
+          { text: '@sweefi/hono', link: '/guide/server' },
           { text: '@sweefi/mcp', link: '/guide/mcp' },
           { text: '@sweefi/ui-core', link: '/guide/ui-core' },
           { text: '@sweefi/react', link: '/guide/react' },

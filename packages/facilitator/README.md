@@ -10,7 +10,7 @@ Part of the [SweeFi](https://github.com/sweeinc/sweefi) ecosystem.
 
 The facilitator is the off-chain settlement server in SweeFi's s402 payment flow. When a client wants to pay for a resource, it builds and signs a Sui transaction locally, then sends that signed payload here. The facilitator verifies the signature and payment requirements, broadcasts the transaction to Sui, and returns a settlement receipt.
 
-**Open source, Apache 2.0.** The source is fully auditable. You can self-host it, fork it, or contribute to it. SweeFi also runs a **managed facilitator** as a hosted service — `@sweefi/sui` and `@sweefi/server` point at it by default, so most integrators get working settlement without any deployment. Override `facilitatorUrl` in `createS402Client` (`@sweefi/sui`) or `s402Gate` (`@sweefi/server`) to use your own instance.
+**Open source, Apache 2.0.** The source is fully auditable. You can self-host it, fork it, or contribute to it. SweeFi also runs a **managed facilitator** as a hosted service — `@sweefi/sui` and `@sweefi/hono` point at it by default, so most integrators get working settlement without any deployment. Override `facilitatorUrl` in `createS402Client` (`@sweefi/sui`) or `s402Gate` (`@sweefi/hono`) to use your own instance.
 
 This package is **not published to npm** — it's a service you deploy, not a library you import. Clone the repo, configure environment variables, and run it locally, in Docker, or on Fly.io. Resource servers point their `s402` payment requirements at the URL you deploy.
 

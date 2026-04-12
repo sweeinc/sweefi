@@ -23,7 +23,7 @@ Ten Move modules deployed to Sui testnet. 1,775 tests (426 Move + 1,349 TS). Bui
 ## Packages
 
 - [@sweefi/sui](https://docs.sweefi.xyz/guide/sui): $extend() plugin + 7 contract classes, s402 client with auto-pay
-- [@sweefi/server](https://docs.sweefi.xyz/guide/server): s402Gate middleware for Hono / Express / any HTTP framework
+- [@sweefi/hono](https://docs.sweefi.xyz/guide/server): s402Gate middleware for Hono / Express / any HTTP framework
 - [@sweefi/mcp](https://docs.sweefi.xyz/guide/mcp): 35 MCP tools — Claude, Cursor, and MCP-compatible AI agents pay directly
 - [@sweefi/cli](https://docs.sweefi.xyz/guide/cli): Terminal: pay, stream, escrow, mandate management
 - [@sweefi/facilitator](https://docs.sweefi.xyz/guide/facilitator): Self-hostable settlement server (Hono, Docker, Fly.io)

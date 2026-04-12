@@ -18,7 +18,7 @@
 
 #### F-02: Root re-export removal — ✅ FIXED (NEW-01 resolved)
 
-**Claimed fix**: Removed `adaptWallet` from root re-export in `packages/server/src/index.ts`.
+**Claimed fix**: Removed `adaptWallet` from root re-export in `packages/hono/src/index.ts`.
 
 **What was done**: Line 23-26 now has a comment explaining `adaptWallet` is intentionally
 NOT re-exported, and the named export was removed. ✅
@@ -32,7 +32,7 @@ This ESM re-export loads `./client/index.ts`, which loads `./wallet-adapter.ts` 
 `import { toClientSuiSigner } from "@sweefi/sui"`). ESM evaluates ALL module-level
 imports when loading a module — even exports the consumer didn't import.
 
-**Result**: `import { s402Gate } from '@sweefi/server'` still crashes with MODULE_NOT_FOUND
+**Result**: `import { s402Gate } from '@sweefi/hono'` still crashes with MODULE_NOT_FOUND
 for npm consumers without `@sweefi/sui`. See NEW-01 for full analysis and fix.
 
 ---
@@ -174,13 +174,13 @@ Matches `index.ts:15` shutdown drain of 10 seconds (15 > 10). ✅
 
 ### LOWs
 
-#### F-01: `@sweefi/server` moved to peerDependencies — ✅ VERIFIED
+#### F-01: `@sweefi/hono` moved to peerDependencies — ✅ VERIFIED
 
 `packages/sui/package.json:60-63`:
 ```json
 "peerDependencies": {
     "@mysten/sui": "^2.0.0",
-    "@sweefi/server": ">=0.1.0"
+    "@sweefi/hono": ">=0.1.0"
 }
 ```
 
@@ -227,7 +227,7 @@ is correct — no fee was earned, merchant gets the full required amount. ✅
 
 #### F-18: Description update — ✅ VERIFIED
 
-`packages/server/package.json:5`:
+`packages/hono/package.json:5`:
 ```json
 "description": "s402 server middleware (chain-agnostic) and Sui client fetch wrapper for Hono and Node.js"
 ```
@@ -240,15 +240,15 @@ Clearly indicates both the chain-agnostic and Sui-specific parts. ✅
 
 ### [HIGH] NEW-01: F-02 fix incomplete — root barrel still loads `@sweefi/sui` — **FIXED**
 
-**Files**: `packages/server/src/index.ts:27`, `packages/server/src/client/index.ts:4`,
-`packages/server/src/client/wallet-adapter.ts:3`, `packages/server/tsdown.config.ts:5`
+**Files**: `packages/hono/src/index.ts:27`, `packages/hono/src/client/index.ts:4`,
+`packages/hono/src/client/wallet-adapter.ts:3`, `packages/hono/tsdown.config.ts:5`
 
 **Description**: The F-02 fix removed `adaptWallet` from the root barrel's named exports
 but did NOT break the ESM module load chain. The root barrel still re-exports from
 `./client/index`:
 
 ```
-import { s402Gate } from '@sweefi/server'          (consumer code)
+import { s402Gate } from '@sweefi/hono'          (consumer code)
   → dist/index.mjs
     → export { wrapFetchWithS402 } from "./client/index.mjs"   [src/index.ts:27]
       → client/index.mjs evaluates ALL top-level exports:
@@ -271,7 +271,7 @@ exports `adaptWallet`). The two exports share a barrel. ESM loads the entire bar
 instead of from `./client/index`:
 
 ```typescript
-// packages/server/src/index.ts line 27 — CURRENT (broken):
+// packages/hono/src/index.ts line 27 — CURRENT (broken):
 export { wrapFetchWithS402, s402PaymentSentError } from "./client/index";
 
 // FIXED:
@@ -284,10 +284,10 @@ breaks the chain. The `./client` subpath export continues to work normally for c
 who want `adaptWallet` (they explicitly opted in to the Sui dependency).
 
 **Secondary impact**: `packages/sui/src/client/s402-client.ts:22` imports
-`DEFAULT_FACILITATOR_URL` from `@sweefi/server` (root). This creates a circular dependency
-chain: `@sweefi/sui → @sweefi/server → ./client/index → ./wallet-adapter → @sweefi/sui`.
+`DEFAULT_FACILITATOR_URL` from `@sweefi/hono` (root). This creates a circular dependency
+chain: `@sweefi/sui → @sweefi/hono → ./client/index → ./wallet-adapter → @sweefi/sui`.
 ESM handles cycles via partial bindings, but this is fragile. Consider either:
-- Adding a `@sweefi/server/constants` subpath export for `DEFAULT_FACILITATOR_URL`
+- Adding a `@sweefi/hono/constants` subpath export for `DEFAULT_FACILITATOR_URL`
 - Or inlining the constant in `@sweefi/sui`
 
 **Verify**: Read `index.ts:27`, `client/index.ts:4`, `wallet-adapter.ts:3`, `s402-fetch.ts`
@@ -538,10 +538,10 @@ Verified: 251 tests pass (facilitator 51 + server 6 + sui 194), all 3 packages t
 `["testnet", "mainnet", "devnet"]` and rejects CAIP-2 format (`"sui:testnet"`).
 `ctx.network` is always in short format. The strict equality is correct for CLI.
 
-### ~~Circular dependency @sweefi/sui ↔ @sweefi/server~~
+### ~~Circular dependency @sweefi/sui ↔ @sweefi/hono~~
 
 **Original concern**: `@sweefi/sui/src/client/s402-client.ts:22` imports from
-`@sweefi/server` root, which chains back to `@sweefi/sui` via `wallet-adapter.ts`.
+`@sweefi/hono` root, which chains back to `@sweefi/sui` via `wallet-adapter.ts`.
 
 **Why it's manageable**: ESM handles cycles via partial bindings. `toClientSuiSigner` is
 defined before `s402-client.ts` in `@sweefi/sui`'s module graph, so the binding resolves.

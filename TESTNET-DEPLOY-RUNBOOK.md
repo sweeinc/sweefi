@@ -265,7 +265,7 @@ All tests must still pass. If they don't, fix before publishing to npm.
 
 ## Part 3 — npm Publish (Dependency Order)
 
-> **Why order matters:** `@sweefi/sui` depends on `@sweefi/server` and `@sweefi/ui-core` via
+> **Why order matters:** `@sweefi/sui` depends on `@sweefi/hono` and `@sweefi/ui-core` via
 > `workspace:*`. pnpm replaces `workspace:*` with the actual version at publish time.
 > npm must resolve those versions when someone installs `@sweefi/sui`. Publish leaf
 > packages first or consumers get install errors.
@@ -274,8 +274,8 @@ All tests must still pass. If they don't, fix before publishing to npm.
 ```
 s402 (external — already published at ^0.1.6)
   ├── @sweefi/ui-core    (leaf — depends only on s402)
-  ├── @sweefi/server     (leaf — depends only on s402)
-  └── @sweefi/sui        (depends on server + ui-core)
+  ├── @sweefi/hono       (leaf — depends only on s402)
+  └── @sweefi/sui        (depends on hono + ui-core)
         ├── @sweefi/mcp      (depends on sui)
         ├── @sweefi/cli      (depends on sui)
         └── @sweefi/facilitator (depends on sui — open-source, Apache 2.0)
@@ -293,7 +293,7 @@ cd /Users/dannydevs/repos/danny/projects/sweefi-project/sweefi
 
 # Dry-run all packages to verify what would be published
 pnpm --filter @sweefi/ui-core publish --dry-run --access public
-pnpm --filter @sweefi/server publish --dry-run --access public
+pnpm --filter @sweefi/hono publish --dry-run --access public
 pnpm --filter @sweefi/sui publish --dry-run --access public
 pnpm --filter @sweefi/react publish --dry-run --access public
 pnpm --filter @sweefi/vue publish --dry-run --access public
@@ -315,7 +315,7 @@ cd packages/ui-core
 pnpm publish --access public
 cd ../..
 
-cd packages/server
+cd packages/hono
 pnpm publish --access public
 cd ../..
 ```
@@ -326,7 +326,7 @@ Wait ~30 seconds after each publish before proceeding. npm registry replication 
 
 ```bash
 npm view @sweefi/ui-core version   # should show 0.1.0
-npm view @sweefi/server version    # should show 0.1.0
+npm view @sweefi/hono version    # should show 0.1.0
 ```
 
 **Tier 2 (@sweefi/sui — depends on tier 1):**
@@ -371,7 +371,7 @@ cd ../..
 ### Verify all packages landed
 
 ```bash
-for pkg in @sweefi/ui-core @sweefi/server @sweefi/sui @sweefi/react @sweefi/vue @sweefi/solana @sweefi/mcp @sweefi/cli; do
+for pkg in @sweefi/ui-core @sweefi/hono @sweefi/sui @sweefi/react @sweefi/vue @sweefi/solana @sweefi/mcp @sweefi/cli; do
   echo -n "$pkg: "
   npm view $pkg version 2>/dev/null || echo "NOT FOUND"
 done
@@ -507,7 +507,7 @@ Move Deploy
 
 npm Publish (in order)
 [ ] @sweefi/ui-core published + verified (npm view)
-[ ] @sweefi/server published + verified
+[ ] @sweefi/hono published + verified
 [ ] @sweefi/sui published + verified
 [ ] @sweefi/react published + verified
 [ ] @sweefi/vue published + verified

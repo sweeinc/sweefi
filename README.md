@@ -49,7 +49,7 @@ SweeFi is the payment layer of the **Swee ecosystem**. This monorepo contains Sw
 
 | I want to... | Install | Start here |
 |---|---|---|
-| **Charge per API call** (server-side paywall) | `@sweefi/server` + `@sweefi/sui` | [`s402Gate` middleware](packages/server#server--charging-for-your-api) |
+| **Charge per API call** (server-side paywall) | `@sweefi/hono` + `@sweefi/sui` | [`s402Gate` middleware](packages/hono#server--charging-for-your-api) |
 | **Build an AI agent that auto-pays APIs** | `@sweefi/sui` | [`createS402Client`](packages/sui#quick-start) |
 | **Give my AI agent payment tools** (Claude, Cursor) | `@sweefi/mcp` | [MCP quickstart](packages/mcp#quickstart) |
 | **Pay from a CLI / script** | `@sweefi/cli` | [`sweefi pay`](packages/cli#quick-start) |
@@ -139,7 +139,7 @@ AI Agent (Claude, GPT, Cursor, etc.)
     |                                   |
     |                         s402 (protocol spec, npm package)
     |                                   |
-    |                         @sweefi/server (s402Gate, wrapFetchWithS402)
+    |                         @sweefi/hono (s402Gate, wrapFetchWithS402)
     |                                   |
     |                         @sweefi/facilitator (verify + settle — self-hostable)
     |
@@ -167,7 +167,7 @@ AI Agent (Claude, GPT, Cursor, etc.)
 | Package | Description | Tests |
 |---------|-------------|-------|
 | [`@sweefi/ui-core`](packages/ui-core) | Framework-agnostic state machine + `PaymentAdapter` interface | 13 |
-| [`@sweefi/server`](packages/server) | Chain-agnostic HTTP: `s402Gate` middleware + `wrapFetchWithS402` | — |
+| [`@sweefi/hono`](packages/hono) | Chain-agnostic HTTP: `s402Gate` middleware + `wrapFetchWithS402` | — |
 | [`@sweefi/sui`](packages/sui) | $extend() plugin + curried contract classes + s402 client | 669 |
 | [`@sweefi/vue`](packages/vue) | Vue 3 plugin + `useSweefiPayment()` composable | 10 |
 | [`@sweefi/react`](packages/react) | React context + `useSweefiPayment()` hook (`useSyncExternalStore`) | 12 |
@@ -231,7 +231,7 @@ const response = await client.fetch('https://api.example.com/premium');
 
 ```typescript
 import { Hono } from 'hono';
-import { s402Gate } from '@sweefi/server';
+import { s402Gate } from '@sweefi/hono';
 
 const app = new Hono();
 
@@ -371,7 +371,7 @@ The on-chain `identity.move` module (agent profiles, `did:sui`) currently record
 
 ### SEAL mainnet key servers not yet configured
 
-`@sweefi/server`'s `NETWORKS.mainnet.sealKeyServers` is an empty array. SEAL pay-to-decrypt on mainnet requires populating key server object IDs once Mysten Labs publishes mainnet key servers.
+`@sweefi/hono`'s `NETWORKS.mainnet.sealKeyServers` is an empty array. SEAL pay-to-decrypt on mainnet requires populating key server object IDs once Mysten Labs publishes mainnet key servers.
 
 ---
 
@@ -433,7 +433,7 @@ SweeFi is fully open source. Every developer-facing package is published under *
 |---------|---------|-----------|
 | `s402` | Apache 2.0 | npm (public) |
 | `@sweefi/ui-core` | Apache 2.0 | npm (public) |
-| `@sweefi/server` | Apache 2.0 | npm (public) |
+| `@sweefi/hono` | Apache 2.0 | npm (public) |
 | `@sweefi/sui` | Apache 2.0 | npm (public) |
 | `@sweefi/vue` | Apache 2.0 | npm (public) |
 | `@sweefi/react` | Apache 2.0 | npm (public) |

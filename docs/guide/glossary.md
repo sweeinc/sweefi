@@ -59,7 +59,7 @@ Domain-specific terms used across SweeFi's codebase and documentation.
 : Shared on-chain object owned by a mandate delegator. Stores a dynamic-field set of revoked mandate IDs. A pre-publication security fix ensures callers assert `registry.owner == mandate.delegator` before checking revocation.
 
 **s402Gate**
-: Server-side HTTP middleware from `@sweefi/server`. When applied to a route, it returns a 402 with payment requirements if no valid `x-payment` header is present, and verifies payment against the facilitator before allowing the request through.
+: Server-side HTTP middleware from `@sweefi/hono`. When applied to a route, it returns a 402 with payment requirements if no valid `x-payment` header is present, and verifies payment against the facilitator before allowing the request through.
 
 **PaymentAdapter**
 : Interface defined in `@sweefi/ui-core` that abstracts chain-specific signing and broadcasting. `SuiPaymentAdapter` implements it for Sui; UI packages (`@sweefi/vue`, `@sweefi/react`) work against this interface without chain-specific imports.

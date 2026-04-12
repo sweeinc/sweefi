@@ -49,7 +49,7 @@ export const agentHtml = [
 // ── Tab 2: API Provider ──
 export const serverHtml = [
   line(sp(k, 'import'), sp(x, ' { '), sp(t, 'Hono'), sp(x, ' } '), sp(k, 'from'), sp(x, ' '), sp(s, "'hono'"), sp(p, ';')),
-  line(sp(k, 'import'), sp(x, ' { '), sp(v, 's402Gate'), sp(x, ' } '), sp(k, 'from'), sp(x, ' '), sp(s, "'@sweefi/server'"), sp(p, ';')),
+  line(sp(k, 'import'), sp(x, ' { '), sp(v, 's402Gate'), sp(x, ' } '), sp(k, 'from'), sp(x, ' '), sp(s, "'@sweefi/hono'"), sp(p, ';')),
   line(),
   line(sp(k, 'const'), sp(x, ' '), sp(v, 'app'), sp(x, ' '), sp(p, '='), sp(x, ' '), sp(k, 'new'), sp(x, ' '), sp(t, 'Hono'), sp(x, '()'), sp(p, ';')),
   line(),
@@ -111,7 +111,7 @@ const client = createS402Client({ wallet, network: 'sui:testnet' });
 const data = await client.fetch('https://api.example.com/premium');`
 
 export const serverPlain = `import { Hono } from 'hono';
-import { s402Gate } from '@sweefi/server';
+import { s402Gate } from '@sweefi/hono';
 
 const app = new Hono();
 

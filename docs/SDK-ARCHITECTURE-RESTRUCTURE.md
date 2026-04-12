@@ -19,7 +19,7 @@ We will organize the existing `packages/` workspace as follows:
 
 ### Application State & Adapters
 - **`@sweefi/ui-core` [NEW]**: Pure Vanilla JS state machine managing the payment flow. Defines the `PaymentAdapter` interface. Depends explicitly on `s402`.
-- **`@sweefi/server` [RENAME & PRUNE]**: Formerly `@sweefi/sdk`. Headless Node.js logic for agents and backend gating. Sui-specific exports (`adaptWallet`, `NETWORKS`, `COIN_TYPES`, SEAL/Walrus factories) will be extracted and moved to `@sweefi/sui`.
+- **`@sweefi/hono` [RENAME & PRUNE]**: Formerly `@sweefi/sdk`. Headless Node.js logic for agents and backend gating. Sui-specific exports (`adaptWallet`, `NETWORKS`, `COIN_TYPES`, SEAL/Walrus factories) will be extracted and moved to `@sweefi/sui`.
 - **`@sweefi/sui` [AUGMENT]**: Existing package. We will add a `SuiPaymentAdapter` implementation and ingest the Sui-specific exports from the old `@sweefi/sdk`, without touching the existing PTB logic or tests.
 - **`@sweefi/sol` [FUTURE]**: Solana implementation.
 
@@ -113,10 +113,10 @@ The `@sweefi/react` bindings must explicitly use `useSyncExternalStore` to safel
 - Add `src/controllers/PaymentController.ts` using the trigger API, state machine, and subscribe pattern defined above
 - **MIGRATE:** Move controller tests from `packages/widget/test/` to `packages/ui-core/test/`
 
-### Step 2: `@sweefi/server` [Rename & Prune]
-- Rename `packages/sdk` → `packages/server`
+### Step 2: `@sweefi/hono` [Rename & Prune]
+- Rename `packages/sdk` → `packages/hono`
 - Update `package.json` name and exports
-- **CRITICAL:** Remove all Sui-specific exports (`adaptWallet`, `NETWORKS`, `COIN_TYPES`, SEAL/Walrus factories). `@sweefi/server` must be strictly chain-agnostic.
+- **CRITICAL:** Remove all Sui-specific exports (`adaptWallet`, `NETWORKS`, `COIN_TYPES`, SEAL/Walrus factories). `@sweefi/hono` must be strictly chain-agnostic.
 
 ### Step 3: `@sweefi/sui` [Augment]
 - Add `src/adapters/SuiPaymentAdapter.ts` implementing `PaymentAdapter` from `@sweefi/ui-core` (wallet/keypair injection)
@@ -139,9 +139,9 @@ The `@sweefi/react` bindings must explicitly use `useSyncExternalStore` to safel
 ### Step 7: NPM Publish Queue [Update]
 - ✅ READY-QUEUE.md updated to reflect correct publish sequence:
   ```
-  s402 → @sweefi/ui-core → @sweefi/server → @sweefi/sui → @sweefi/vue → @sweefi/react → @sweefi/mcp → @sweefi/cli
+  s402 → @sweefi/ui-core → @sweefi/hono → @sweefi/sui → @sweefi/vue → @sweefi/react → @sweefi/mcp → @sweefi/cli
   ```
-  Note: `@sweefi/server` before `@sweefi/sui` (sui depends on server).
+  Note: `@sweefi/hono` before `@sweefi/sui` (sui depends on server).
 
 ---
 
@@ -152,7 +152,7 @@ The `@sweefi/react` bindings must explicitly use `useSyncExternalStore` to safel
 - [x] Unit tests for Vue bindings in `@sweefi/vue` — 10 tests passing
 - [x] Unit tests for React bindings in `@sweefi/react` — 12 tests passing
 - [x] Unit tests for `SuiPaymentAdapter` in `@sweefi/sui` — 189 tests passing (existing PTB tests preserved)
-- [x] `@sweefi/server` scripts/tests pass after Sui export pruning — passWithNoTests: true added for integration-only package
+- [x] `@sweefi/hono` scripts/tests pass after Sui export pruning — passWithNoTests: true added for integration-only package
 
 ### Manual Verification
 - [ ] Dogfood the architecture by integrating `@sweefi/vue` + `@sweefi/sui` into the Swee Landing Page to confirm reactivity and wallet integration work end-to-end.
@@ -168,7 +168,7 @@ A full adversarial audit (10-phase + 7-expert coders council) found and fixed 10
 | 1 | `@sweefi/cli` | Added missing `prepublishOnly` gate | Publish safety — broken build could not have published |
 | 2 | 5 packages | Fixed `files` arrays: `["dist", "README.md", "LICENSE"]` — included `.map` source maps | Source maps now published; stack traces readable in production |
 | 3 | `READY-QUEUE.md` | `npm publish` → `pnpm publish` for all 8 publish steps | Critical: `npm publish` publishes literal `workspace:*` strings; pnpm rewrites them |
-| 4 | `AGENTS.md` | Dep diagram: `facilitator → @sweefi/server` → `facilitator → @sweefi/sui` | Documentation accuracy |
+| 4 | `AGENTS.md` | Dep diagram: `facilitator → @sweefi/hono` → `facilitator → @sweefi/sui` | Documentation accuracy |
 | 5 | `PaymentController` | `setState({ status: "broadcasting" })` moved **before** `await signAndBroadcast()` | UI can now actually observe the `broadcasting` state during network round-trip |
 | 6 | `PaymentController` | Listener `setState` loop wrapped in `try/catch` per listener | One throwing subscriber no longer silences all subsequent subscribers |
 | 7 | `useSweefiPayment.ts` (Vue) | `onUnmounted` → `onScopeDispose` | Prevents subscription leaks when composable is called from Pinia stores or `effectScope()` |
@@ -184,7 +184,7 @@ A full adversarial audit (10-phase + 7-expert coders council) found and fixed 10
 
 ```
 s402  (protocol, untouched)
-  ├── @sweefi/server     (headless agents + server gating)
+  ├── @sweefi/hono     (headless agents + server gating)
   └── @sweefi/ui-core    (UI state machine + PaymentAdapter interface)
         ├── @sweefi/sui  (SuiPaymentAdapter — wallet or keypair)
         ├── @sweefi/vue  (Vue plugin + useSweefiPayment)

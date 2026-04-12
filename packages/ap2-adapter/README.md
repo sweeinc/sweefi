@@ -127,7 +127,7 @@ const intent = intentMandateSchema.parse(untrustedJson);
 | Package | Purpose |
 |---------|---------|
 | [`@sweefi/sui`](https://www.npmjs.com/package/@sweefi/sui) | Sui client + $extend() plugin + contract classes |
-| [`@sweefi/server`](https://www.npmjs.com/package/@sweefi/server) | Chain-agnostic HTTP middleware + fetch wrapper |
+| [`@sweefi/hono`](https://www.npmjs.com/package/@sweefi/hono) | Chain-agnostic HTTP middleware + fetch wrapper |
 | [`@sweefi/mcp`](https://www.npmjs.com/package/@sweefi/mcp) | 35 AI payment tools for Claude, Cursor, any MCP client |
 | [`s402`](https://www.npmjs.com/package/s402) | Protocol types + HTTP codec (dual transport: headers + JSON body) |
 

@@ -1,18 +1,18 @@
 # Quick Start — Server (Provider)
 
-Gate API endpoints behind s402 payments using `@sweefi/server`.
+Gate API endpoints behind s402 payments using `@sweefi/hono`.
 
 ## Install
 
 ```bash
-pnpm add @sweefi/server hono
+pnpm add @sweefi/hono hono
 ```
 
 ## Protect an Endpoint
 
 ```typescript
 import { Hono } from 'hono';
-import { s402Gate } from '@sweefi/server';
+import { s402Gate } from '@sweefi/hono';
 
 const app = new Hono();
 
@@ -99,5 +99,5 @@ The facilitator verifies the signed transaction, broadcasts it to Sui, and retur
 
 - [Quick Start — Agent](/guide/quickstart-agent) — Build the client side
 - [Self-Hosting Facilitator](/guide/facilitator) — Deploy your own settlement service
-- [@sweefi/server Reference](/guide/server) — Full middleware API
+- [@sweefi/hono Reference](/guide/server) — Full middleware API
 - [Payment Schemes](/guide/exact) — Choose the right scheme for your use case

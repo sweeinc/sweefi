@@ -24,7 +24,7 @@ Create `tmp/paid-server.ts`:
 ```ts
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
-import { s402Gate } from "@sweefi/server";
+import { s402Gate } from "@sweefi/hono";
 
 const app = new Hono();
 

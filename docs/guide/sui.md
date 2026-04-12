@@ -284,4 +284,4 @@ import {
 - [Exact Payments](/guide/exact) — How one-shot payments work
 - [Streaming](/guide/streaming) — Per-second micropayments
 - [Prepaid](/guide/prepaid) — Agent budget deposits
-- [@sweefi/server](/guide/server) — HTTP middleware that uses these builders
+- [@sweefi/hono](/guide/server) — HTTP middleware that uses these builders

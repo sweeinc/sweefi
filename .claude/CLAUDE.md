@@ -24,7 +24,7 @@
 | Package | Status | Tests | Key Limitation |
 |---------|--------|-------|----------------|
 | `@sweefi/sui` | Beta | 662 | Core of everything |
-| `@sweefi/server` | Beta | Integration-only | Hono middleware |
+| `@sweefi/hono` | Beta | Integration-only | Hono middleware (chain-agnostic) |
 | `@sweefi/mcp` | Beta | 222 | 35 AI agent tools |
 | `@sweefi/facilitator` | Beta | 91 | Docker-only, private |
 | `@sweefi/cli` | Beta | 238 | — |

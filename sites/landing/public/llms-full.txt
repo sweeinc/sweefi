@@ -46,7 +46,7 @@ Pay-to-decrypt using Sui's SEAL threshold encryption. Agent pays → receives on
 - Constants: ZERO_ADDRESS, fee utilities
 - Supports Ed25519 and Secp256k1 keypairs
 
-### @sweefi/server
+### @sweefi/hono
 - Hono middleware: `s402Gate()` for gating any endpoint
 - Express/Fastify adapters
 - Settlement verification
@@ -143,7 +143,7 @@ const data = await client.fetch('https://api.example.com/premium');
 
 ```typescript
 import { Hono } from 'hono';
-import { s402Gate } from '@sweefi/server';
+import { s402Gate } from '@sweefi/hono';
 
 const app = new Hono();
 app.use('/premium', s402Gate({
@@ -162,7 +162,7 @@ app.get('/premium', (c) => c.json({ data: 'premium content' }));
 npm install @sweefi/sui s402
 
 # Server middleware
-npm install @sweefi/server
+npm install @sweefi/hono
 
 # MCP tools for Claude
 npx @sweefi/mcp

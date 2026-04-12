@@ -19,7 +19,7 @@ Decision: keep `@sweefi` — it's cleaner, already owned on npm, and avoids any 
 
 ```
 s402                       ← open protocol (unscoped, Apache 2.0, standalone)
-  ├── @sweefi/server        ← chain-agnostic HTTP: s402Gate, wrapFetchWithS402
+  ├── @sweefi/hono        ← chain-agnostic HTTP: s402Gate, wrapFetchWithS402
   └── @sweefi/ui-core       ← UI state machine + PaymentAdapter interface
         ├── @sweefi/sui     ← Sui adapter ($extend() plugin + 7 curried contract classes, SuiPaymentAdapter)
         │     ├── @sweefi/mcp ← MCP tools for AI agents (30+5 opt-in)
@@ -69,7 +69,7 @@ Applied to SweeFi:
 | `s402` | unscoped | public |
 | `sui-gas-station` | unscoped | public |
 | `@sweefi/ui-core` | @sweefi | public |
-| `@sweefi/server` | @sweefi | public |
+| `@sweefi/hono` | @sweefi | public |
 | `@sweefi/sui` | @sweefi | public |
 | `@sweefi/vue` | @sweefi | public |
 | `@sweefi/react` | @sweefi | public |
@@ -83,7 +83,7 @@ Applied to SweeFi:
 
 The SDK was restructured from a monolithic `@sweefi/sdk` into a role-based package family:
 
-- `@sweefi/sdk` → renamed to **`@sweefi/server`** (chain-agnostic HTTP only; Sui-specific exports moved to `@sweefi/sui`)
+- `@sweefi/sdk` → renamed to **`@sweefi/hono`** (chain-agnostic HTTP only; Sui-specific exports moved to `@sweefi/sui`)
 - `@sweefi/widget` → **deleted**; tests migrated to `@sweefi/ui-core`, `@sweefi/vue`, `@sweefi/react`
 - **`@sweefi/ui-core`** → new package: framework-agnostic state machine + `PaymentAdapter` interface
 - **`@sweefi/vue`** → new package: Vue 3 `SweefiPlugin` + `useSweefiPayment()` composable

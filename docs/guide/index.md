@@ -99,7 +99,7 @@ AI Agent (Claude, GPT, Cursor, etc.)
     |                                   |
     +-- CLI ----------------------> @sweefi/cli
     |                                   |
-    |    @sweefi/server (chain-agnostic HTTP: s402Gate, wrapFetchWithS402)
+    |    @sweefi/hono (chain-agnostic HTTP: s402Gate, wrapFetchWithS402)
     |    @sweefi/ui-core (state machine + PaymentAdapter interface)
     |    @sweefi/vue   (Vue 3 plugin + useSweefiPayment composable)
     |    @sweefi/react (React context + useSweefiPayment hook)
@@ -133,7 +133,7 @@ AI Agent (Claude, GPT, Cursor, etc.)
 | Package | Description | Tests |
 |---------|-------------|-------|
 | [`@sweefi/ui-core`](/guide/ui-core) | Framework-agnostic state machine + PaymentAdapter interface | 13 |
-| [`@sweefi/server`](/guide/server) | Chain-agnostic HTTP: s402Gate, wrapFetchWithS402 | — |
+| [`@sweefi/hono`](/guide/server) | Chain-agnostic HTTP: s402Gate, wrapFetchWithS402 | — |
 | [`@sweefi/sui`](/guide/sui) | $extend() plugin + 7 contract classes + s402 schemes | 669 |
 | [`@sweefi/vue`](/guide/vue) | Vue 3 plugin + useSweefiPayment() composable | 10 |
 | [`@sweefi/react`](/guide/react) | React context + useSweefiPayment() hook | 12 |
@@ -188,7 +188,7 @@ const response = await client.fetch('https://api.example.com/premium');
 
 ```typescript
 import { Hono } from 'hono';
-import { s402Gate } from '@sweefi/server';
+import { s402Gate } from '@sweefi/hono';
 
 const app = new Hono();
 
@@ -371,7 +371,7 @@ SweeFi is fully open source. Every developer-facing package is published under *
 |---------|---------|-----------|
 | `s402` | Apache 2.0 | npm (public) |
 | `@sweefi/ui-core` | Apache 2.0 | npm (public) |
-| `@sweefi/server` | Apache 2.0 | npm (public) |
+| `@sweefi/hono` | Apache 2.0 | npm (public) |
 | `@sweefi/sui` | Apache 2.0 | npm (public) |
 | `@sweefi/vue` | Apache 2.0 | npm (public) |
 | `@sweefi/react` | Apache 2.0 | npm (public) |

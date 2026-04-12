@@ -24,7 +24,7 @@ cd contracts && sui move test
   - `@sweefi/ui-core`: 13
   - `@sweefi/react`: 12
   - `@sweefi/vue`: 10
-  - `@sweefi/server`: 0 (integration-only tests — no offline unit tests)
+  - `@sweefi/hono`: 0 (integration-only tests — no offline unit tests)
 - Move tests: **426 functions** (all passing)
 - **Grand total: 1,775 tests**
 - **Hardening audit**: [HARDENING-AUDIT-2026-03-10.md](HARDENING-AUDIT-2026-03-10.md) — DO-178B MC/DC, mutation testing, metamorphic verification

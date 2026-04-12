@@ -205,7 +205,7 @@ This is what "safety layer for autonomous agent commerce" means — every failur
     └────────────────────────┬────────────────────────────────┘
                              │ builds PTBs via @sweefi/sui
     ┌────────────────────────▼────────────────────────────────┐
-    │  s402 (HTTP 402)          @sweefi/sui + @sweefi/server   │
+    │  s402 (HTTP 402)          @sweefi/sui + @sweefi/hono     │
     │  (402 headers)            (TypeScript client + gateway)  │
     └────────────────────────┬────────────────────────────────┘
                              │ submits transactions
