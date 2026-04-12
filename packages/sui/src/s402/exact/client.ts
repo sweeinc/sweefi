@@ -18,10 +18,18 @@
  */
 
 import { Transaction, coinWithBalance } from '@mysten/sui/transactions';
-import type { s402ClientScheme, s402PaymentRequirements, s402ExactPayload } from 's402';
+import type {
+  s402ClientScheme,
+  s402PaymentRequirements,
+  s402ExactPayload,
+  s402PaymentPayload,
+  s402SettleResponse,
+  s402SettlementVerification,
+} from 's402';
 import { S402_VERSION } from 's402';
 import type { ClientSuiSigner } from '../../signer.js';
 import { SUI_CLOCK } from '../../ptb/deployments.js';
+import { verifySuiSettlement } from '../verify.js';
 
 /**
  * Optional mandate configuration for agents with spending authorization.
@@ -40,16 +48,6 @@ export interface ExactSuiClientSchemeConfig {
 export class ExactSuiClientScheme implements s402ClientScheme {
   readonly scheme = 'exact' as const;
 
-  /**
-   * Per-call memo, set by the s402 client fetch wrapper before createPayment().
-   * Cleared after each createPayment() call to avoid leaking into subsequent requests.
-   * The memo is embedded in the PTB as a MoveCall event (not a Move receipt — that
-   * requires packageId). When packageId is unavailable, the memo is silently skipped.
-   *
-   * @internal Used by createS402Client's fetch wrapper — not part of the public API.
-   */
-  _pendingMemo: string | undefined;
-
   constructor(
     private readonly signer: ClientSuiSigner,
     private readonly mandateConfig?: ExactSuiClientSchemeConfig,
@@ -61,9 +59,9 @@ export class ExactSuiClientScheme implements s402ClientScheme {
   ): Promise<s402ExactPayload> {
     const { amount, asset, payTo, protocolFeeBps, protocolFeeAddress } = requirements;
 
-    // Consume pending memo (cleared after use to prevent leaking into next call)
-    const memo = this._pendingMemo;
-    this._pendingMemo = undefined;
+    // Read memo from requirements.extensions (set by s402Fetch wrapper).
+    // Each call has its own requirements object — no shared mutable state.
+    const memo = requirements.extensions?.memo as string | undefined;
 
     const tx = new Transaction();
     tx.setSender(this.signer.address);
@@ -171,5 +169,12 @@ export class ExactSuiClientScheme implements s402ClientScheme {
         signature,
       },
     };
+  }
+
+  verifySettlement(
+    payload: s402PaymentPayload,
+    settleResponse: s402SettleResponse,
+  ): s402SettlementVerification {
+    return verifySuiSettlement('exact', payload, settleResponse);
   }
 }

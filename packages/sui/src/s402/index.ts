@@ -35,3 +35,6 @@ export { UnlockSuiClientScheme } from './unlock/client.js';
 
 // Direct settlement
 export { DirectSuiSettlement } from './direct.js';
+
+// S8: Settlement verification (shared helper for all client-signed schemes)
+export { verifySuiSettlement } from './verify.js';

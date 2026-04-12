@@ -18,6 +18,9 @@ import type {
   s402ClientScheme,
   s402PaymentRequirements,
   s402PrepaidPayload,
+  s402PaymentPayload,
+  s402SettleResponse,
+  s402SettlementVerification,
 } from 's402';
 import { S402_VERSION } from 's402';
 import { Transaction } from '@mysten/sui/transactions';
@@ -26,6 +29,7 @@ import type { SweefiConfig } from '../../ptb/types.js';
 import { bpsToMicroPercent } from '../../ptb/assert.js';
 import { PrepaidContract } from '../../transactions/prepaid.js';
 import { createBuilderConfig } from '../../utils/config.js';
+import { verifySuiSettlement } from '../verify.js';
 
 export class PrepaidSuiClientScheme implements s402ClientScheme {
   readonly scheme = 'prepaid' as const;
@@ -122,5 +126,14 @@ export class PrepaidSuiClientScheme implements s402ClientScheme {
         maxCalls,
       },
     };
+  }
+
+  // The deposit TX is client-signed — S8 digest binding applies.
+  // Receipt-chain verification is a separate concern for the claim phase.
+  verifySettlement(
+    payload: s402PaymentPayload,
+    settleResponse: s402SettleResponse,
+  ): s402SettlementVerification {
+    return verifySuiSettlement('prepaid', payload, settleResponse);
   }
 }

@@ -6,7 +6,14 @@
  *   Phase 2 (ongoing): Client includes X-STREAM-ID header on subsequent requests
  */
 
-import type { s402ClientScheme, s402PaymentRequirements, s402StreamPayload } from 's402';
+import type {
+  s402ClientScheme,
+  s402PaymentRequirements,
+  s402StreamPayload,
+  s402PaymentPayload,
+  s402SettleResponse,
+  s402SettlementVerification,
+} from 's402';
 import { S402_VERSION } from 's402';
 import { Transaction } from '@mysten/sui/transactions';
 import type { ClientSuiSigner } from '../../signer.js';
@@ -14,6 +21,7 @@ import type { SweefiConfig } from '../../ptb/types.js';
 import { bpsToMicroPercent } from '../../ptb/assert.js';
 import { StreamContract } from '../../transactions/stream.js';
 import { createBuilderConfig } from '../../utils/config.js';
+import { verifySuiSettlement } from '../verify.js';
 
 export class StreamSuiClientScheme implements s402ClientScheme {
   readonly scheme = 'stream' as const;
@@ -61,5 +69,12 @@ export class StreamSuiClientScheme implements s402ClientScheme {
         signature,
       },
     };
+  }
+
+  verifySettlement(
+    payload: s402PaymentPayload,
+    settleResponse: s402SettleResponse,
+  ): s402SettlementVerification {
+    return verifySuiSettlement('stream', payload, settleResponse);
   }
 }

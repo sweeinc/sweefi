@@ -11,7 +11,14 @@
  *   PTB 2: key-server approval (decrypt based on escrow receipt)
  */
 
-import type { s402ClientScheme, s402PaymentRequirements, s402UnlockPayload } from 's402';
+import type {
+  s402ClientScheme,
+  s402PaymentRequirements,
+  s402UnlockPayload,
+  s402PaymentPayload,
+  s402SettleResponse,
+  s402SettlementVerification,
+} from 's402';
 import { S402_VERSION } from 's402';
 import { Transaction } from '@mysten/sui/transactions';
 import type { ClientSuiSigner } from '../../signer.js';
@@ -19,6 +26,7 @@ import type { SweefiConfig } from '../../ptb/types.js';
 import { bpsToMicroPercent } from '../../ptb/assert.js';
 import { EscrowContract } from '../../transactions/escrow.js';
 import { createBuilderConfig } from '../../utils/config.js';
+import { verifySuiSettlement } from '../verify.js';
 
 export class UnlockSuiClientScheme implements s402ClientScheme {
   readonly scheme = 'unlock' as const;
@@ -72,5 +80,14 @@ export class UnlockSuiClientScheme implements s402ClientScheme {
         encryptionId: unlock.encryptionId,
       },
     };
+  }
+
+  // S8 covers TX1 only (client-signed escrow creation).
+  // TX2 is facilitator-constructed and needs a separate attestation mechanism.
+  verifySettlement(
+    payload: s402PaymentPayload,
+    settleResponse: s402SettleResponse,
+  ): s402SettlementVerification {
+    return verifySuiSettlement('unlock', payload, settleResponse);
   }
 }

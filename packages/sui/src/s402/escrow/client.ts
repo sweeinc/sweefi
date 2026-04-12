@@ -4,7 +4,14 @@
  * Builds a signed escrow creation PTB for escrowed payments.
  */
 
-import type { s402ClientScheme, s402PaymentRequirements, s402EscrowPayload } from 's402';
+import type {
+  s402ClientScheme,
+  s402PaymentRequirements,
+  s402EscrowPayload,
+  s402PaymentPayload,
+  s402SettleResponse,
+  s402SettlementVerification,
+} from 's402';
 import { S402_VERSION } from 's402';
 import { Transaction } from '@mysten/sui/transactions';
 import type { ClientSuiSigner } from '../../signer.js';
@@ -12,6 +19,7 @@ import type { SweefiConfig } from '../../ptb/types.js';
 import { bpsToMicroPercent } from '../../ptb/assert.js';
 import { EscrowContract } from '../../transactions/escrow.js';
 import { createBuilderConfig } from '../../utils/config.js';
+import { verifySuiSettlement } from '../verify.js';
 
 export class EscrowSuiClientScheme implements s402ClientScheme {
   readonly scheme = 'escrow' as const;
@@ -59,5 +67,12 @@ export class EscrowSuiClientScheme implements s402ClientScheme {
         signature,
       },
     };
+  }
+
+  verifySettlement(
+    payload: s402PaymentPayload,
+    settleResponse: s402SettleResponse,
+  ): s402SettlementVerification {
+    return verifySuiSettlement('escrow', payload, settleResponse);
   }
 }
