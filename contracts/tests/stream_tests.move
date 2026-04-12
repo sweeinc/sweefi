@@ -2793,8 +2793,9 @@ module sweefi::stream_tests {
 
     #[test]
     fun test_allium_total_claimed_bounded_by_budget() {
-        // Create a stream with deposit == budget_cap. Claim past exhaustion.
-        // Verify total_claimed never exceeds budget_cap.
+        // Create stream with deposit == budget, claim ~half, then top_up so
+        // balance >> budget_remaining. Without the budget cap in calculate_accrued(),
+        // total_claimed would exceed budget_cap because balance allows it.
         let mut scenario = ts::begin(PAYER);
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
@@ -2806,18 +2807,42 @@ module sweefi::stream_tests {
             deposit, PROVIDER, RATE, budget, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx(),
         );
 
-        // Advance time way past when budget exhausts: budget/rate = 5M/300 = ~16,667 sec
-        // Go to 50,000 seconds (well past budget exhaustion)
-        clock.increment_for_testing(50_000_000); // 50,000 seconds in ms
+        // Claim ~half: advance 8,000 sec → accrued = 8,000 * 300 = 2,400,000
+        clock.increment_for_testing(8_000_000u64);
 
         scenario.next_tx(PROVIDER);
-        let mut meter = scenario.take_shared<stream::StreamingMeter<SUI>>();
-        stream::claim<SUI>(&mut meter, &clock, scenario.ctx());
+        {
+            let mut meter = scenario.take_shared<stream::StreamingMeter<SUI>>();
+            stream::claim<SUI>(&mut meter, &clock, scenario.ctx());
+            // ~2,400,000 claimed, balance ~2,600,000, budget_remaining ~2,600,000
+            assert!(stream::meter_total_claimed(&meter) > 0);
+            ts::return_shared(meter);
+        };
 
-        // total_claimed must be capped at budget_cap
-        assert!(stream::meter_total_claimed(&meter) <= budget);
+        // Payer tops up with full budget — now balance (~2.6M + 5M = ~7.6M) >> budget_remaining (~2.6M)
+        scenario.next_tx(PAYER);
+        {
+            let mut meter = scenario.take_shared<stream::StreamingMeter<SUI>>();
+            let top_up_coin = coin::mint_for_testing<SUI>(budget, scenario.ctx());
+            stream::top_up<SUI>(&mut meter, top_up_coin, &state, &clock, scenario.ctx());
+            ts::return_shared(meter);
+        };
 
-        ts::return_shared(meter);
+        // Advance way past budget exhaustion
+        clock.increment_for_testing(50_000_000u64);
+
+        scenario.next_tx(PROVIDER);
+        {
+            let mut meter = scenario.take_shared<stream::StreamingMeter<SUI>>();
+            stream::claim<SUI>(&mut meter, &clock, scenario.ctx());
+
+            // CRITICAL: total_claimed must NEVER exceed budget_cap,
+            // even though balance (from top_up) would allow it
+            assert!(stream::meter_total_claimed(&meter) <= budget);
+
+            ts::return_shared(meter);
+        };
+
         admin::destroy_cap_for_testing(_cap);
         admin::destroy_state_for_testing(state);
         clock.destroy_for_testing();
@@ -2832,30 +2857,35 @@ module sweefi::stream_tests {
 
     #[test]
     fun test_allium_accrual_overflow_safe_large_rate() {
-        // Large rate (1_000_000 tokens/sec) over long period.
-        // rate * elapsed_ms would overflow u64, but u128 handles it.
+        // Values chosen so rate * elapsed_ms OVERFLOWS u64:
+        //   rate = 1_000_000_000 (1B tokens/sec)
+        //   elapsed = 20_000_000_000 ms (20M seconds ≈ 231 days)
+        //   product = 10^9 * 2×10^10 = 2×10^19 > u64::MAX (1.8×10^19) → OVERFLOW
+        //   expected accrued = 2×10^19 / 1000 = 2×10^16 — fits u64
+        //
+        // With u128 intermediate: correct result.
+        // With u64 intermediate: Move aborts on arithmetic overflow.
         let mut scenario = ts::begin(PAYER);
         let mut clock = clock::create_for_testing(scenario.ctx());
         let (_cap, state) = admin::create_for_testing(scenario.ctx());
 
-        let large_rate = 1_000_000u64; // 1M tokens/sec
-        let budget = 100_000_000_000u64; // 100B tokens
+        let large_rate = 1_000_000_000u64; // 1B tokens/sec
+        let expected_accrued = 20_000_000_000_000_000u64; // 2×10^16
+        let budget = expected_accrued;
         let deposit = coin::mint_for_testing<SUI>(budget, scenario.ctx());
 
         stream::create<SUI>(
             deposit, PROVIDER, large_rate, budget, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx(),
         );
 
-        // Advance 100,000 seconds (100K * 1M = 100B tokens accrued)
-        // rate * elapsed_ms = 1_000_000 * 100_000_000 = 10^14 — fits u64
-        // But test that the path works correctly end to end
-        clock.increment_for_testing(100_000_000); // 100K seconds
+        // 20M seconds in ms — rate * elapsed_ms overflows u64
+        clock.increment_for_testing(20_000_000_000u64);
 
         scenario.next_tx(PROVIDER);
         let mut meter = scenario.take_shared<stream::StreamingMeter<SUI>>();
         stream::claim<SUI>(&mut meter, &clock, scenario.ctx());
 
-        // Should have claimed exactly budget_cap worth
+        // u128 path produces correct result — total_claimed == budget_cap
         assert!(stream::meter_total_claimed(&meter) == budget);
 
         ts::return_shared(meter);

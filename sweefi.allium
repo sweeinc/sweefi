@@ -1,7 +1,7 @@
 -- SweeFi Behavioral Specification
 -- Allium spec for s402 payment protocol: Move contracts + TypeScript adapters
 -- Author: Agent 5 (Career), 2026-03-28; updated 2026-04-11 (S8, fee events, prepaid v0.2)
--- Purpose: (1) Spec-code divergence bug hunt (2) Test generation (3) Agent onboarding context
+-- Purpose: (1) Spec-code divergence bug hunt (2) Test generation (3) Agent onboarding context (4) Verification confidence tracking
 
 -- ==========================================================
 -- ENTITIES
@@ -125,12 +125,27 @@ entity PrepaidBalance {
 }
 
 -- ==========================================================
+-- VERIFICATION CONFIDENCE LEVELS
+-- ==========================================================
+-- Each invariant carries a CONFIDENCE tag indicating how rigorously it has been verified.
+--
+-- code-inspection    (weak)     — verified by reading the code; shares blind spots with spec author
+-- mutation-tested    (strong)   — a deliberate code mutation was introduced and caught by tests
+-- independent-derivation (strongest) — derived independently from a different source than the spec
+--
+-- Mutation testing proves tests have "teeth" — they fail when the invariant is violated.
+-- Code inspection only proves internal consistency ("does code match spec?"), not external
+-- correctness ("is the spec right?"). The gap between code-inspection and mutation-tested
+-- is where circular reinforcement errors hide.
+
+-- ==========================================================
 -- PAYMENT INVARIANTS
 -- ==========================================================
 
 invariant PaymentSufficientFunds {
     -- CODE CHECK: payment.move:185 — assert!(payment.value() >= amount, EInsufficientPayment)
     -- VERIFIED: ✅ Checked before any transfer
+    -- CONFIDENCE: code-inspection
     for p in Payment:
         p.coin_value >= p.amount
 }
@@ -139,6 +154,7 @@ invariant FeeNeverExceedsAmount {
     -- CODE CHECK: math.move:54 — result = (amount * fee_micro_pct) / 1_000_000
     -- Since fee_micro_pct <= 1_000_000 and division truncates, result <= amount
     -- VERIFIED: ✅ math::calculate_fee uses u128 intermediate, caps at u64::MAX
+    -- CONFIDENCE: mutation-tested (2026-04-11) — +1 to fee result caught by 4 math tests
     for p in Payment:
         p.fee_amount <= p.amount
 }
@@ -147,6 +163,7 @@ invariant OverflowSafeFeeCalculation {
     -- CODE CHECK: math.move:54 — u128 intermediate arithmetic
     -- VERIFIED: ✅ (amount as u128) * (fee_micro_pct as u128) / FEE_DENOMINATOR
     -- Maximum: u64::MAX * 1_000_000 = 1.84e25 < u128::MAX (3.4e38). Safe.
+    -- CONFIDENCE: code-inspection
     for p in Payment:
         p.fee_calculation_uses_u128_intermediate
 }
@@ -154,6 +171,7 @@ invariant OverflowSafeFeeCalculation {
 invariant ChangeReturnedOnOverpayment {
     -- CODE CHECK: payment.move:190-193 — if payment_value > amount, split and transfer change
     -- VERIFIED: ✅ Change split happens BEFORE fee calculation
+    -- CONFIDENCE: code-inspection
     for p in Payment:
         p.coin_value > p.amount implies p.change_returned = p.coin_value - p.amount
 }
@@ -162,6 +180,7 @@ invariant InvoiceConsumedOnPayment {
     -- CODE CHECK: payment.move:274-284 — Invoice destructured (UID deleted)
     -- VERIFIED: ✅ Invoice is consumed by value (Move linearity), UID explicitly deleted
     -- This is Sui-idiomatic replay protection: a consumed object ID can never be reused
+    -- CONFIDENCE: code-inspection
     for i in Invoice:
         i.consumed = consumed implies i.uid_deleted
 }
@@ -169,6 +188,7 @@ invariant InvoiceConsumedOnPayment {
 invariant ZeroFeePreserved {
     -- CODE CHECK: math.move:53 — if (fee_micro_pct == 0) return 0
     -- VERIFIED: ✅ Explicit early return, not reliant on division behavior
+    -- CONFIDENCE: code-inspection
     for p in Payment:
         p.fee_micro_pct = 0 implies p.fee_amount = 0
 }
@@ -180,6 +200,7 @@ invariant ZeroFeePreserved {
 invariant MandateTotalSpentBounded {
     -- CODE CHECK: mandate.move:161-164 — u128 comparison before debit
     -- VERIFIED: ✅ (total_spent as u128) + (amount as u128) <= (max_total as u128)
+    -- CONFIDENCE: code-inspection
     for m in Mandate:
         m.total_spent <= m.max_total
 }
@@ -187,6 +208,7 @@ invariant MandateTotalSpentBounded {
 invariant MandatePerTxBounded {
     -- CODE CHECK: mandate.move:155
     -- VERIFIED: ✅ assert!(amount <= mandate.max_per_tx)
+    -- CONFIDENCE: code-inspection
     for m in Mandate:
         every_spend_amount <= m.max_per_tx
 }
@@ -195,6 +217,7 @@ invariant MandateRegistryOwnershipVerified {
     -- CODE CHECK: mandate.move:142 — registry.owner == mandate.delegator
     -- VERIFIED: ✅ Prevents rogue delegate from passing empty registry
     -- This is the CRITICAL security check. Without it, revocation is bypassable.
+    -- CONFIDENCE: code-inspection
     for m in Mandate:
         m.spending_checks_registry_ownership
 }
@@ -202,6 +225,7 @@ invariant MandateRegistryOwnershipVerified {
 invariant MandateOnlyDelegateSpends {
     -- CODE CHECK: mandate.move:147 — ctx.sender() == mandate.delegate
     -- VERIFIED: ✅
+    -- CONFIDENCE: code-inspection
     for m in Mandate:
         m.spending_requires_delegate_signature
 }
@@ -213,6 +237,7 @@ invariant MandateOnlyDelegateSpends {
 invariant AgentMandateLevelOnlyIncreases {
     -- CODE CHECK: agent_mandate.move:321 — new_level > mandate.level
     -- VERIFIED: ✅ Strict > (not >=), enforced in upgrade_level
+    -- CONFIDENCE: code-inspection
     for m in AgentMandate:
         m.level_transitions_are_monotonically_increasing
 }
@@ -222,6 +247,7 @@ invariant AgentMandateDailyResetCorrect {
     -- VERIFIED: ✅ Initialized to clock.timestamp_ms() at creation (not epoch 0)
     -- IMPORTANT: last_daily_reset_ms starts at creation time, preventing
     -- "fresh daily allowance" exploitation on old mandates
+    -- CONFIDENCE: code-inspection
     for m in AgentMandate:
         m.last_daily_reset_ms >= m.created_at_ms
 }
@@ -230,6 +256,7 @@ invariant AgentMandateUpdateCapsFloorCheck {
     -- CODE CHECK: agent_mandate.move:348-350
     -- VERIFIED: ✅ new caps must be >= current spent amounts
     -- Prevents: delegator sets daily_limit < daily_spent, instantly freezing agent
+    -- CONFIDENCE: code-inspection
     for m in AgentMandate:
         m.updated_daily_limit >= m.daily_spent
         m.updated_weekly_limit >= m.weekly_spent
@@ -243,6 +270,7 @@ invariant AgentMandateUpdateCapsFloorCheck {
 invariant EscrowParticipantsDistinct {
     -- CODE CHECK: escrow.move:212-219
     -- VERIFIED: ✅ arbiter != seller, arbiter != buyer, buyer != seller
+    -- CONFIDENCE: code-inspection
     for e in Escrow:
         e.buyer != e.seller and e.seller != e.arbiter and e.buyer != e.arbiter
 }
@@ -250,6 +278,7 @@ invariant EscrowParticipantsDistinct {
 invariant EscrowNoFeeOnRefund {
     -- CODE CHECK: escrow.move:420-424 — full balance transferred to buyer
     -- VERIFIED: ✅ No fee calculation in refund path
+    -- CONFIDENCE: mutation-tested (2026-04-11) — added fee deduction to refund, caught by 2 tests
     for e in Escrow:
         e.state = refunded implies e.refund_amount = e.balance  -- full refund, zero fee
 }
@@ -257,6 +286,7 @@ invariant EscrowNoFeeOnRefund {
 invariant EscrowDisputeBeforeDeadline {
     -- CODE CHECK: escrow.move:475 — assert!(now_ms < escrow.deadline_ms)
     -- VERIFIED: ✅ M-01 security fix prevents post-deadline dispute
+    -- CONFIDENCE: code-inspection
     for e in Escrow:
         e.dispute_requires(clock.now < e.deadline_ms)
 }
@@ -265,6 +295,7 @@ invariant EscrowGracePeriodBounded {
     -- CODE CHECK: escrow.move:482-494
     -- VERIFIED: ✅ clamp(duration * 50%, 7 days, 30 days)
     -- Grace period = max(min(original_duration * 50%, 30 days), 7 days)
+    -- CONFIDENCE: code-inspection
     for e in Escrow:
         7_days <= e.dispute_grace_period <= 30_days
 }
@@ -272,6 +303,7 @@ invariant EscrowGracePeriodBounded {
 invariant EscrowPermissionlessRefundAfterDeadline {
     -- CODE CHECK: escrow.move:408 — if (now_ms >= deadline_ms) then no auth required
     -- VERIFIED: ✅ Anyone can trigger refund after deadline (prevents key-loss lockup)
+    -- CONFIDENCE: code-inspection
     for e in Escrow:
         clock.now >= e.deadline_ms implies anyone_can_refund(e)
 }
@@ -303,6 +335,7 @@ invariant EscrowPermissionlessRefundAfterDeadline {
 invariant StreamTotalClaimedBounded {
     -- CODE CHECK: stream.move:817-822 — budget_remaining = budget_cap - total_claimed
     -- VERIFIED: ✅ Accrued amount capped at budget_remaining in calculate_accrued
+    -- CONFIDENCE: mutation-tested (2026-04-11) — removed budget cap, caught after top_up test
     for s in StreamingMeter:
         s.total_claimed <= s.budget_cap
 }
@@ -310,6 +343,7 @@ invariant StreamTotalClaimedBounded {
 invariant StreamAccrualOverflowSafe {
     -- CODE CHECK: stream.move:808 — u128 intermediate: (rate * elapsed_ms) / 1000
     -- VERIFIED: ✅ Maximum: u64::MAX * u64::MAX = 3.4e38 < u128::MAX. Safe.
+    -- CONFIDENCE: mutation-tested (2026-04-11) — downgraded to u64, Move arithmetic abort
     for s in StreamingMeter:
         s.accrual_calculation_uses_u128
 }
@@ -320,6 +354,7 @@ invariant StreamPausePreservesAccrual {
     --   last_claim_ms = now - pre_pause_elapsed (shifted backward)
     -- Prevents: pause() → resume() → close() atomic PTB attack
     -- where payer tries to erase accrued time between pause and resume
+    -- CONFIDENCE: code-inspection
     for s in StreamingMeter:
         s.paused implies s.pre_pause_accrual_preserved_on_resume
 }
@@ -327,6 +362,7 @@ invariant StreamPausePreservesAccrual {
 invariant StreamDepositNotExceedBudget {
     -- CODE CHECK: stream.move:181 — assert!(deposit_value <= budget_cap)
     -- VERIFIED: ✅ H-5 guard prevents overfunding
+    -- CONFIDENCE: code-inspection
     for s in StreamingMeter:
         s.initial_deposit <= s.budget_cap
 }
@@ -334,6 +370,7 @@ invariant StreamDepositNotExceedBudget {
 invariant StreamClaimCappedAtBalance {
     -- CODE CHECK: stream.move:324-328 — claimable = min(accrued, balance)
     -- VERIFIED: ✅ Cannot claim more than actually deposited
+    -- CONFIDENCE: code-inspection
     for s in StreamingMeter:
         s.claimable <= s.balance
 }
@@ -342,6 +379,7 @@ invariant StreamRecipientCloseTimeout {
     -- CODE CHECK: stream.move:603 — now - last_activity >= timeout
     -- VERIFIED: ✅ Minimum 1 day, maximum 30 days
     -- Prevents payer-pause-and-disappear lockup attack
+    -- CONFIDENCE: code-inspection
     for s in StreamingMeter:
         s.recipient_close_requires_timeout_elapsed
 }
@@ -353,6 +391,7 @@ invariant StreamRecipientCloseTimeout {
 invariant PrepaidClaimedCallsMonotonic {
     -- CODE CHECK: prepaid.move (cumulative claimed_calls, not incremental)
     -- VERIFIED: ✅ Provider submits cumulative count; contract checks new > old
+    -- CONFIDENCE: mutation-tested (2026-04-11) — removed regression guard, arithmetic underflow
     for p in PrepaidBalance:
         p.claimed_calls_only_increases
 }
@@ -360,6 +399,7 @@ invariant PrepaidClaimedCallsMonotonic {
 invariant PrepaidExtractionBounded {
     -- Rate cap * max_calls = maximum possible extraction
     -- Deposit amount is the absolute ceiling
+    -- CONFIDENCE: mutation-tested (2026-04-11) — removed max_calls check, over-extraction allowed
     for p in PrepaidBalance:
         p.max_extraction = min(p.rate_per_call * p.max_calls, p.balance)
 }
@@ -372,6 +412,7 @@ invariant FeeCalculationConsistent {
     -- All modules (payment, escrow, stream, prepaid) use math::calculate_fee
     -- VERIFIED: ✅ Single shared implementation prevents copy-paste drift
     -- CODE CHECK: Each module imports sweefi::math
+    -- CONFIDENCE: code-inspection
     for module in [payment, escrow, stream, prepaid]:
         module.fee_calculation = math::calculate_fee
 }
@@ -379,6 +420,7 @@ invariant FeeCalculationConsistent {
 invariant MinDepositOnSharedObjects {
     -- CODE CHECK: escrow.move:76, stream.move:47, prepaid.move (similar)
     -- VERIFIED: ✅ MIN_DEPOSIT = 1_000_000 prevents dust spam
+    -- CONFIDENCE: code-inspection
     for shared_object in [Escrow, StreamingMeter, PrepaidBalance]:
         shared_object.initial_deposit >= 1_000_000
 }
@@ -387,6 +429,7 @@ invariant AdminPauseOnCreate {
     -- CODE CHECK: escrow.move:201, stream.move:173
     -- VERIFIED: ✅ admin::assert_not_paused checked at creation
     -- NOT checked on release/refund/claim — intentional (don't lock funds during pause)
+    -- CONFIDENCE: code-inspection
     for module in [escrow, stream, prepaid]:
         module.create_checks_protocol_pause
         module.release_does_not_check_pause  -- intentional: don't lock funds
@@ -404,6 +447,7 @@ invariant SuiDigestIsBlake2b256 {
     -- CODE CHECK: packages/sui/src/s402/verify.ts — computeSuiDigest()
     -- VERIFIED: ✅ blake2b(txBytes, { dkLen: 32 }) → base58 encode
     -- This is deterministic: same BCS bytes → same digest, always.
+    -- CONFIDENCE: code-inspection
     for settlement in SuiSettlement:
         settlement.expectedDigest = base58(blake2b_256(settlement.signedTxBytes))
 }
@@ -412,6 +456,7 @@ invariant VerifySettlementIsOffline {
     -- CODE CHECK: packages/sui/src/s402/verify.ts — verifySuiSettlement()
     -- VERIFIED: ✅ No RPC calls, no network access, no chain state
     -- Pure function: (payload, settleResponse) → SettlementVerification
+    -- CONFIDENCE: code-inspection
     for verification in SettlementVerification:
         verification.requires_no_rpc_calls
         verification.requires_no_network_access
@@ -421,6 +466,7 @@ invariant AllClientSignedSchemesVerify {
     -- CODE CHECK: exact/client.ts, stream/client.ts, escrow/client.ts,
     --   prepaid/client.ts, unlock/client.ts — all implement verifySettlement()
     -- VERIFIED: ✅ All 5 adapters delegate to verifySuiSettlement()
+    -- CONFIDENCE: code-inspection
     for scheme in [exact, stream, escrow, prepaid]:
         scheme.verifySettlement uses verifySuiSettlement(payload, settleResponse)
         scheme.verifySettlement returns { verified: true } iff expectedDigest === actualDigest
@@ -430,6 +476,7 @@ invariant UnlockTX2CannotVerify {
     -- CODE CHECK: unlock/client.ts — verifySettlement()
     -- VERIFIED: ✅ Returns { verified: false, reason: 'not supported' }
     -- Unlock TX2 is facilitator-constructed, client has no signed bytes to compare.
+    -- CONFIDENCE: code-inspection
     for unlock_tx2 in UnlockScheme:
         unlock_tx2.verifySettlement returns { verified: false }
         unlock_tx2.verifySettlement.reason is present
@@ -438,6 +485,7 @@ invariant UnlockTX2CannotVerify {
 invariant InvalidBase64DoesNotThrow {
     -- CODE CHECK: verify.ts — try/catch around base64 decode
     -- VERIFIED: ✅ Returns { verified: false, reason } instead of throwing
+    -- CONFIDENCE: code-inspection
     for malformed_payload in MalformedPayloads:
         verifySuiSettlement(malformed_payload, response) returns { verified: false }
         -- MUST NOT propagate exceptions to caller
@@ -453,6 +501,7 @@ invariant InvalidBase64DoesNotThrow {
 invariant StreamEventEmitsFee {
     -- CODE CHECK: stream.move — StreamCreated event has fee_micro_pct field
     -- VERIFIED: ✅ Both create() and create_with_timeout() emit fee_micro_pct
+    -- CONFIDENCE: code-inspection
     for s in StreamCreated:
         s.fee_micro_pct = argument_fee_micro_pct_passed_to_create
 }
@@ -460,6 +509,7 @@ invariant StreamEventEmitsFee {
 invariant PrepaidEventEmitsFee {
     -- CODE CHECK: prepaid.move — PrepaidDeposited event has fee_micro_pct field
     -- VERIFIED: ✅ Both deposit() and deposit_with_receipts() emit fee_micro_pct
+    -- CONFIDENCE: code-inspection
     for p in PrepaidDeposited:
         p.fee_micro_pct = argument_fee_micro_pct_passed_to_deposit
 }
@@ -469,6 +519,7 @@ invariant FacilitatorVerifiesFeeFromEvent {
     -- VERIFIED: ✅ All three compare emitted fee_micro_pct against bpsToMicroPercent(requirements.protocolFeeBps)
     -- IMPORTANT: Verification is from the EMITTED EVENT, not from the PTB arguments.
     -- The client controls PTB arguments. The event is the facilitator's only trustworthy source.
+    -- CONFIDENCE: code-inspection
     for facilitator_verify in [StreamFacilitator, PrepaidFacilitator, EscrowFacilitator]:
         facilitator_verify.reads fee_micro_pct from dry_run emitted event
         facilitator_verify.rejects if event.fee_micro_pct != bpsToMicroPercent(requirements.protocolFeeBps)
@@ -492,6 +543,7 @@ entity PrepaidReceipt {
 invariant PrepaidV2ClaimIsPending {
     -- CODE CHECK: prepaid.move:496-508 — v0.2 claim enters pending state
     -- VERIFIED: ✅ When dispute_window_ms > 0, claim() sets pending_* fields, no funds move
+    -- CONFIDENCE: code-inspection
     for claim in PrepaidClaim where balance.dispute_window_ms > 0:
         claim.creates_pending_state
         claim.does_not_transfer_funds
@@ -500,6 +552,7 @@ invariant PrepaidV2ClaimIsPending {
 invariant PrepaidDisputeWithinWindow {
     -- CODE CHECK: prepaid.move:610-613 — assert!(now < pending_ms + window)
     -- VERIFIED: ✅ Dispute must happen before window expires
+    -- CONFIDENCE: code-inspection
     for dispute in PrepaidDispute:
         dispute.timestamp_ms < balance.pending_claim_ms + balance.dispute_window_ms
 }
@@ -507,6 +560,7 @@ invariant PrepaidDisputeWithinWindow {
 invariant PrepaidDisputeRequiresValidSignature {
     -- CODE CHECK: prepaid.move:643-648 — ed25519_verify
     -- VERIFIED: ✅ Signature must come from provider's registered pubkey
+    -- CONFIDENCE: code-inspection
     for dispute in PrepaidDispute:
         dispute.signature is valid under balance.provider_pubkey
 }
@@ -516,6 +570,7 @@ invariant PrepaidDisputeReceiptReplayProtection {
     -- VERIFIED: ✅ Receipt must be for THIS specific balance, not a different one
     -- CODE CHECK: prepaid.move:631-633 — receipt_call_number > balance.claimed_calls
     -- VERIFIED: ✅ Receipt must be from the CURRENT pending batch, not a prior settled one
+    -- CONFIDENCE: code-inspection
     for dispute in PrepaidDispute:
         dispute.receipt.balance_id = balance.id
         dispute.receipt.call_number > balance.claimed_calls
@@ -525,6 +580,7 @@ invariant PrepaidDisputeReceiptReplayProtection {
 invariant PrepaidDisputeFreezesBalance {
     -- CODE CHECK: prepaid.move:652-658 — disputed = true, pending state cleared
     -- VERIFIED: ✅ Fraud proven → balance frozen → only agent can withdraw
+    -- CONFIDENCE: code-inspection
     for dispute in PrepaidDispute:
         dispute.success implies balance.disputed = true
         dispute.success implies balance.pending_claim_count = 0
@@ -536,6 +592,10 @@ invariant PrepaidDisputeFreezesBalance {
 
 -- Total invariants checked: 38 (was 25; +5 S8, +3 fee events, +5 prepaid v0.2)
 -- Verified against code: 38/38
+-- Confidence breakdown: 6 mutation-tested (strong), 32 code-inspection (weak), 0 independent-derivation
+-- Mutation-tested invariants: FeeNeverExceedsAmount, EscrowNoFeeOnRefund,
+--   StreamTotalClaimedBounded, StreamAccrualOverflowSafe, PrepaidClaimedCallsMonotonic,
+--   PrepaidExtractionBounded — all 6 mutations CAUGHT (2026-04-11)
 -- Findings resolved: 1 (escrow release deadline-gated — found and fixed by allium, 2026-03-28)
 -- Open questions: 0
 --
