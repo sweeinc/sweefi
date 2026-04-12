@@ -3,7 +3,7 @@
  *
  * High-level client that registers all Sui payment schemes and wraps fetch
  * for automatic 402 payment handling. Extends the chain-agnostic
- * wrapFetchWithS402 from @sweefi/server with Sui-specific features:
+ * wrapFetchWithS402 from @sweefi/hono with Sui-specific features:
  *   - Per-fetch memo (embedded in on-chain PaymentReceipt)
  *   - Payment metadata on Response (txDigest, receiptId, scheme, amount)
  *
@@ -32,14 +32,15 @@
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 import {
   s402Client,
+  s402Error,
   S402_HEADERS,
   encodePaymentPayload,
   decodePaymentRequired,
   decodeSettleResponse,
 } from "s402";
 import type { s402PaymentRequirements } from "s402";
-import { s402PaymentSentError } from "@sweefi/server/client";
-import { DEFAULT_FACILITATOR_URL } from "@sweefi/server";
+import { s402PaymentSentError } from "@sweefi/hono/client";
+import { DEFAULT_FACILITATOR_URL } from "@sweefi/hono";
 import {
   ExactSuiClientScheme,
   PrepaidSuiClientScheme,
@@ -47,6 +48,7 @@ import {
   EscrowSuiClientScheme,
   UnlockSuiClientScheme,
   DirectSuiSettlement,
+  verifySuiSettlement,
 } from "../s402/index.js";
 import { toClientSuiSigner } from "../signer.js";
 import type { s402ClientConfig, S402FetchInit, S402PaymentMetadata } from "./s402-types.js";
@@ -65,33 +67,6 @@ function attachMetadata(response: Response, metadata: S402PaymentMetadata): void
   });
 }
 
-/**
- * Try to extract S402PaymentMetadata from the payment-response header.
- * Returns undefined if the header is missing or malformed.
- */
-function extractMetadataFromResponse(
-  response: Response,
-  scheme: string,
-  amount: string | undefined,
-): S402PaymentMetadata | undefined {
-  const headerValue = response.headers.get(S402_HEADERS.PAYMENT_RESPONSE);
-  if (!headerValue) return undefined;
-
-  try {
-    const settleResponse = decodeSettleResponse(headerValue);
-    if (!settleResponse.success || !settleResponse.txDigest) return undefined;
-
-    return {
-      txDigest: settleResponse.txDigest,
-      receiptId: settleResponse.receiptId ?? undefined,
-      scheme,
-      amount,
-      gasCostMist: undefined, // Not available from the settle response header
-    };
-  } catch {
-    return undefined;
-  }
-}
 
 export function createS402Client(config: s402ClientConfig) {
   const { wallet, network, rpcUrl, facilitatorUrl, packageId, mandate } = config;
@@ -152,24 +127,21 @@ export function createS402Client(config: s402ClientConfig) {
       cleanInit = Object.keys(rest).length > 0 ? rest : undefined;
     }
 
-    // Set pending memo on the exact scheme (consumed and cleared in createPayment)
-    if (s402Options?.memo) {
-      exactScheme._pendingMemo = s402Options.memo;
-    }
+    // Capture memo from s402 options — will be injected into requirements below.
+    // Each call has its own memo variable, so concurrent fetches don't interfere.
+    const memo = s402Options?.memo;
 
     // Make initial request
     const response = await globalThis.fetch(input, cleanInit);
 
-    // Not a 402 — pass through (clear memo if unused)
+    // Not a 402 — pass through
     if (response.status !== 402) {
-      exactScheme._pendingMemo = undefined;
       return response;
     }
 
     // Check for payment-required header
     const headerValue = response.headers.get(S402_HEADERS.PAYMENT_REQUIRED);
     if (!headerValue) {
-      exactScheme._pendingMemo = undefined;
       return response;
     }
 
@@ -178,19 +150,17 @@ export function createS402Client(config: s402ClientConfig) {
     try {
       requirements = decodePaymentRequired(headerValue);
     } catch {
-      exactScheme._pendingMemo = undefined;
       return response;
     }
 
-    // Create payment (this consumes and clears _pendingMemo on success).
-    // On failure, we must clear it here to prevent memo leaking to the next fetch.
-    let payload;
-    try {
-      payload = await client.createPayment(requirements);
-    } catch (createError) {
-      exactScheme._pendingMemo = undefined;
-      throw createError;
+    // Inject memo into requirements.extensions so createPayment can read it.
+    // Each call has its own requirements object — no shared mutable state.
+    if (memo) {
+      requirements.extensions = { ...requirements.extensions, memo };
     }
+
+    // Create payment
+    const payload = await client.createPayment(requirements);
 
     const cachedPayload = encodePaymentPayload(payload);
 
@@ -208,14 +178,34 @@ export function createS402Client(config: s402ClientConfig) {
       throw new s402PaymentSentError(requirements, networkError);
     }
 
-    // Attach payment metadata from the payment-response header
-    const metadata = extractMetadataFromResponse(
-      retryResponse,
-      payload.scheme,
-      requirements.amount,
-    );
-    if (metadata) {
-      attachMetadata(retryResponse, metadata);
+    // S8: Verify causal binding + attach payment metadata
+    const paymentResponseHeader = retryResponse.headers.get(S402_HEADERS.PAYMENT_RESPONSE);
+    if (paymentResponseHeader) {
+      try {
+        const settleResponse = decodeSettleResponse(paymentResponseHeader);
+
+        // Verify the facilitator's digest matches our signed bytes (S8)
+        if (settleResponse.success) {
+          const verification = verifySuiSettlement(payload.scheme, payload, settleResponse);
+          if (!verification.verified) {
+            throw new s402Error('DIGEST_MISMATCH', verification.reason);
+          }
+        }
+
+        // Attach payment metadata to response
+        if (settleResponse.success && settleResponse.txDigest) {
+          attachMetadata(retryResponse, {
+            txDigest: settleResponse.txDigest,
+            receiptId: settleResponse.receiptId ?? undefined,
+            scheme: payload.scheme,
+            amount: requirements.amount,
+            gasCostMist: undefined,
+          });
+        }
+      } catch (e) {
+        if (e instanceof s402Error) throw e;
+        // Header decode failure — not a verification failure
+      }
     }
 
     return retryResponse;

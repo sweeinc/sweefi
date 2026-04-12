@@ -63,9 +63,9 @@ describe("ExactSuiClientScheme — memo passthrough", () => {
     signer = makeMockSigner();
   });
 
-  it("creates payment without memo when _pendingMemo is undefined", async () => {
+  it("creates payment without memo when extensions.memo is absent", async () => {
     const scheme = new ExactSuiClientScheme(signer, undefined, MOCK_PACKAGE_ID);
-    // No memo set
+    // No memo in requirements
     const result = await scheme.createPayment(makeRequirements());
     expect(result.scheme).toBe("exact");
     expect(result.payload.transaction).toBe("mock-tx-bytes");
@@ -76,12 +76,14 @@ describe("ExactSuiClientScheme — memo passthrough", () => {
 
   it("uses payment::pay_and_keep when memo + packageId are available", async () => {
     const scheme = new ExactSuiClientScheme(signer, undefined, MOCK_PACKAGE_ID);
-    scheme._pendingMemo = "swee:idempotency:abc-123";
+    const reqs = makeRequirements({
+      extensions: { memo: "swee:idempotency:abc-123" },
+    });
 
     // Spy on Transaction to capture the MoveCall
     const buildSpy = vi.spyOn(Transaction.prototype, "moveCall");
 
-    await scheme.createPayment(makeRequirements());
+    await scheme.createPayment(reqs);
 
     // Should have called moveCall with payment::pay_and_keep target
     expect(buildSpy).toHaveBeenCalledWith(
@@ -94,29 +96,38 @@ describe("ExactSuiClientScheme — memo passthrough", () => {
     buildSpy.mockRestore();
   });
 
-  it("clears _pendingMemo after createPayment (no leak to next call)", async () => {
+  it("memo is scoped to the requirements object (no shared state)", async () => {
     const scheme = new ExactSuiClientScheme(signer, undefined, MOCK_PACKAGE_ID);
-    scheme._pendingMemo = "test-memo";
+    const reqsWithMemo = makeRequirements({
+      extensions: { memo: "test-memo" },
+    });
 
+    await scheme.createPayment(reqsWithMemo);
+
+    // A subsequent call without memo should NOT see the old memo
+    const moveCallSpy = vi.spyOn(Transaction.prototype, "moveCall");
     await scheme.createPayment(makeRequirements());
-    expect(scheme._pendingMemo).toBeUndefined();
+    // Should NOT have called moveCall (no memo → no pay_and_keep)
+    expect(moveCallSpy).not.toHaveBeenCalled();
+
+    moveCallSpy.mockRestore();
   });
 
   it("falls back to raw transferObjects when packageId is unavailable", async () => {
     const scheme = new ExactSuiClientScheme(signer); // no packageId
-    scheme._pendingMemo = "should-be-silently-skipped";
+    const reqs = makeRequirements({
+      extensions: { memo: "should-be-silently-skipped" },
+    });
 
     const moveCallSpy = vi.spyOn(Transaction.prototype, "moveCall");
     const transferSpy = vi.spyOn(Transaction.prototype, "transferObjects");
 
-    await scheme.createPayment(makeRequirements());
+    await scheme.createPayment(reqs);
 
     // Should NOT have called moveCall (no package for payment::pay_and_keep)
     expect(moveCallSpy).not.toHaveBeenCalled();
     // Should have used raw transferObjects
     expect(transferSpy).toHaveBeenCalled();
-    // Memo should still be cleared
-    expect(scheme._pendingMemo).toBeUndefined();
 
     moveCallSpy.mockRestore();
     transferSpy.mockRestore();
@@ -129,11 +140,13 @@ describe("ExactSuiClientScheme — memo passthrough", () => {
       packageId: MOCK_PACKAGE_ID,
     };
     const scheme = new ExactSuiClientScheme(signer, mandateConfig); // no direct packageId
-    scheme._pendingMemo = "memo-via-mandate-pkg";
+    const reqs = makeRequirements({
+      extensions: { memo: "memo-via-mandate-pkg" },
+    });
 
     const moveCallSpy = vi.spyOn(Transaction.prototype, "moveCall");
 
-    await scheme.createPayment(makeRequirements());
+    await scheme.createPayment(reqs);
 
     // Should use mandateConfig.packageId for payment::pay_and_keep
     const calls = moveCallSpy.mock.calls;
@@ -147,10 +160,12 @@ describe("ExactSuiClientScheme — memo passthrough", () => {
 
   it("converts protocolFeeBps to micro-percent for pay_and_keep", async () => {
     const scheme = new ExactSuiClientScheme(signer, undefined, MOCK_PACKAGE_ID);
-    scheme._pendingMemo = "fee-conversion-test";
 
     // 50 bps = 5000 micro-percent
-    const reqs = makeRequirements({ protocolFeeBps: 50 });
+    const reqs = makeRequirements({
+      protocolFeeBps: 50,
+      extensions: { memo: "fee-conversion-test" },
+    });
 
     const moveCallSpy = vi.spyOn(Transaction.prototype, "moveCall");
 

@@ -18,6 +18,8 @@
  *      - deposit >= requirements.stream.minDeposit
  *      - rate_per_second matches requirements.stream.ratePerSecond
  *      - budget_cap >= requirements.stream.budgetCap
+ *      - fee_micro_pct matches requirements.protocolFeeBps (converted to
+ *        micro-percent; prevent fee bypass — client controls this PTB arg)
  *
  * After settlement, the StreamMeter (meter_id) is returned as streamId
  * so the server can track the stream for ongoing access.
@@ -34,6 +36,7 @@ import type {
 import type { FacilitatorSuiSigner } from '../../signer.js';
 import { coinTypesEqual } from '../../utils.js';
 import { normalizeSuiAddress } from '@mysten/sui/utils';
+import { bpsToMicroPercent } from '../../ptb/assert.js';
 
 export class StreamSuiFacilitatorScheme implements s402FacilitatorScheme {
   readonly scheme = 'stream' as const;
@@ -165,6 +168,18 @@ export class StreamSuiFacilitatorScheme implements s402FacilitatorScheme {
         };
       }
 
+      // Verify fee_micro_pct matches (prevent fee bypass — client controls this PTB arg,
+      // so a dishonest client could set fee_micro_pct=0 to skip protocol fees).
+      // Convert from s402 wire format bps (10,000 = 100%) to Move micro-percent (1,000,000 = 100%).
+      const requiredFeeMicroPct = BigInt(bpsToMicroPercent(requirements.protocolFeeBps ?? 0));
+      if (BigInt(streamEvent.fee_micro_pct) !== requiredFeeMicroPct) {
+        return {
+          valid: false,
+          invalidReason: `Fee mismatch: event=${streamEvent.fee_micro_pct}, required=${requiredFeeMicroPct}`,
+          payerAddress,
+        };
+      }
+
       return { valid: true, payerAddress };
     } catch (error) {
       return {
@@ -236,6 +251,7 @@ interface StreamCreatedEventData {
   deposit: string;
   rate_per_second: string;
   budget_cap: string;
+  fee_micro_pct: string;
   token_type: string;
   /** On-chain clock timestamp — informational, not attacker-controlled */
   timestamp_ms: string;

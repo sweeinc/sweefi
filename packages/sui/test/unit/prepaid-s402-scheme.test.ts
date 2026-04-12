@@ -37,6 +37,7 @@ function createMockDepositEvent(overrides: Partial<{
   amount: string;
   rate_per_call: string;
   max_calls: string;
+  fee_micro_pct: string;
   token_type: string;
 }> = {}) {
   return {
@@ -52,6 +53,7 @@ function createMockDepositEvent(overrides: Partial<{
       amount: overrides.amount ?? "10000000",
       rate_per_call: overrides.rate_per_call ?? "1000000",
       max_calls: overrides.max_calls ?? "100",
+      fee_micro_pct: overrides.fee_micro_pct ?? "10000", // 100 bps × 100 = 10000 micro-percent
       token_type: overrides.token_type ?? USDC_MAINNET,
       timestamp_ms: "1700000000000",
     },
@@ -125,6 +127,7 @@ function createMockS402Requirements(
     asset: USDC_MAINNET,
     amount: "10000000",
     payTo: MOCK_PAYTO,
+    protocolFeeBps: 100,
     prepaid: {
       ratePerCall: "1000000",
       maxCalls: "100",
@@ -348,6 +351,35 @@ describe("PrepaidSuiFacilitatorScheme (s402 native)", () => {
         createMockS402PrepaidPayload(),
         createMockS402Requirements(),
       );
+      expect(result.valid).toBe(true);
+    });
+
+    it("should reject fee_micro_pct mismatch (fee bypass attack)", async () => {
+      const signer = createMockFacilitatorSigner({
+        simulateTransaction: async () =>
+          createSuccessfulDryRun({
+            events: [createMockDepositEvent({ fee_micro_pct: "0" })],
+          }),
+      });
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
+      const result = await scheme.verify(
+        createMockS402PrepaidPayload(),
+        createMockS402Requirements(),
+      );
+      expect(result.valid).toBe(false);
+      expect(result.invalidReason).toContain("Fee mismatch");
+    });
+
+    it("should accept fee_micro_pct=0 when requirements have no protocol fee", async () => {
+      const signer = createMockFacilitatorSigner({
+        simulateTransaction: async () =>
+          createSuccessfulDryRun({
+            events: [createMockDepositEvent({ fee_micro_pct: "0" })],
+          }),
+      });
+      const scheme = new PrepaidSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
+      const reqs = createMockS402Requirements({ protocolFeeBps: undefined });
+      const result = await scheme.verify(createMockS402PrepaidPayload(), reqs);
       expect(result.valid).toBe(true);
     });
 

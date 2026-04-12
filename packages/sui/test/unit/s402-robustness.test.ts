@@ -8,6 +8,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { Transaction } from "@mysten/sui/transactions";
 
 // Client schemes
 import { ExactSuiClientScheme } from "../../src/s402/exact/client";
@@ -115,14 +116,20 @@ describe("ExactSuiClientScheme robustness", () => {
     await expect(scheme.createPayment(requirements)).rejects.toThrow("mandate");
   });
 
-  it("clears _pendingMemo after createPayment", async () => {
+  it("memo is scoped to requirements (no shared mutable state)", async () => {
     const signer = createMockSigner();
     const scheme = new ExactSuiClientScheme(signer, undefined, PACKAGE_ID);
 
-    scheme._pendingMemo = "test-memo";
-    await scheme.createPayment(createBaseRequirements());
+    // First call with memo
+    await scheme.createPayment(createBaseRequirements({
+      extensions: { memo: "test-memo" },
+    }));
 
-    expect(scheme._pendingMemo).toBeUndefined();
+    // Second call without memo — should not see the old memo
+    const moveCallSpy = vi.spyOn(Transaction.prototype, "moveCall");
+    await scheme.createPayment(createBaseRequirements());
+    expect(moveCallSpy).not.toHaveBeenCalled();
+    moveCallSpy.mockRestore();
   });
 
   it("warns but does not throw when memo set without packageId", async () => {
@@ -130,8 +137,9 @@ describe("ExactSuiClientScheme robustness", () => {
     const scheme = new ExactSuiClientScheme(signer); // no packageId
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-    scheme._pendingMemo = "test-memo";
-    const result = await scheme.createPayment(createBaseRequirements());
+    const result = await scheme.createPayment(createBaseRequirements({
+      extensions: { memo: "test-memo" },
+    }));
 
     expect(result.scheme).toBe("exact");
     expect(warnSpy).toHaveBeenCalledWith(
@@ -618,6 +626,7 @@ describe("PrepaidSuiFacilitatorScheme robustness", () => {
           amount: "1000000",
           rate_per_call: "1000",
           max_calls: "100",
+          fee_micro_pct: "0",
           token_type: "0x2::sui::SUI",
           timestamp_ms: "0",
         },

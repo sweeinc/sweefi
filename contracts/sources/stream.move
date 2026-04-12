@@ -101,6 +101,7 @@ module sweefi::stream {
         deposit: u64,
         rate_per_second: u64,
         budget_cap: u64,
+        fee_micro_pct: u64,
         token_type: ascii::String,
         timestamp_ms: u64,
     }
@@ -206,6 +207,7 @@ module sweefi::stream {
             deposit: deposit_value,
             rate_per_second,
             budget_cap,
+            fee_micro_pct,
             token_type: type_name::into_string(type_name::with_defining_ids<T>()),
             timestamp_ms: now_ms,
         });
@@ -271,6 +273,7 @@ module sweefi::stream {
             deposit: deposit_value,
             rate_per_second,
             budget_cap,
+            fee_micro_pct,
             token_type: type_name::into_string(type_name::with_defining_ids<T>()),
             timestamp_ms: now_ms,
         });

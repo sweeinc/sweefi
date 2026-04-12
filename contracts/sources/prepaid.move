@@ -172,6 +172,7 @@ module sweefi::prepaid {
         amount: u64,
         rate_per_call: u64,
         max_calls: u64,
+        fee_micro_pct: u64,
         token_type: ascii::String,
         timestamp_ms: u64,
     }
@@ -314,6 +315,7 @@ module sweefi::prepaid {
             amount,
             rate_per_call,
             max_calls,
+            fee_micro_pct,
             token_type: type_name::into_string(type_name::with_defining_ids<T>()),
             timestamp_ms: now_ms,
         });
@@ -390,6 +392,7 @@ module sweefi::prepaid {
             amount,
             rate_per_call,
             max_calls,
+            fee_micro_pct,
             token_type: type_name::into_string(type_name::with_defining_ids<T>()),
             timestamp_ms: now_ms,
         });

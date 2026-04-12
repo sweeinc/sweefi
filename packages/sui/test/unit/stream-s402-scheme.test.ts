@@ -38,6 +38,7 @@ function createMockStreamEvent(overrides: Partial<{
   deposit: string;
   rate_per_second: string;
   budget_cap: string;
+  fee_micro_pct: string;
   token_type: string;
 }> = {}) {
   return {
@@ -53,6 +54,7 @@ function createMockStreamEvent(overrides: Partial<{
       deposit: overrides.deposit ?? "10000000",
       rate_per_second: overrides.rate_per_second ?? "1000",
       budget_cap: overrides.budget_cap ?? "100000000",
+      fee_micro_pct: overrides.fee_micro_pct ?? "10000", // 100 bps × 100 = 10000 micro-percent
       token_type: overrides.token_type ?? USDC_MAINNET,
       timestamp_ms: "1700000000000",
     },
@@ -124,6 +126,7 @@ function createMockStreamRequirements(
     asset: USDC_MAINNET,
     amount: "10000000",
     payTo: MOCK_PAYTO,
+    protocolFeeBps: 100,
     stream: {
       ratePerSecond: "1000",
       budgetCap: "100000000",
@@ -385,6 +388,35 @@ describe("StreamSuiFacilitatorScheme", () => {
         createMockStreamPayload(),
         createMockStreamRequirements(),
       );
+      expect(result.valid).toBe(true);
+    });
+
+    it("should reject fee_micro_pct mismatch (fee bypass attack)", async () => {
+      const signer = createMockFacilitatorSigner({
+        simulateTransaction: async () =>
+          createSuccessfulDryRun({
+            events: [createMockStreamEvent({ fee_micro_pct: "0" })],
+          }),
+      });
+      const scheme = new StreamSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
+      const result = await scheme.verify(
+        createMockStreamPayload(),
+        createMockStreamRequirements(),
+      );
+      expect(result.valid).toBe(false);
+      expect(result.invalidReason).toContain("Fee mismatch");
+    });
+
+    it("should accept fee_micro_pct=0 when requirements have no protocol fee", async () => {
+      const signer = createMockFacilitatorSigner({
+        simulateTransaction: async () =>
+          createSuccessfulDryRun({
+            events: [createMockStreamEvent({ fee_micro_pct: "0" })],
+          }),
+      });
+      const scheme = new StreamSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
+      const reqs = createMockStreamRequirements({ protocolFeeBps: undefined });
+      const result = await scheme.verify(createMockStreamPayload(), reqs);
       expect(result.valid).toBe(true);
     });
 

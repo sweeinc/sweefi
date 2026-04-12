@@ -15,6 +15,8 @@
  *      - agent matches recovered signer (prevent impersonation)
  *      - provider matches requirements.payTo (prevent free-service attack)
  *      - deposit amount >= requirements.prepaid.minDeposit
+ *      - fee_micro_pct matches requirements.protocolFeeBps (converted to
+ *        micro-percent; prevent fee bypass — client controls this PTB arg)
  *   5. Rate/maxCalls commitment match (payload params match requirements)
  *
  * After settlement, the PrepaidBalance shared object ID is returned
@@ -32,6 +34,7 @@ import type {
 import type { FacilitatorSuiSigner } from '../../signer.js';
 import { coinTypesEqual } from '../../utils.js';
 import { normalizeSuiAddress } from '@mysten/sui/utils';
+import { bpsToMicroPercent } from '../../ptb/assert.js';
 
 export class PrepaidSuiFacilitatorScheme implements s402FacilitatorScheme {
   readonly scheme = 'prepaid' as const;
@@ -164,6 +167,18 @@ export class PrepaidSuiFacilitatorScheme implements s402FacilitatorScheme {
         };
       }
 
+      // Verify fee_micro_pct matches (prevent fee bypass — client controls this PTB arg,
+      // so a dishonest client could set fee_micro_pct=0 to skip protocol fees).
+      // Convert from s402 wire format bps (10,000 = 100%) to Move micro-percent (1,000,000 = 100%).
+      const requiredFeeMicroPct = BigInt(bpsToMicroPercent(requirements.protocolFeeBps ?? 0));
+      if (BigInt(depositEvent.fee_micro_pct) !== requiredFeeMicroPct) {
+        return {
+          valid: false,
+          invalidReason: `Fee mismatch: event=${depositEvent.fee_micro_pct}, required=${requiredFeeMicroPct}`,
+          payerAddress,
+        };
+      }
+
       // v0.2: lightweight pubkey format validation when requirements indicate
       // signed receipt mode. The actual pubkey binding is enforced by the Move
       // contract when creating the PrepaidBalance object — both deposit() and
@@ -251,6 +266,7 @@ interface DepositEventData {
   amount: string;
   rate_per_call: string;
   max_calls: string;
+  fee_micro_pct: string;
   token_type: string;
   timestamp_ms: string;
 }
