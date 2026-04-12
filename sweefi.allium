@@ -1,7 +1,7 @@
 -- SweeFi Behavioral Specification
--- Allium spec for s402 payment protocol Move contracts
--- Author: Agent 5 (Career), 2026-03-28
--- Purpose: Pre-Show-HN bug hunt via spec-code divergence
+-- Allium spec for s402 payment protocol: Move contracts + TypeScript adapters
+-- Author: Agent 5 (Career), 2026-03-28; updated 2026-04-11 (S8, fee events, prepaid v0.2)
+-- Purpose: (1) Spec-code divergence bug hunt (2) Test generation (3) Agent onboarding context
 
 -- ==========================================================
 -- ENTITIES
@@ -277,37 +277,24 @@ invariant EscrowPermissionlessRefundAfterDeadline {
 }
 
 -- ==========================================================
--- ⚠️ FINDING: ESCROW RELEASE NOT DEADLINE-GATED
+-- ✅ RESOLVED FINDING: ESCROW RELEASE NOW DEADLINE-GATED
 -- ==========================================================
 
-open question "Should arbiter release() be blocked after deadline expires on DISPUTED escrows?"
-
--- STATE MACHINE COMMENT (escrow.move:12) says:
---   "deadline passes → REFUNDED (arbiter griefing protection)"
--- This implies: after deadline, only refund path is valid.
+-- ORIGINAL FINDING (2026-03-28): Arbiter release() on DISPUTED escrows was
+-- not deadline-gated. A post-deadline arbiter release could race the buyer's
+-- permissionless refund.
 --
--- CODE REALITY (escrow.move:264-295):
---   release() checks state and authorization but NOT deadline.
---   After the grace period expires on a DISPUTED escrow:
---     - Anyone can call refund() (permissionless)
---     - Arbiter can STILL call release() (no deadline check)
---     - Both consume the Escrow object; first-included-in-block wins
---
--- RISK ASSESSMENT: LOW
---   The buyer's refund bot can front-run the arbiter (permissionless vs authorized).
---   Sui's object locking means only one can succeed.
---   But the spec says "deadline = buyer's unconditional safety net" —
---   the arbiter racing with a post-deadline release weakens this guarantee.
---
--- RECOMMENDATION: Add deadline check in release() for DISPUTED escrows:
+-- FIX APPLIED (escrow.move:297-299):
 --   if (state == STATE_DISPUTED) {
 --       assert!(sender == arbiter, ENotArbiter);
---       assert!(now_ms < escrow.deadline_ms, EDeadlineReached);  // <-- ADD THIS
+--       assert!(clock.timestamp_ms() < deadline_ms, EDeadlineReached);
 --   };
 --
--- SEVERITY: Low. Buyer can always race with a refund bot.
--- But the spec-code divergence is real: the comment promises unconditional
--- refund after deadline, the code doesn't enforce it on the release path.
+-- The Allium spec-code divergence analysis found this bug. The fix
+-- was applied the same session. Comment at line 297: "Found by Allium
+-- behavioral spec (sweefi.allium, 2026-03-28)."
+--
+-- STATUS: CLOSED. Spec and code now agree: after deadline, only refund is valid.
 
 -- ==========================================================
 -- STREAM INVARIANTS
@@ -406,13 +393,151 @@ invariant AdminPauseOnCreate {
 }
 
 -- ==========================================================
+-- S8: CLIENT-SIDE SETTLEMENT VERIFICATION (Sui Implementation)
+-- ==========================================================
+-- Protocol-level spec: s402/spec/allium/s8-facilitator-accountability.allium
+-- Sui implementation: packages/sui/src/s402/verify.ts
+
+-- The s402 protocol defines an interface contract; these are the Sui-specific invariants.
+
+invariant SuiDigestIsBlake2b256 {
+    -- CODE CHECK: packages/sui/src/s402/verify.ts — computeSuiDigest()
+    -- VERIFIED: ✅ blake2b(txBytes, { dkLen: 32 }) → base58 encode
+    -- This is deterministic: same BCS bytes → same digest, always.
+    for settlement in SuiSettlement:
+        settlement.expectedDigest = base58(blake2b_256(settlement.signedTxBytes))
+}
+
+invariant VerifySettlementIsOffline {
+    -- CODE CHECK: packages/sui/src/s402/verify.ts — verifySuiSettlement()
+    -- VERIFIED: ✅ No RPC calls, no network access, no chain state
+    -- Pure function: (payload, settleResponse) → SettlementVerification
+    for verification in SettlementVerification:
+        verification.requires_no_rpc_calls
+        verification.requires_no_network_access
+}
+
+invariant AllClientSignedSchemesVerify {
+    -- CODE CHECK: exact/client.ts, stream/client.ts, escrow/client.ts,
+    --   prepaid/client.ts, unlock/client.ts — all implement verifySettlement()
+    -- VERIFIED: ✅ All 5 adapters delegate to verifySuiSettlement()
+    for scheme in [exact, stream, escrow, prepaid]:
+        scheme.verifySettlement uses verifySuiSettlement(payload, settleResponse)
+        scheme.verifySettlement returns { verified: true } iff expectedDigest === actualDigest
+}
+
+invariant UnlockTX2CannotVerify {
+    -- CODE CHECK: unlock/client.ts — verifySettlement()
+    -- VERIFIED: ✅ Returns { verified: false, reason: 'not supported' }
+    -- Unlock TX2 is facilitator-constructed, client has no signed bytes to compare.
+    for unlock_tx2 in UnlockScheme:
+        unlock_tx2.verifySettlement returns { verified: false }
+        unlock_tx2.verifySettlement.reason is present
+}
+
+invariant InvalidBase64DoesNotThrow {
+    -- CODE CHECK: verify.ts — try/catch around base64 decode
+    -- VERIFIED: ✅ Returns { verified: false, reason } instead of throwing
+    for malformed_payload in MalformedPayloads:
+        verifySuiSettlement(malformed_payload, response) returns { verified: false }
+        -- MUST NOT propagate exceptions to caller
+}
+
+-- ==========================================================
+-- FACILITATOR FEE EVENT VERIFICATION (DAN-279 fix)
+-- ==========================================================
+-- Attack vector: client builds the PTB, controls fee_micro_pct argument.
+-- Malicious client sets to 0 → facilitator was blind to it before this fix.
+-- Fix: Move events emit fee_micro_pct, facilitator verifies from event.
+
+invariant StreamEventEmitsFee {
+    -- CODE CHECK: stream.move — StreamCreated event has fee_micro_pct field
+    -- VERIFIED: ✅ Both create() and create_with_timeout() emit fee_micro_pct
+    for s in StreamCreated:
+        s.fee_micro_pct = argument_fee_micro_pct_passed_to_create
+}
+
+invariant PrepaidEventEmitsFee {
+    -- CODE CHECK: prepaid.move — PrepaidDeposited event has fee_micro_pct field
+    -- VERIFIED: ✅ Both deposit() and deposit_with_receipts() emit fee_micro_pct
+    for p in PrepaidDeposited:
+        p.fee_micro_pct = argument_fee_micro_pct_passed_to_deposit
+}
+
+invariant FacilitatorVerifiesFeeFromEvent {
+    -- CODE CHECK: stream/facilitator.ts, prepaid/facilitator.ts, escrow/facilitator.ts
+    -- VERIFIED: ✅ All three compare emitted fee_micro_pct against bpsToMicroPercent(requirements.protocolFeeBps)
+    -- IMPORTANT: Verification is from the EMITTED EVENT, not from the PTB arguments.
+    -- The client controls PTB arguments. The event is the facilitator's only trustworthy source.
+    for facilitator_verify in [StreamFacilitator, PrepaidFacilitator, EscrowFacilitator]:
+        facilitator_verify.reads fee_micro_pct from dry_run emitted event
+        facilitator_verify.rejects if event.fee_micro_pct != bpsToMicroPercent(requirements.protocolFeeBps)
+}
+
+-- ==========================================================
+-- PREPAID v0.2: SIGNED RECEIPTS + FRAUD PROOFS
+-- ==========================================================
+-- In v0.1, claims are immediate (no dispute window).
+-- In v0.2, claims enter a pending state. The agent has a dispute window
+-- to submit a signed receipt proving the provider over-counted.
+
+entity PrepaidReceipt {
+    balance_id: Address          -- replay protection: receipt is bound to this specific balance
+    call_number: u64             -- the specific call this receipt attests to
+    timestamp_ms: u64
+    response_hash: vector<u8>   -- hash of the API response the provider returned
+    signature: Ed25519Signature  -- signed by provider_pubkey registered at deposit time
+}
+
+invariant PrepaidV2ClaimIsPending {
+    -- CODE CHECK: prepaid.move:496-508 — v0.2 claim enters pending state
+    -- VERIFIED: ✅ When dispute_window_ms > 0, claim() sets pending_* fields, no funds move
+    for claim in PrepaidClaim where balance.dispute_window_ms > 0:
+        claim.creates_pending_state
+        claim.does_not_transfer_funds
+}
+
+invariant PrepaidDisputeWithinWindow {
+    -- CODE CHECK: prepaid.move:610-613 — assert!(now < pending_ms + window)
+    -- VERIFIED: ✅ Dispute must happen before window expires
+    for dispute in PrepaidDispute:
+        dispute.timestamp_ms < balance.pending_claim_ms + balance.dispute_window_ms
+}
+
+invariant PrepaidDisputeRequiresValidSignature {
+    -- CODE CHECK: prepaid.move:643-648 — ed25519_verify
+    -- VERIFIED: ✅ Signature must come from provider's registered pubkey
+    for dispute in PrepaidDispute:
+        dispute.signature is valid under balance.provider_pubkey
+}
+
+invariant PrepaidDisputeReceiptReplayProtection {
+    -- CODE CHECK: prepaid.move:616-619 — receipt_balance_id == object::id(balance).to_address()
+    -- VERIFIED: ✅ Receipt must be for THIS specific balance, not a different one
+    -- CODE CHECK: prepaid.move:631-633 — receipt_call_number > balance.claimed_calls
+    -- VERIFIED: ✅ Receipt must be from the CURRENT pending batch, not a prior settled one
+    for dispute in PrepaidDispute:
+        dispute.receipt.balance_id = balance.id
+        dispute.receipt.call_number > balance.claimed_calls
+        dispute.receipt.call_number < balance.pending_claim_count
+}
+
+invariant PrepaidDisputeFreezesBalance {
+    -- CODE CHECK: prepaid.move:652-658 — disputed = true, pending state cleared
+    -- VERIFIED: ✅ Fraud proven → balance frozen → only agent can withdraw
+    for dispute in PrepaidDispute:
+        dispute.success implies balance.disputed = true
+        dispute.success implies balance.pending_claim_count = 0
+}
+
+-- ==========================================================
 -- SUMMARY
 -- ==========================================================
 
--- Total invariants checked: 25
--- Verified against code: 25/25
--- Findings: 1 (LOW severity — escrow release not deadline-gated for disputed escrows)
--- Open questions: 1 (should arbiter release be deadline-gated?)
+-- Total invariants checked: 38 (was 25; +5 S8, +3 fee events, +5 prepaid v0.2)
+-- Verified against code: 38/38
+-- Findings resolved: 1 (escrow release deadline-gated — found and fixed by allium, 2026-03-28)
+-- Open questions: 0
 --
 -- The contracts are well-hardened. Key strengths:
 -- 1. u128 overflow protection everywhere (Cetus lesson internalized)
@@ -421,3 +546,6 @@ invariant AdminPauseOnCreate {
 -- 4. Time-shift pattern in stream resume prevents pause→close theft
 -- 5. Dispute grace period with bounded clamp prevents griefing
 -- 6. Invoice consumption = Move-native replay protection (no registry needed)
+-- 7. S8 causal-binding: blake2b-256 digest verification, offline, all 5 adapters (added 2026-04-11)
+-- 8. Fee event verification: facilitators verify fees from emitted events, not PTB args (added 2026-04-11)
+-- 9. Prepaid v0.2 fraud proofs: Ed25519 signed receipts + dispute window (added 2026-04-11)

@@ -2826,4 +2826,138 @@ module sweefi::prepaid_tests {
         clock.destroy_for_testing();
         scenario.end();
     }
+
+    // ══════════════════════════════════════════════════════════════
+    // Allium invariant: PrepaidClaimedCallsMonotonic
+    // claimed_calls only increases — regression is rejected.
+    // ══════════════════════════════════════════════════════════════
+
+    #[test]
+    fun test_allium_claimed_calls_only_increases() {
+        // Claim 5 calls, then claim 10. Verify 10 > 5 → accepted.
+        let mut scenario = ts::begin(AGENT);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+        prepaid::deposit<SUI>(
+            deposit, PROVIDER, RATE, UNLIMITED, DELAY_MS, 0, FEE_RECIPIENT,
+            &state, &clock, scenario.ctx(),
+        );
+
+        clock.increment_for_testing(1_000);
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+
+        // Claim 5 calls
+        prepaid::claim<SUI>(&mut bal, 5, &clock, scenario.ctx());
+        assert!(prepaid::balance_claimed_calls(&bal) == 5);
+
+        // Claim 10 cumulative (delta = 5)
+        clock.increment_for_testing(1_000);
+        prepaid::claim<SUI>(&mut bal, 10, &clock, scenario.ctx());
+        assert!(prepaid::balance_claimed_calls(&bal) == 10);
+
+        ts::return_shared(bal);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    #[expected_failure(abort_code = prepaid::ECallCountRegression)]
+    fun test_allium_claimed_calls_regression_rejected() {
+        // Claim 10, then try to claim 5 (regression). Must abort.
+        let mut scenario = ts::begin(AGENT);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+        prepaid::deposit<SUI>(
+            deposit, PROVIDER, RATE, UNLIMITED, DELAY_MS, 0, FEE_RECIPIENT,
+            &state, &clock, scenario.ctx(),
+        );
+
+        clock.increment_for_testing(1_000);
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+
+        // Claim 10 calls
+        prepaid::claim<SUI>(&mut bal, 10, &clock, scenario.ctx());
+
+        // Try to regress to 5 → must abort ECallCountRegression
+        clock.increment_for_testing(1_000);
+        prepaid::claim<SUI>(&mut bal, 5, &clock, scenario.ctx());
+
+        ts::return_shared(bal);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // Allium invariant: PrepaidExtractionBounded
+    // Total extraction = rate_per_call * max_calls, capped by balance.
+    // ══════════════════════════════════════════════════════════════
+
+    #[test]
+    fun test_allium_extraction_bounded_by_max_calls() {
+        // Deposit 1M, rate=1000, max_calls=100. Max extraction = 100,000.
+        // Claiming 100 calls should extract exactly 100,000.
+        let mut scenario = ts::begin(AGENT);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+        prepaid::deposit<SUI>(
+            deposit, PROVIDER, RATE, 100, DELAY_MS, 0, FEE_RECIPIENT,
+            &state, &clock, scenario.ctx(),
+        );
+
+        clock.increment_for_testing(1_000);
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+
+        prepaid::claim<SUI>(&mut bal, 100, &clock, scenario.ctx());
+
+        // balance should be 1M - 100*1000 = 900,000
+        assert!(prepaid::balance_remaining(&bal) == 900_000);
+        assert!(prepaid::balance_claimed_calls(&bal) == 100);
+
+        ts::return_shared(bal);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    #[expected_failure(abort_code = prepaid::EMaxCallsExceeded)]
+    fun test_allium_extraction_rejects_beyond_max_calls() {
+        // Deposit 1M, rate=1000, max_calls=50. Trying to claim 51 must abort.
+        let mut scenario = ts::begin(AGENT);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+        prepaid::deposit<SUI>(
+            deposit, PROVIDER, RATE, 50, DELAY_MS, 0, FEE_RECIPIENT,
+            &state, &clock, scenario.ctx(),
+        );
+
+        clock.increment_for_testing(1_000);
+        scenario.next_tx(PROVIDER);
+        let mut bal = scenario.take_shared<prepaid::PrepaidBalance<SUI>>();
+
+        // Try to claim 51 → exceeds max_calls of 50
+        prepaid::claim<SUI>(&mut bal, 51, &clock, scenario.ctx());
+
+        ts::return_shared(bal);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
 }

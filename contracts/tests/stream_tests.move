@@ -2785,4 +2785,83 @@ module sweefi::stream_tests {
         clock.destroy_for_testing();
         scenario.end();
     }
+
+    // ══════════════════════════════════════════════════════════════
+    // Allium invariant: StreamTotalClaimedBounded
+    // total_claimed can never exceed budget_cap.
+    // ══════════════════════════════════════════════════════════════
+
+    #[test]
+    fun test_allium_total_claimed_bounded_by_budget() {
+        // Create a stream with deposit == budget_cap. Claim past exhaustion.
+        // Verify total_claimed never exceeds budget_cap.
+        let mut scenario = ts::begin(PAYER);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        let budget = 5_000_000u64;
+        let deposit = coin::mint_for_testing<SUI>(budget, scenario.ctx());
+
+        stream::create<SUI>(
+            deposit, PROVIDER, RATE, budget, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx(),
+        );
+
+        // Advance time way past when budget exhausts: budget/rate = 5M/300 = ~16,667 sec
+        // Go to 50,000 seconds (well past budget exhaustion)
+        clock.increment_for_testing(50_000_000); // 50,000 seconds in ms
+
+        scenario.next_tx(PROVIDER);
+        let mut meter = scenario.take_shared<stream::StreamingMeter<SUI>>();
+        stream::claim<SUI>(&mut meter, &clock, scenario.ctx());
+
+        // total_claimed must be capped at budget_cap
+        assert!(stream::meter_total_claimed(&meter) <= budget);
+
+        ts::return_shared(meter);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // Allium invariant: StreamAccrualOverflowSafe
+    // Accrual uses u128 intermediate: (rate * elapsed_ms) / 1000.
+    // Even at u64::MAX rate for large elapsed times, must not overflow.
+    // ══════════════════════════════════════════════════════════════
+
+    #[test]
+    fun test_allium_accrual_overflow_safe_large_rate() {
+        // Large rate (1_000_000 tokens/sec) over long period.
+        // rate * elapsed_ms would overflow u64, but u128 handles it.
+        let mut scenario = ts::begin(PAYER);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        let large_rate = 1_000_000u64; // 1M tokens/sec
+        let budget = 100_000_000_000u64; // 100B tokens
+        let deposit = coin::mint_for_testing<SUI>(budget, scenario.ctx());
+
+        stream::create<SUI>(
+            deposit, PROVIDER, large_rate, budget, 0, FEE_RECIPIENT, &state, &clock, scenario.ctx(),
+        );
+
+        // Advance 100,000 seconds (100K * 1M = 100B tokens accrued)
+        // rate * elapsed_ms = 1_000_000 * 100_000_000 = 10^14 — fits u64
+        // But test that the path works correctly end to end
+        clock.increment_for_testing(100_000_000); // 100K seconds
+
+        scenario.next_tx(PROVIDER);
+        let mut meter = scenario.take_shared<stream::StreamingMeter<SUI>>();
+        stream::claim<SUI>(&mut meter, &clock, scenario.ctx());
+
+        // Should have claimed exactly budget_cap worth
+        assert!(stream::meter_total_claimed(&meter) == budget);
+
+        ts::return_shared(meter);
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
 }

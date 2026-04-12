@@ -9,13 +9,13 @@
 - Monorepo with 10 TS packages + Move smart contracts
 - Built on top of `s402` (HTTP 402 protocol, published on npm as `s402@0.3.0`)
 - Competing with BEEP (justbeep.it) — proprietary alternative
-- 1,780 passing tests (1,354 TypeScript + 426 Move) — see STATUS.md for per-package breakdown
+- 1,796 passing tests (1,358 TypeScript + 438 Move) — see STATUS.md for per-package breakdown
 
 ## Repository Structure
 
 ```
 sweefi-project/
-├── contracts/                    # Move smart contracts (10 modules, 426 test functions)
+├── contracts/                    # Move smart contracts (10 modules, 438 test functions)
 │   └── sources/
 │       ├── payment.move          # Direct payments, invoices, receipts
 │       ├── stream.move           # Streaming micropayments + budget caps
@@ -30,7 +30,7 @@ sweefi-project/
 ├── packages/
 │   ├── ui-core/                  # Framework-agnostic state machine + PaymentAdapter interface (13 tests)
 │   ├── hono/                     # Chain-agnostic HTTP: s402Gate, wrapFetchWithS402 (integration only)
-│   ├── sui/                      # $extend() plugin + curried contract classes + query modules (662 tests)
+│   ├── sui/                      # $extend() plugin + curried contract classes + query modules (680 tests)
 │   ├── vue/                      # Vue 3 plugin + useSweefiPayment() composable (10 tests)
 │   ├── react/                    # React context + useSweefiPayment() hook (12 tests)
 │   ├── facilitator/              # Self-hostable payment verification — private, Docker only (91 tests)
@@ -727,9 +727,27 @@ SweeFi has **10 formally proven invariants** in `INVARIANTS.md`. Read these befo
 
 ---
 
+## Allium Behavioral Spec
+
+**`sweefi.allium`** (root) is a behavioral specification covering all Move contract invariants + TypeScript adapter contracts. Read it when touching Move code or s402 scheme adapters.
+
+**What it covers** (38 verified invariants):
+- Payment, invoice, mandate, escrow, stream, prepaid entity invariants (25 original)
+- S8 settlement verification — Sui-specific: blake2b-256 digest, offline, all 5 adapters (5 new)
+- Fee event verification — facilitators verify from emitted events, not PTB args (3 new)
+- Prepaid v0.2 fraud proofs — Ed25519 receipts, dispute window, replay protection (5 new)
+
+**How to use**:
+1. **Before modifying Move contracts**: Read the relevant invariant section. If your change would violate a stated invariant, that's a bug in your change.
+2. **After modifying Move contracts**: Check if any invariant needs updating. If you add a new security property, add it to the allium.
+3. **Test generation**: Every invariant maps to a test. Search for `test_allium_` in the Move test files. Missing tests = coverage gaps.
+
+**Sister spec**: `s402/spec/allium/s8-facilitator-accountability.allium` covers the protocol-level S8 contract (chain-agnostic).
+
 ## Related Files
 
 - **INVARIANTS.md** — Formal safety proofs (Lamport-style, 10 properties)
+- **sweefi.allium** — Behavioral spec: 38 invariants across Move + TypeScript (see section above)
 - **SPEC.md** — Full specification, vision, timeline
 - **BATTLE-PLAN.md** — Competitive strategy vs BEEP
 - **GRANT-APPLICATION.md** — Sui DeFi Moonshots grant application
@@ -742,5 +760,6 @@ SweeFi has **10 formally proven invariants** in `INVARIANTS.md`. Read these befo
 - **docs/adr/006** — Owned vs shared object model
 - **docs/adr/007** — Prepaid trust model (v0.1 economic → v0.2 signed receipts → v0.3 TEE)
 - **docs/adr/008** — Facilitator API gaps: /ready, /settlements, dedup middleware — decisions + rejected alternatives
+- **docs/adr/010** — Facilitator causal binding (S8 design decision)
 - **SECURITY-REVIEW-A.md** — Adversarial Move contract audit (all findings + fixes)
 - **packages/sui/ADR-001.md** — PTB composability detail

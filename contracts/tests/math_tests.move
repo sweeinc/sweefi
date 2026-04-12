@@ -190,6 +190,46 @@ module sweefi::math_tests {
         assert!(math::calculate_fee(0xFFFFFFFFFFFFFFFF, 1_000_000) == 0xFFFFFFFFFFFFFFFF);
     }
 
+    // ══════════════════════════════════════════════════════════════
+    // Allium invariant: FeeNeverExceedsAmount
+    // For any fee_micro_pct in [0, 1_000_000], calculate_fee(amount, fee_micro_pct) <= amount.
+    // ══════════════════════════════════════════════════════════════
+
+    /// Allium: FeeNeverExceedsAmount — fee at 100% equals amount exactly
+    #[test]
+    fun test_allium_fee_never_exceeds_amount_at_100_pct() {
+        let amount = 42_000_000u64;
+        let fee = math::calculate_fee(amount, 1_000_000); // 100%
+        assert!(fee <= amount);
+        assert!(fee == amount); // at exactly 100%, fee == amount
+    }
+
+    /// Allium: FeeNeverExceedsAmount — fee at 99.9999% is strictly less
+    #[test]
+    fun test_allium_fee_never_exceeds_amount_at_almost_100_pct() {
+        let amount = 1_000_000u64;
+        let fee = math::calculate_fee(amount, 999_999); // 99.9999%
+        assert!(fee < amount);
+    }
+
+    /// Allium: FeeNeverExceedsAmount — fee at 100% on u64::MAX
+    #[test]
+    fun test_allium_fee_never_exceeds_u64_max() {
+        let amount = 0xFFFFFFFFFFFFFFFF;
+        let fee = math::calculate_fee(amount, 1_000_000);
+        assert!(fee <= amount);
+    }
+
+    /// Allium: FeeNeverExceedsAmount — fee at 50% on odd number truncates down
+    #[test]
+    fun test_allium_fee_never_exceeds_amount_truncation() {
+        let amount = 999_999u64; // odd
+        let fee = math::calculate_fee(amount, 500_000); // 50%
+        // 999_999 * 500_000 / 1_000_000 = 499_999.5 → truncates to 499_999
+        assert!(fee == 499_999);
+        assert!(fee <= amount);
+    }
+
     /// BVA: fee at max-1 (999_999) on u64::MAX → just under u64::MAX
     #[test]
     fun test_mcdc_bva_calculate_fee_almost_max_pct() {

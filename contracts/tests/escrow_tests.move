@@ -1377,6 +1377,76 @@ module sweefi::escrow_tests {
     }
 
     // ══════════════════════════════════════════════════════════════
+    // Allium invariant: EscrowNoFeeOnRefund
+    // Refunds return the FULL balance to buyer — no fee deduction.
+    // ══════════════════════════════════════════════════════════════
+
+    #[test]
+    fun test_allium_refund_no_fee_deducted() {
+        // Create escrow with 0.5% fee, then refund after deadline.
+        // Buyer must receive the FULL 1_000_000 — no fee on refund path.
+        let mut scenario = ts::begin(BUYER);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        let deposit = coin::mint_for_testing<SUI>(1_000_000, scenario.ctx());
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, DEADLINE_MS, 5_000, FEE_RECIPIENT,
+            b"refund-fee-test", &state, &clock, scenario.ctx(),
+        );
+
+        // Advance past deadline → permissionless refund
+        clock.increment_for_testing(DEADLINE_MS + 1);
+        scenario.next_tx(STRANGER);
+        let e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::refund<SUI>(e, &clock, scenario.ctx());
+
+        // Buyer receives FULL deposit — no fee
+        scenario.next_tx(BUYER);
+        let buyer_coin = scenario.take_from_address<coin::Coin<SUI>>(BUYER);
+        assert!(buyer_coin.value() == 1_000_000); // full amount, zero fee
+        ts::return_to_address(BUYER, buyer_coin);
+
+        // Fee recipient receives NOTHING
+        scenario.next_tx(FEE_RECIPIENT);
+        assert!(!ts::has_most_recent_for_address<coin::Coin<SUI>>(FEE_RECIPIENT));
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    #[test]
+    fun test_allium_refund_no_fee_even_at_100_percent() {
+        // Even with 100% fee_micro_pct, refund returns full balance.
+        let mut scenario = ts::begin(BUYER);
+        let mut clock = clock::create_for_testing(scenario.ctx());
+        let (_cap, state) = admin::create_for_testing(scenario.ctx());
+
+        let deposit = coin::mint_for_testing<SUI>(2_000_000, scenario.ctx());
+        escrow::create<SUI>(
+            deposit, SELLER, ARBITER, DEADLINE_MS, 1_000_000, FEE_RECIPIENT,
+            b"100pct-fee-refund", &state, &clock, scenario.ctx(),
+        );
+
+        clock.increment_for_testing(DEADLINE_MS + 1);
+        scenario.next_tx(STRANGER);
+        let e = scenario.take_shared<escrow::Escrow<SUI>>();
+        escrow::refund<SUI>(e, &clock, scenario.ctx());
+
+        scenario.next_tx(BUYER);
+        let buyer_coin = scenario.take_from_address<coin::Coin<SUI>>(BUYER);
+        assert!(buyer_coin.value() == 2_000_000); // full amount despite 100% fee rate
+        ts::return_to_address(BUYER, buyer_coin);
+
+        admin::destroy_cap_for_testing(_cap);
+        admin::destroy_state_for_testing(state);
+        clock.destroy_for_testing();
+        scenario.end();
+    }
+
+    // ══════════════════════════════════════════════════════════════
     // Audit coverage: edge cases from v0.4 Move audit
     // ══════════════════════════════════════════════════════════════
 
