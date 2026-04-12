@@ -408,6 +408,29 @@ Dependency direction (strict — never reverse):
 
 ---
 
+## Cross-Repo Awareness: SweeFi Owns the Sui Implementation of s402 (CRITICAL)
+
+**SweeFi is the canonical Sui implementation of the s402 protocol.** Anything Sui-specific — Move contracts, TS adapters, MCP server, facilitator service, scheme adapter classes — belongs in this repo, not in the `s402` repo. The reverse is also load-bearing: **the `s402` repo does not contain any Sui code, and SweeFi must not assume it ever will.**
+
+**Before starting new work, check whether it already exists here:**
+- `contracts/sources/` — Move modules for all five schemes (payment, stream, escrow, prepaid, seal_policy) plus mandate, identity, math, admin
+- `packages/sui/src/s402/` — client/facilitator/server adapters for each scheme
+- `packages/mcp/` — `@sweefi/mcp`, the canonical MCP server (35 tools, 222 tests)
+- `STATUS.md` — deployment state, current testnet package ID, test counts
+
+**Before starting new work, also check the sibling `s402` repo for upstream protocol changes:**
+- `../../s402-project/s402/INVARIANTS.md` — safety/structural invariants (S1-S8)
+- `../../s402-project/s402/docs/adr/` — architectural decision records (ADR-001, ADR-002, ...)
+- `../../s402-project/s402/spec/vectors/` — conformance test vectors SweeFi must pass
+- `../../s402-project/s402/typescript/src/scheme.ts` — the interfaces SweeFi's adapters implement
+- `../../s402-project/s402/typescript/src/errors.ts` — error codes SweeFi must emit
+
+**Why this rule exists:** In April 2026, an AI session working in the `s402` repo was about to implement stream, escrow, prepaid, and unlock schemes from scratch inside `s402/mcp-server/` — all of which already existed in this repo's `contracts/sources/` and `packages/sui/src/s402/`, tested with 1,775 passing tests and deployed to Sui testnet v11 with live demo transactions. The duplication was only caught because a human asked "isn't this the wrong level for an MCP server?" at the critical moment. A single `ls ../../projects/sweefi-project/sweefi/contracts/sources/` from the s402 repo would have prevented the detour. See `s402/docs/adr/002-s402-is-pure-protocol.md` for the full writeup and boundary rules that followed.
+
+**Corollary rule for SweeFi agents:** When a protocol change lands in `s402/` (new interface method, new required field, new invariant), SweeFi's adapters must be updated to match before the next SweeFi release. SweeFi's CI should run s402's conformance vectors as part of every test run — if s402 changes and SweeFi falls behind, its CI must fail loudly rather than drift silently.
+
+---
+
 ## Key Dependencies
 
 - `@mysten/sui` — Sui TypeScript SDK (peerDep: `^2.0.0`)
