@@ -69,6 +69,18 @@ export class UptoSuiClientScheme implements s402ClientScheme {
       if (settlementCeiling < 1n) settlementCeiling = 1n;
     }
 
+    // Fail fast: if the ceiling would be below estimatedAmount, the facilitator
+    // will reject the deposit anyway. Don't waste gas on a doomed transaction.
+    if (settlementCeiling !== undefined && upto.estimatedAmount) {
+      const estimated = BigInt(upto.estimatedAmount);
+      if (settlementCeiling < estimated) {
+        throw new Error(
+          `Settlement ceiling ${settlementCeiling} is below estimatedAmount ${estimated}. ` +
+          `The facilitator will reject this deposit. Increase ceiling or remove the override.`,
+        );
+      }
+    }
+
     const tx = new Transaction();
     tx.setSender(this.signer.address);
 

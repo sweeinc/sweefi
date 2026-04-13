@@ -385,6 +385,96 @@ describe("UptoSuiFacilitatorScheme", () => {
       expect(result.invalidReason).toContain("Fee mismatch");
     });
 
+    // ── Settlement ceiling verification (prevent free-service attack) ──
+
+    it("should reject ceiling below estimatedAmount", async () => {
+      const signer = createMockFacilitatorSigner({
+        simulateTransaction: async () =>
+          createSuccessfulDryRun({
+            events: [createMockUptoEvent({ settlement_ceiling: "1" })],
+          }),
+      });
+      const scheme = new UptoSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
+      const reqs = createMockUptoRequirements({
+        upto: {
+          maxAmount: "10000000",
+          settlementDeadlineMs: "1700100000000",
+          estimatedAmount: "8000000",
+        },
+      });
+      const result = await scheme.verify(createMockUptoPayload(), reqs);
+      expect(result.valid).toBe(false);
+      expect(result.invalidReason).toContain("Settlement ceiling too low");
+    });
+
+    it("should reject ceiling below maxAmount when no estimatedAmount (fallback)", async () => {
+      const signer = createMockFacilitatorSigner({
+        simulateTransaction: async () =>
+          createSuccessfulDryRun({
+            events: [createMockUptoEvent({ settlement_ceiling: "5000000" })],
+          }),
+      });
+      const scheme = new UptoSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
+      // No estimatedAmount → ceiling must be >= maxAmount
+      const reqs = createMockUptoRequirements();
+      const result = await scheme.verify(createMockUptoPayload(), reqs);
+      expect(result.valid).toBe(false);
+      expect(result.invalidReason).toContain("Settlement ceiling too low");
+    });
+
+    it("should accept ceiling=0 (no ceiling — payer trusts server fully)", async () => {
+      const signer = createMockFacilitatorSigner({
+        simulateTransaction: async () =>
+          createSuccessfulDryRun({
+            events: [createMockUptoEvent({ settlement_ceiling: "0" })],
+          }),
+      });
+      const scheme = new UptoSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
+      const result = await scheme.verify(
+        createMockUptoPayload(),
+        createMockUptoRequirements(),
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it("should accept ceiling >= estimatedAmount", async () => {
+      const signer = createMockFacilitatorSigner({
+        simulateTransaction: async () =>
+          createSuccessfulDryRun({
+            events: [createMockUptoEvent({ settlement_ceiling: "9000000" })],
+          }),
+      });
+      const scheme = new UptoSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
+      const reqs = createMockUptoRequirements({
+        upto: {
+          maxAmount: "10000000",
+          settlementDeadlineMs: "1700100000000",
+          estimatedAmount: "8000000",
+        },
+      });
+      const result = await scheme.verify(createMockUptoPayload(), reqs);
+      expect(result.valid).toBe(true);
+    });
+
+    it("should accept ceiling exactly equal to estimatedAmount", async () => {
+      const signer = createMockFacilitatorSigner({
+        simulateTransaction: async () =>
+          createSuccessfulDryRun({
+            events: [createMockUptoEvent({ settlement_ceiling: "8000000" })],
+          }),
+      });
+      const scheme = new UptoSuiFacilitatorScheme(signer, MOCK_PACKAGE_ID);
+      const reqs = createMockUptoRequirements({
+        upto: {
+          maxAmount: "10000000",
+          settlementDeadlineMs: "1700100000000",
+          estimatedAmount: "8000000",
+        },
+      });
+      const result = await scheme.verify(createMockUptoPayload(), reqs);
+      expect(result.valid).toBe(true);
+    });
+
     it("should accept fee_micro_pct=0 when requirements have no protocol fee", async () => {
       const signer = createMockFacilitatorSigner({
         simulateTransaction: async () =>

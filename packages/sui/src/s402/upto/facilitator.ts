@@ -19,6 +19,8 @@
  *      - max_amount matches requirements.upto.maxAmount
  *      - settlement_deadline_ms matches requirements.upto.settlementDeadlineMs
  *      - fee_micro_pct matches requirements.protocolFeeBps
+ *      - settlement_ceiling >= estimatedAmount (or maxAmount if no estimate)
+ *        Prevents free-service attack: client sets ceiling=1, facilitator can't settle.
  *
  * Settle populates actualAmount and depositId on the response.
  */
@@ -166,6 +168,24 @@ export class UptoSuiFacilitatorScheme implements s402FacilitatorScheme {
           invalidReason: `Fee mismatch: event=${depositEvent.fee_micro_pct}, required=${requiredFeeMicroPct}`,
           payerAddress,
         };
+      }
+
+      // Verify settlement_ceiling is high enough for expected usage (prevent free-service attack).
+      // A malicious client could set ceiling=1, pass all other checks, then the facilitator
+      // can never settle for the actual usage — deposit expires, client gets a full refund.
+      // The server controls estimatedAmount; if absent, ceiling must be 0 (no ceiling) or >= maxAmount.
+      const eventCeiling = BigInt(depositEvent.settlement_ceiling);
+      if (eventCeiling > 0n) {
+        const minimumCeiling = reqUpto.estimatedAmount
+          ? BigInt(reqUpto.estimatedAmount)
+          : BigInt(reqUpto.maxAmount);
+        if (eventCeiling < minimumCeiling) {
+          return {
+            valid: false,
+            invalidReason: `Settlement ceiling too low: event=${depositEvent.settlement_ceiling}, minimum=${minimumCeiling}`,
+            payerAddress,
+          };
+        }
       }
 
       return { valid: true, payerAddress };
