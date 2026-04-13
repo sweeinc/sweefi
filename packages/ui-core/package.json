@@ -1,6 +1,6 @@
 {
   "name": "@sweefi/ui-core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Framework-agnostic payment state machine and adapter interface for SweeFi",
   "keywords": [

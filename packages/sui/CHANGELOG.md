@@ -24,7 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`skipVerify` option threaded through all facilitator schemes.** `settle()` on ExactSuiFacilitatorScheme, StreamSuiFacilitatorScheme, EscrowSuiFacilitatorScheme, PrepaidSuiFacilitatorScheme, and UptoSuiFacilitatorScheme now accepts an optional `{ skipVerify?: boolean }` third parameter. When true, skips the defense-in-depth re-verify dry-run — safe on Sui where failed PTBs cost zero gas.
 - **Extension access migrated to typed helpers.** `ExactSuiClientScheme` now uses `getExtensionData<T>()` from s402 instead of raw `requirements.extensions?.memo as string` dict access. Wire format unchanged.
-- **721 tests passing** (was 687 in 0.3.x). 34 new upto scheme tests.
+- **Escrow/Unlock clients now require explicit arbiter.** `EscrowSuiClientScheme` and `UnlockSuiClientScheme` throw if `escrow.arbiter` is not specified (was: silent default to seller). The Move contract rejects `arbiter == seller` (`EArbiterIsSeller`), so the old default always failed on-chain.
+
+### Fixed
+
+- **Settlement ceiling verification (free-service attack).** `UptoSuiFacilitatorScheme.verify()` now checks that `settlement_ceiling` (if >0) is >= `estimatedAmount` (or `maxAmount` when no estimate). Without this, a malicious client could set `ceiling=1`, pass all other checks, then the on-chain `settle()` always aborts — deposit expires with a full refund, free service. Defense lives in the facilitator (chain-specific), not the s402 spec (chain-agnostic).
+- **733 tests passing** (was 687 in 0.3.x). 46 new tests (upto scheme + ceiling verification + arbiter enforcement).
 
 ## [0.2.6] - 2026-04-11
 

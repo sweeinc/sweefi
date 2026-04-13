@@ -1,6 +1,6 @@
 {
   "name": "@sweefi/solana",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Solana-native s402 protocol implementation for SweeFi",
   "keywords": [

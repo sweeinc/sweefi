@@ -1,6 +1,6 @@
 {
   "name": "@sweefi/hono",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "Chain-agnostic s402 middleware and client fetch wrapper for Hono. Successor to @sweefi/server (renamed for honesty — this package IS the Hono middleware).",
   "keywords": [
