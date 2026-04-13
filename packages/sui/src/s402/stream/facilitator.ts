@@ -192,11 +192,14 @@ export class StreamSuiFacilitatorScheme implements s402FacilitatorScheme {
   async settle(
     payload: s402PaymentPayload,
     requirements: s402PaymentRequirements,
+    options?: { skipVerify?: boolean },
   ): Promise<s402SettleResponse> {
-    // Defense-in-depth: re-verify
-    const verification = await this.verify(payload, requirements);
-    if (!verification.valid) {
-      return { success: false, error: verification.invalidReason };
+    // Defense-in-depth: re-verify (skippable on zero-cost-failure chains like Sui)
+    if (!options?.skipVerify) {
+      const verification = await this.verify(payload, requirements);
+      if (!verification.valid) {
+        return { success: false, error: verification.invalidReason };
+      }
     }
 
     const streamPayload = payload as s402StreamPayload;

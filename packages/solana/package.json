@@ -59,7 +59,7 @@
   },
   "dependencies": {
     "@sweefi/ui-core": "workspace:^",
-    "s402": "^0.3.0"
+    "s402": "^0.5.0"
   },
   "peerDependencies": {
     "@solana/spl-token": "^0.4.0",

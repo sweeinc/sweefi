@@ -42,6 +42,13 @@ export class EscrowSuiClientScheme implements s402ClientScheme {
     if (!escrow) {
       throw new Error('Escrow requirements missing from s402PaymentRequirements');
     }
+    if (!escrow.arbiter) {
+      throw new Error(
+        'Escrow requires an arbiter distinct from the seller. ' +
+        'The Move contract rejects arbiter == seller (EArbiterIsSeller). ' +
+        'Provide an explicit escrow.arbiter in s402PaymentRequirements.',
+      );
+    }
 
     const tx = new Transaction();
     tx.setSender(this.signer.address);
@@ -50,7 +57,7 @@ export class EscrowSuiClientScheme implements s402ClientScheme {
       coinType: requirements.asset,
       sender: this.signer.address,
       seller: escrow.seller,
-      arbiter: escrow.arbiter ?? escrow.seller,
+      arbiter: escrow.arbiter,
       depositAmount: BigInt(requirements.amount),
       deadlineMs: BigInt(escrow.deadlineMs),
       feeMicroPercent: bpsToMicroPercent(requirements.protocolFeeBps ?? 0),

@@ -395,24 +395,24 @@ describe("EscrowSuiClientScheme robustness", () => {
     expect(result.scheme).toBe("escrow");
   });
 
-  // FINDING S-03: Arbiter defaults to seller when not specified
-  // This means buyer + seller disputes have the seller as arbiter — no neutral third party.
-  // Not a bug per se, but a default that should be documented.
-  it("defaults arbiter to seller when not specified", async () => {
+  // FINDING S-03 (fixed): Arbiter must be distinct from seller.
+  // The Move contract rejects arbiter == seller (EArbiterIsSeller).
+  // SDK now throws early instead of silently defaulting to seller.
+  it("throws when arbiter is not specified", async () => {
     const signer = createMockSigner();
     const scheme = new EscrowSuiClientScheme(signer, sweefiConfig);
 
     const requirements = createBaseRequirements({
       escrow: {
         seller: RECIPIENT,
-        // arbiter intentionally omitted
+        // arbiter intentionally omitted — Move rejects arbiter == seller
         deadlineMs: String(Date.now() + 86_400_000),
       },
     } as any);
 
-    // Should not throw — arbiter defaults to seller
-    const result = await scheme.createPayment(requirements);
-    expect(result.scheme).toBe("escrow");
+    await expect(scheme.createPayment(requirements)).rejects.toThrow(
+      "Escrow requires an arbiter distinct from the seller",
+    );
   });
 });
 
@@ -668,7 +668,7 @@ describe("UnlockSuiClientScheme robustness", () => {
     await expect(scheme.createPayment(requirements)).rejects.toThrow("Unlock requirements missing");
   });
 
-  it("creates payment with valid unlock requirements (no escrow sub-config)", async () => {
+  it("throws when arbiter is not specified (no escrow sub-config)", async () => {
     const signer = createMockSigner();
     const scheme = new UnlockSuiClientScheme(signer, sweefiConfig);
 
@@ -676,10 +676,10 @@ describe("UnlockSuiClientScheme robustness", () => {
       unlock: { encryptionId: "enc-123" },
     } as any);
 
-    // Should use payTo as seller default + auto-generate deadline
-    const result = await scheme.createPayment(requirements);
-    expect(result.scheme).toBe("unlock");
-    expect(result.payload.encryptionId).toBe("enc-123");
+    // Without escrow.arbiter, should throw — Move rejects arbiter == seller
+    await expect(scheme.createPayment(requirements)).rejects.toThrow(
+      "Unlock requires an arbiter distinct from the seller",
+    );
   });
 });
 

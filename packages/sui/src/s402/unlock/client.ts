@@ -55,6 +55,14 @@ export class UnlockSuiClientScheme implements s402ClientScheme {
     const seller = escrow?.seller ?? requirements.payTo;
     const deadlineMs = escrow?.deadlineMs ?? String(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
+    if (!escrow?.arbiter) {
+      throw new Error(
+        'Unlock requires an arbiter distinct from the seller. ' +
+        'The Move contract rejects arbiter == seller (EArbiterIsSeller). ' +
+        'Provide an explicit escrow.arbiter in s402PaymentRequirements.',
+      );
+    }
+
     const tx = new Transaction();
     tx.setSender(this.signer.address);
 
@@ -62,7 +70,7 @@ export class UnlockSuiClientScheme implements s402ClientScheme {
       coinType: requirements.asset,
       sender: this.signer.address,
       seller,
-      arbiter: escrow?.arbiter ?? seller,
+      arbiter: escrow.arbiter,
       depositAmount: BigInt(requirements.amount),
       deadlineMs: BigInt(deadlineMs),
       feeMicroPercent: bpsToMicroPercent(requirements.protocolFeeBps ?? 0),

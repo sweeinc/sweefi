@@ -5,6 +5,7 @@ import {
   PrepaidSuiFacilitatorScheme,
   StreamSuiFacilitatorScheme,
   EscrowSuiFacilitatorScheme,
+  UptoSuiFacilitatorScheme,
 } from "@sweefi/sui";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { decodeSuiPrivateKey } from "@mysten/sui/cryptography";
@@ -87,13 +88,14 @@ export function createFacilitator(config: Config): FacilitatorBundle {
       facilitator.register(network, new PrepaidSuiFacilitatorScheme(signer, packageId));
       facilitator.register(network, new StreamSuiFacilitatorScheme(signer, packageId));
       facilitator.register(network, new EscrowSuiFacilitatorScheme(signer, packageId));
+      facilitator.register(network, new UptoSuiFacilitatorScheme(signer, packageId));
     }
   }
 
   if (!packageId) {
     console.warn(
       "[sweefi-facilitator] ⚠️  SWEEFI_PACKAGE_ID is not set. " +
-      "Only the exact scheme is registered. Stream, escrow, and prepaid schemes " +
+      "Only the exact scheme is registered. Stream, escrow, prepaid, and upto schemes " +
       "require SWEEFI_PACKAGE_ID for event anti-spoofing verification."
     );
   }

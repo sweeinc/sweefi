@@ -85,6 +85,21 @@ export const ProtocolStateBcs = bcs.struct('ProtocolState', {
   paused_at_ms: bcs.u64(),
 });
 
+/** Matches `upto_deposit::UptoDeposit<T>` (contracts/sources/upto_deposit.move — planned) */
+export const UptoDepositBcs = bcs.struct('UptoDeposit', {
+  id: bcs.Address,
+  payer: bcs.Address,
+  recipient: bcs.Address,
+  balance: bcs.struct('Balance', { value: bcs.u64() }),  // Balance<T>
+  max_amount: bcs.u64(),
+  settlement_ceiling: bcs.u64(),
+  settlement_deadline_ms: bcs.u64(),
+  state: bcs.u8(),       // 0=Pending, 1=Settled, 2=Expired
+  fee_micro_pct: bcs.u64(),
+  fee_recipient: bcs.Address,
+  created_at_ms: bcs.u64(),
+});
+
 /** Matches `agent_mandate::AgentMandate<T>` (contracts/sources/agent_mandate.move) */
 export const AgentMandateBcs = bcs.struct('AgentMandate', {
   id: bcs.Address,

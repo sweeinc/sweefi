@@ -25,7 +25,14 @@ import {
   TOKEN_PROGRAM_ID,
 } from '@solana/spl-token';
 import type { Connection } from '@solana/web3.js';
-import type { s402ClientScheme, s402PaymentRequirements, s402ExactPayload } from 's402';
+import type {
+  s402ClientScheme,
+  s402PaymentRequirements,
+  s402ExactPayload,
+  s402PaymentPayload,
+  s402SettleResponse,
+  s402SettlementVerification,
+} from 's402';
 import { S402_VERSION } from 's402';
 import type { ClientSolanaSigner } from '../../signer.js';
 import { NATIVE_SOL_MINT } from '../../constants.js';
@@ -157,5 +164,24 @@ export class ExactSolanaClientScheme implements s402ClientScheme {
   async createPayment(requirements: s402PaymentRequirements): Promise<s402ExactPayload> {
     const { s402Payload } = await this.createPaymentWithMeta(requirements);
     return s402Payload;
+  }
+
+  /**
+   * Settlement verification stub.
+   *
+   * Solana lacks Sui's deterministic digest-from-bytes, so we cannot do
+   * offline digest-binding verification. Returns unverified with a reason.
+   * Full implementation requires on-chain transaction lookup via RPC.
+   */
+  verifySettlement(
+    _payload: s402PaymentPayload,
+    settleResponse: s402SettleResponse,
+  ): s402SettlementVerification {
+    return {
+      verified: false,
+      expectedDigest: '',
+      actualDigest: settleResponse.txDigest ?? null,
+      reason: 'Solana settlement verification not yet implemented — requires RPC lookup',
+    };
   }
 }

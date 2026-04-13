@@ -58,7 +58,7 @@
   },
   "dependencies": {
     "@sweefi/ui-core": "workspace:^",
-    "s402": "^0.3.0"
+    "s402": "^0.5.0"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0"

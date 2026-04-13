@@ -70,7 +70,7 @@
   "dependencies": {
     "@sweefi/hono": "workspace:^",
     "@sweefi/ui-core": "workspace:^",
-    "s402": "^0.3.0"
+    "s402": "^0.5.0"
   },
   "bugs": {
     "url": "https://github.com/sweeinc/sweefi/issues"

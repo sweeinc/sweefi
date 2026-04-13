@@ -77,6 +77,11 @@ import {
   buildDisputeClaimTx,
   buildWithdrawDisputedTx,
 } from "../../src/ptb/prepaid";
+import {
+  buildCreateUptoDepositTx,
+  buildSettleUptoTx,
+  buildExpireUptoTx,
+} from "../../src/ptb/upto";
 
 // ══════════════════════════════════════════════════════════════
 // Test fixtures
@@ -590,6 +595,79 @@ describe("PTB Argument Ordering Audit", () => {
         coinType: SUI_TYPE, balanceId: OBJ1, sender: ADDR1,
       });
       expect(tx).toBeInstanceOf(Transaction);
+    });
+  });
+
+  // ──────────────────────────────────────────────────────────
+  // upto_deposit.move (3 builders → 4 Move functions)
+  // ──────────────────────────────────────────────────────────
+
+  describe("upto_deposit.move", () => {
+    it("buildCreateUptoDepositTx (no ceiling) → upto_deposit::create<T>(Coin<T>, address, u64, u64, address, &ProtocolState, &Clock)", () => {
+      // Move: create<T>(deposit: Coin<T>, recipient: address, settlement_deadline_ms: u64,
+      //        fee_micro_pct: u64, fee_recipient: address, protocol_state: &ProtocolState, clock: &Clock, ctx)
+      // TS args: [deposit, recipient, settlementDeadlineMs, feeMicroPercent, feeRecipient, protocolState, clock]
+      // Count: 7 args (excluding ctx). NOTE: maxAmount is NOT passed — Move derives it from deposit.value()
+      const tx = buildCreateUptoDepositTx(config, {
+        coinType: SUI_TYPE, sender: ADDR1, recipient: ADDR2,
+        maxAmount: 5000000n, settlementDeadlineMs: BigInt(Date.now() + 3600000),
+        feeMicroPercent: 5000, feeRecipient: ADDR3,
+      });
+      expect(tx).toBeInstanceOf(Transaction);
+    });
+
+    it("buildCreateUptoDepositTx (with ceiling) → upto_deposit::create_with_ceiling<T>(Coin<T>, address, u64, u64, u64, address, &ProtocolState, &Clock)", () => {
+      // Move: create_with_ceiling<T>(deposit: Coin<T>, recipient: address, settlement_ceiling: u64,
+      //        settlement_deadline_ms: u64, fee_micro_pct: u64, fee_recipient: address,
+      //        protocol_state: &ProtocolState, clock: &Clock, ctx)
+      // TS args: [deposit, recipient, settlementCeiling, settlementDeadlineMs, feeMicroPercent, feeRecipient, protocolState, clock]
+      // Count: 8 args (excluding ctx). Ceiling is at position 3, NOT appended.
+      const tx = buildCreateUptoDepositTx(config, {
+        coinType: SUI_TYPE, sender: ADDR1, recipient: ADDR2,
+        maxAmount: 5000000n, settlementCeiling: 3000000n,
+        settlementDeadlineMs: BigInt(Date.now() + 3600000),
+        feeMicroPercent: 5000, feeRecipient: ADDR3,
+      });
+      expect(tx).toBeInstanceOf(Transaction);
+    });
+
+    it("buildSettleUptoTx → upto_deposit::settle<T>(UptoDeposit<T>, u64, &Clock)", () => {
+      // Move: settle<T>(upto: UptoDeposit<T>, actual_amount: u64, clock: &Clock, ctx)
+      // TS args: [depositId, actualAmount, clock]
+      // Count: 3 args (excluding ctx)
+      const tx = buildSettleUptoTx(config, {
+        coinType: SUI_TYPE, depositId: OBJ1, sender: ADDR1,
+        actualAmount: 2000000n,
+      });
+      expect(tx).toBeInstanceOf(Transaction);
+    });
+
+    it("buildExpireUptoTx → upto_deposit::expire<T>(UptoDeposit<T>, &Clock)", () => {
+      // Move: expire<T>(upto: UptoDeposit<T>, clock: &Clock, ctx)
+      // TS args: [depositId, clock]
+      // Count: 2 args (excluding ctx)
+      const tx = buildExpireUptoTx(config, {
+        coinType: SUI_TYPE, depositId: OBJ1, sender: ADDR1,
+      });
+      expect(tx).toBeInstanceOf(Transaction);
+    });
+
+    it("buildCreateUptoDepositTx rejects ceiling > maxAmount", () => {
+      expect(() => buildCreateUptoDepositTx(config, {
+        coinType: SUI_TYPE, sender: ADDR1, recipient: ADDR2,
+        maxAmount: 5000000n, settlementCeiling: 6000000n,
+        settlementDeadlineMs: BigInt(Date.now() + 3600000),
+        feeMicroPercent: 5000, feeRecipient: ADDR3,
+      })).toThrow(/settlementCeiling/);
+    });
+
+    it("buildCreateUptoDepositTx requires protocolStateId", () => {
+      expect(() => buildCreateUptoDepositTx(configNoState, {
+        coinType: SUI_TYPE, sender: ADDR1, recipient: ADDR2,
+        maxAmount: 5000000n,
+        settlementDeadlineMs: BigInt(Date.now() + 3600000),
+        feeMicroPercent: 5000, feeRecipient: ADDR3,
+      })).toThrow(/protocolStateId/);
     });
   });
 

@@ -18,7 +18,7 @@ function getApiKey(c: Context): string | undefined {
   }
 }
 
-const VALID_SCHEMES = new Set<string>(["exact", "stream", "escrow", "unlock", "prepaid"]);
+const VALID_SCHEMES = new Set<string>(["exact", "stream", "escrow", "unlock", "prepaid", "upto"]);
 
 /** Validate the shape of a settlement request body. Returns an error string or null if valid. */
 function validateSettlementBody(body: unknown): string | null {

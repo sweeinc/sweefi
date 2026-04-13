@@ -52,6 +52,7 @@ export { PaymentContract } from "./transactions/payment";
 export { StreamContract } from "./transactions/stream";
 export { EscrowContract } from "./transactions/escrow";
 export { PrepaidContract } from "./transactions/prepaid";
+export { UptoContract } from "./transactions/upto";
 export { UNLIMITED_CALLS } from "./ptb/prepaid";
 export { MandateContract } from "./transactions/mandate";
 export { AgentMandateContract } from "./transactions/agentMandate";
@@ -62,7 +63,7 @@ export { SweefiError, ConfigurationError, ResourceNotFoundError, ValidationError
 
 // BCS type definitions for on-chain object parsing
 export {
-  StreamingMeterBcs, EscrowBcs, PrepaidBalanceBcs,
+  StreamingMeterBcs, EscrowBcs, PrepaidBalanceBcs, UptoDepositBcs,
   InvoiceBcs, MandateBcs, ProtocolStateBcs, AgentMandateBcs,
 } from "./types/bcs";
 
@@ -74,3 +75,5 @@ export { EscrowState } from "./queries/escrowQueries";
 export type { PrepaidState } from "./queries/prepaidQueries";
 export type { MandateState } from "./queries/mandateQueries";
 export type { ProtocolStateData } from "./queries/protocolQueries";
+export type { UptoDepositData } from "./queries/uptoQueries";
+export { UptoDepositState } from "./queries/uptoQueries";

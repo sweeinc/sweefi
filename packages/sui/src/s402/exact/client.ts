@@ -26,7 +26,7 @@ import type {
   s402SettleResponse,
   s402SettlementVerification,
 } from 's402';
-import { S402_VERSION } from 's402';
+import { S402_VERSION, getExtensionData } from 's402';
 import type { ClientSuiSigner } from '../../signer.js';
 import { SUI_CLOCK } from '../../ptb/deployments.js';
 import { verifySuiSettlement } from '../verify.js';
@@ -61,15 +61,16 @@ export class ExactSuiClientScheme implements s402ClientScheme {
 
     // Read memo from requirements.extensions (set by s402Fetch wrapper).
     // Each call has its own requirements object — no shared mutable state.
-    const memo = requirements.extensions?.memo as string | undefined;
+    const memo = getExtensionData<string>(requirements.extensions, 'memo');
 
     const tx = new Transaction();
     tx.setSender(this.signer.address);
 
     // Gas sponsorship: if server advertises a gas station, set gasOwner so
     // the facilitator co-signs and pays gas on behalf of the client.
-    const gasStation = requirements.extensions?.gasStation as
-      { sponsorAddress: string; maxBudget?: string } | undefined;
+    const gasStation = getExtensionData<{ sponsorAddress: string; maxBudget?: string }>(
+      requirements.extensions, 'gasStation',
+    );
     if (gasStation?.sponsorAddress) {
       tx.setGasOwner(gasStation.sponsorAddress);
       if (gasStation.maxBudget) {

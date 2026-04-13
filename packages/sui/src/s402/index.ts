@@ -1,8 +1,9 @@
 /**
  * s402 Sui Scheme Implementations
  *
- * Five payment schemes + direct settlement:
+ * Six payment schemes + direct settlement:
  *   - Exact: one-shot payment (coinWithBalance → transferObjects)
+ *   - Upto: variable-amount deposit (facilitator settles actual usage)
  *   - Prepaid: deposit-based agent budgets (off-chain usage, batch-claim)
  *   - Stream: two-phase protocol (402 setup + X-STREAM-ID header)
  *   - Escrow: time-locked escrow with arbiter
@@ -29,6 +30,11 @@ export { EscrowSuiServerScheme } from './escrow/server.js';
 export { PrepaidSuiClientScheme } from './prepaid/client.js';
 export { PrepaidSuiFacilitatorScheme } from './prepaid/facilitator.js';
 export { PrepaidSuiServerScheme } from './prepaid/server.js';
+
+// Upto (variable-amount deposit)
+export { UptoSuiClientScheme } from './upto/client.js';
+export { UptoSuiFacilitatorScheme } from './upto/facilitator.js';
+export { UptoSuiServerScheme } from './upto/server.js';
 
 // Unlock (pay-to-decrypt)
 export { UnlockSuiClientScheme } from './unlock/client.js';

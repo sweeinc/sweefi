@@ -7,6 +7,7 @@ export const SweefiErrorCode = {
   RESOURCE_NOT_FOUND: 'RESOURCE_NOT_FOUND',
   INVALID_COIN_TYPE: 'INVALID_COIN_TYPE',
   VALIDATION_FAILED: 'VALIDATION_FAILED',
+  EXTENSION_FAILED: 'EXTENSION_FAILED',
 } as const;
 export type SweefiErrorCode = typeof SweefiErrorCode[keyof typeof SweefiErrorCode];
 

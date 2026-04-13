@@ -5,6 +5,27 @@ All notable changes to `@sweefi/sui` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-04-12
+
+### Added
+
+- **Upto scheme — full TypeScript adapter stack (DAN-284).** Variable-amount payments where the client deposits maxAmount and the facilitator settles the actual usage:
+  - `UptoSuiClientScheme` — builds deposit PTB, auto-computes `settlementCeiling` from `estimatedAmount` (1.2x headroom)
+  - `UptoSuiFacilitatorScheme` — event-based verification (anti-spoofing, token/payer/recipient/amount/deadline/fee checks), populates `actualAmount` and `depositId` on settle response
+  - `UptoSuiServerScheme` — builds requirements from route config with `estimatedAmount` advisory
+  - `UptoContract` — curried transaction builder (create/settle/expire) following EscrowContract pattern
+  - PTB builders: `buildCreateUptoDepositTx`, `buildSettleUptoTx`, `buildExpireUptoTx`
+  - `UptoDepositBcs` — BCS type definition for on-chain UptoDeposit parsing
+  - `UptoQueries` + `UptoDepositState` — query module for reading deposit state
+  - 34 new unit tests covering all facilitator security checks and server requirements
+- **`EXTENSION_FAILED` error code** added to `SweefiErrorCode` enum, matching s402 v0.5.0.
+
+### Changed
+
+- **`skipVerify` option threaded through all facilitator schemes.** `settle()` on ExactSuiFacilitatorScheme, StreamSuiFacilitatorScheme, EscrowSuiFacilitatorScheme, PrepaidSuiFacilitatorScheme, and UptoSuiFacilitatorScheme now accepts an optional `{ skipVerify?: boolean }` third parameter. When true, skips the defense-in-depth re-verify dry-run — safe on Sui where failed PTBs cost zero gas.
+- **Extension access migrated to typed helpers.** `ExactSuiClientScheme` now uses `getExtensionData<T>()` from s402 instead of raw `requirements.extensions?.memo as string` dict access. Wire format unchanged.
+- **721 tests passing** (was 687 in 0.3.x). 34 new upto scheme tests.
+
 ## [0.2.6] - 2026-04-11
 
 ### Fixed
