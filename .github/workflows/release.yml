@@ -65,7 +65,7 @@ jobs:
         uses: changesets/action@v1
         with:
           # Version bump: runs `changeset version` then commits + opens/updates PR
-          version: pnpm version
+          version: pnpm run version
           # Publish: runs after the Version PR is merged; builds then publishes
           publish: pnpm release
           commit: "chore: version packages"
