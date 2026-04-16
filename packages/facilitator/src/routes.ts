@@ -84,6 +84,37 @@ export function createRoutes(
 ) {
   const app = new Hono();
 
+  // Root landing page — prevents Google Safe Browsing false positives on API-only domains
+  app.get("/", (c) => {
+    return c.html(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>s402 Facilitator</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 600px; margin: 4rem auto; padding: 1rem; }
+    h1 { color: #6366f1; }
+    code { background: #f1f5f9; padding: 0.2em 0.4em; border-radius: 4px; }
+    a { color: #6366f1; }
+  </style>
+</head>
+<body>
+  <h1>s402 Facilitator</h1>
+  <p>Payment verification and settlement service for the <a href="https://github.com/sweeinc/s402">s402 protocol</a>.</p>
+  <h2>Endpoints</h2>
+  <ul>
+    <li><code>GET /ready</code> — Health check with RPC status</li>
+    <li><code>GET /supported</code> — List supported networks and schemes</li>
+    <li><code>POST /verify</code> — Verify a payment payload</li>
+    <li><code>POST /settle</code> — Settle a verified payment</li>
+    <li><code>GET /.well-known/s402-facilitator</code> — Facilitator discovery</li>
+  </ul>
+  <p>Docs: <a href="https://github.com/sweeinc/sweefi">github.com/sweeinc/sweefi</a></p>
+</body>
+</html>`);
+  });
+
   app.get("/health", (c) => {
     return c.json({ status: "ok", timestamp: new Date().toISOString() });
   });
