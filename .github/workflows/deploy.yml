@@ -1,0 +1,30 @@
+name: Deploy Facilitator
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/facilitator/**'
+      - 'packages/sui/**'
+      - 'packages/solana/**'
+      - 'pnpm-lock.yaml'
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy to fly.io
+    runs-on: ubuntu-latest
+    # Only deploy if CI passes
+    needs: []
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-action/setup-flyctl@master
+
+      - name: Deploy facilitator
+        run: flyctl deploy --config packages/facilitator/fly.toml --dockerfile packages/facilitator/Dockerfile --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
