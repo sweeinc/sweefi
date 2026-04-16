@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: superfly/flyctl-action/setup-flyctl@master
+      - uses: superfly/flyctl-action/setup-flyctl@v2
 
       - name: Deploy facilitator
         run: flyctl deploy --config packages/facilitator/fly.toml --dockerfile packages/facilitator/Dockerfile --remote-only
