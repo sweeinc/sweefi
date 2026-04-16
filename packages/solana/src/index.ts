@@ -48,6 +48,13 @@ export {
   LAMPORTS_PER_SOL,
   BASE_FEE_LAMPORTS,
   ATA_RENT_LAMPORTS,
+  // SweeFi Anchor program IDs (for custom facilitator configurations)
+  SWEEFI_PREPAID_PROGRAM_ID,
+  SWEEFI_STREAM_PROGRAM_ID,
+  SWEEFI_ESCROW_PROGRAM_ID,
+  SWEEFI_UPTO_PROGRAM_ID,
+  // Type guard
+  isSolanaNetwork,
 } from './constants.js';
 export type { SolanaNetwork } from './constants.js';
 
@@ -59,6 +66,10 @@ export { uint8ArrayToBase64, base64ToUint8Array } from './utils/encoding.js';
 // ─── s402 scheme implementations ─────────────────────────────────────────────
 
 export * from './s402/index.js';
+
+// ─── Anchor program clients ──────────────────────────────────────────────────
+
+export * from './programs/index.js';
 
 // ─── PaymentAdapter for @sweefi/ui-core ──────────────────────────────────────
 

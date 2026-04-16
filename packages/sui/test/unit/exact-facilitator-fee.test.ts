@@ -117,7 +117,7 @@ describe("ExactSuiFacilitatorScheme.verify() — fee split", () => {
       makeRequirements({ protocolFeeBps: 500, protocolFeeAddress: MOCK_FEE_ADDR }),
     );
     expect(result.valid).toBe(false);
-    expect(result.invalidReason).toBe("Protocol fee insufficient");
+    expect(result.invalidReason).toBe("Protocol fee 100 below required 500");
   });
 
   it("rejects when merchant underpaid in fee-split mode", async () => {
@@ -134,7 +134,7 @@ describe("ExactSuiFacilitatorScheme.verify() — fee split", () => {
       makeRequirements({ protocolFeeBps: 500, protocolFeeAddress: MOCK_FEE_ADDR }),
     );
     expect(result.valid).toBe(false);
-    expect(result.invalidReason).toBe("Merchant amount insufficient");
+    expect(result.invalidReason).toBe("Merchant amount 5000 below required 9500");
   });
 
   it("uses full-amount check when feeAddress === payTo (merged balance changes)", async () => {

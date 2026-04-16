@@ -47,6 +47,11 @@ export interface SolanaSimulateResult {
     owner?: string;
     uiTokenAmount: { amount: string; decimals: number };
   }>;
+  /**
+   * Transaction logs. Used for extracting Anchor events via parseAnchorEvent().
+   * Anchor emits events as "Program data: <base64>" log entries.
+   */
+  logs?: string[];
   unitsConsumed?: number;
 }
 
@@ -335,6 +340,7 @@ export function toFacilitatorSolanaSigner(
             decimals: b.uiTokenAmount.decimals,
           },
         })),
+        logs: result.value.logs ?? undefined,
         unitsConsumed: result.value.unitsConsumed,
       };
     },

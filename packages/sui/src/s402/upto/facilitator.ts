@@ -278,6 +278,9 @@ interface UptoDepositCreatedEventData {
  *
  * When packageId is provided, matches the full event type to prevent spoofing
  * from attacker-deployed contracts. When omitted, falls back to suffix matching.
+ *
+ * SECURITY: Validates all required fields exist before returning. This prevents
+ * silent failures if the Move contract emits a different event schema.
  */
 function extractUptoDepositCreatedEvent(
   events: Array<{ type: string; parsedJson?: unknown }>,
@@ -287,5 +290,21 @@ function extractUptoDepositCreatedEvent(
     ? events.find(e => e.type.startsWith(`${packageId}::`) && e.type.endsWith('::UptoDepositCreated'))
     : events.find(e => e.type.endsWith('::upto_deposit::UptoDepositCreated'));
   if (!event?.parsedJson || typeof event.parsedJson !== 'object') return null;
-  return event.parsedJson as UptoDepositCreatedEventData;
+
+  // Explicit field validation — fail fast on schema mismatch
+  const json = event.parsedJson as Record<string, unknown>;
+  if (
+    typeof json.deposit_id !== 'string' ||
+    typeof json.payer !== 'string' ||
+    typeof json.recipient !== 'string' ||
+    typeof json.max_amount !== 'string' ||
+    typeof json.settlement_ceiling !== 'string' ||
+    typeof json.settlement_deadline_ms !== 'string' ||
+    typeof json.fee_micro_pct !== 'string' ||
+    typeof json.token_type !== 'string'
+  ) {
+    return null; // Schema mismatch — will trigger "No event found" error
+  }
+
+  return json as unknown as UptoDepositCreatedEventData;
 }

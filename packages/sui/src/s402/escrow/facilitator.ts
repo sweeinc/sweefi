@@ -263,6 +263,9 @@ interface EscrowCreatedEventData {
  *
  * When packageId is provided, matches the full event type to prevent spoofing
  * from attacker-deployed contracts. When omitted, falls back to suffix matching.
+ *
+ * SECURITY: Validates all required fields exist before returning. This prevents
+ * silent failures if the Move contract emits a different event schema.
  */
 function extractEscrowCreatedEvent(
   events: Array<{ type: string; parsedJson?: unknown }>,
@@ -272,5 +275,21 @@ function extractEscrowCreatedEvent(
     ? events.find(e => e.type.startsWith(`${packageId}::`) && e.type.endsWith('::EscrowCreated'))
     : events.find(e => e.type.endsWith('::escrow::EscrowCreated'));
   if (!event?.parsedJson || typeof event.parsedJson !== 'object') return null;
-  return event.parsedJson as EscrowCreatedEventData;
+
+  // Explicit field validation — fail fast on schema mismatch
+  const json = event.parsedJson as Record<string, unknown>;
+  if (
+    typeof json.escrow_id !== 'string' ||
+    typeof json.buyer !== 'string' ||
+    typeof json.seller !== 'string' ||
+    typeof json.arbiter !== 'string' ||
+    typeof json.amount !== 'string' ||
+    typeof json.deadline_ms !== 'string' ||
+    typeof json.fee_micro_pct !== 'string' ||
+    typeof json.token_type !== 'string'
+  ) {
+    return null; // Schema mismatch — will trigger "No event found" error
+  }
+
+  return json as unknown as EscrowCreatedEventData;
 }

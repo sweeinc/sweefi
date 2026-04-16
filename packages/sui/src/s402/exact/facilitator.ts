@@ -87,8 +87,12 @@ export class ExactSuiFacilitatorScheme implements s402FacilitatorScheme {
           bc => extractAddress(bc.owner) === requirements.payTo &&
                 coinTypesEqual(bc.coinType, requirements.asset),
         );
-        if (!merchantChange || BigInt(merchantChange.amount) < merchantAmount) {
-          return { valid: false, invalidReason: 'Merchant amount insufficient', payerAddress };
+        if (!merchantChange) {
+          return { valid: false, invalidReason: 'Merchant did not receive expected coin type', payerAddress };
+        }
+        const merchantReceived = BigInt(merchantChange.amount);
+        if (merchantReceived < merchantAmount) {
+          return { valid: false, invalidReason: `Merchant amount ${merchantReceived} below required ${merchantAmount}`, payerAddress };
         }
 
         // Check fee recipient received enough (skip when fee rounds to zero)
@@ -97,8 +101,12 @@ export class ExactSuiFacilitatorScheme implements s402FacilitatorScheme {
             bc => extractAddress(bc.owner) === protocolFeeAddress &&
                   coinTypesEqual(bc.coinType, requirements.asset),
           );
-          if (!feeChange || BigInt(feeChange.amount) < feeAmount) {
-            return { valid: false, invalidReason: 'Protocol fee insufficient', payerAddress };
+          if (!feeChange) {
+            return { valid: false, invalidReason: 'Fee recipient did not receive expected coin type', payerAddress };
+          }
+          const feeReceived = BigInt(feeChange.amount);
+          if (feeReceived < feeAmount) {
+            return { valid: false, invalidReason: `Protocol fee ${feeReceived} below required ${feeAmount}`, payerAddress };
           }
         }
       } else {
@@ -110,8 +118,10 @@ export class ExactSuiFacilitatorScheme implements s402FacilitatorScheme {
         if (!recipientChange) {
           return { valid: false, invalidReason: 'Recipient did not receive expected coin type', payerAddress };
         }
-        if (BigInt(recipientChange.amount) < BigInt(requirements.amount)) {
-          return { valid: false, invalidReason: 'Amount insufficient', payerAddress };
+        const received = BigInt(recipientChange.amount);
+        const required = BigInt(requirements.amount);
+        if (received < required) {
+          return { valid: false, invalidReason: `Amount ${received} below required ${required}`, payerAddress };
         }
       }
 

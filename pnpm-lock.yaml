@@ -166,6 +166,9 @@ importers:
       '@mysten/sui':
         specifier: ^2.6.0
         version: 2.6.0(typescript@5.9.3)
+      '@sweefi/solana':
+        specifier: workspace:^
+        version: link:../solana
       '@sweefi/sui':
         specifier: workspace:^
         version: link:../sui
@@ -314,6 +317,9 @@ importers:
 
   packages/solana:
     dependencies:
+      '@noble/hashes':
+        specifier: ^1.4.0
+        version: 1.8.0
       '@sweefi/ui-core':
         specifier: workspace:^
         version: link:../ui-core

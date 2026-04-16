@@ -279,6 +279,9 @@ interface DepositEventData {
  *
  * When packageId is provided, matches the full event type to prevent spoofing
  * from attacker-deployed contracts. When omitted, falls back to suffix matching.
+ *
+ * SECURITY: Validates all required fields exist before returning. This prevents
+ * silent failures if the Move contract emits a different event schema.
  */
 function extractDepositEvent(
   events: Array<{ type: string; parsedJson?: unknown }>,
@@ -288,5 +291,21 @@ function extractDepositEvent(
     ? events.find(e => e.type.startsWith(`${packageId}::`) && e.type.endsWith('::PrepaidDeposited'))
     : events.find(e => e.type.endsWith('::prepaid::PrepaidDeposited'));
   if (!event?.parsedJson || typeof event.parsedJson !== 'object') return null;
-  return event.parsedJson as DepositEventData;
+
+  // Explicit field validation — fail fast on schema mismatch
+  const json = event.parsedJson as Record<string, unknown>;
+  if (
+    typeof json.balance_id !== 'string' ||
+    typeof json.agent !== 'string' ||
+    typeof json.provider !== 'string' ||
+    typeof json.amount !== 'string' ||
+    typeof json.rate_per_call !== 'string' ||
+    typeof json.max_calls !== 'string' ||
+    typeof json.fee_micro_pct !== 'string' ||
+    typeof json.token_type !== 'string'
+  ) {
+    return null; // Schema mismatch — will trigger "No event found" error
+  }
+
+  return json as unknown as DepositEventData;
 }

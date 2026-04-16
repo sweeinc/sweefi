@@ -9,6 +9,18 @@ export type SolanaNetwork =
   | typeof SOLANA_DEVNET_CAIP2
   | typeof SOLANA_TESTNET_CAIP2;
 
+/**
+ * Type guard to narrow string to SolanaNetwork.
+ * Use this instead of `as SolanaNetwork` after a Set.has() check.
+ */
+export function isSolanaNetwork(network: string): network is SolanaNetwork {
+  return (
+    network === SOLANA_MAINNET_CAIP2 ||
+    network === SOLANA_DEVNET_CAIP2 ||
+    network === SOLANA_TESTNET_CAIP2
+  );
+}
+
 // ─── Token mint addresses ─────────────────────────────────────────────────────
 
 /**
@@ -38,3 +50,26 @@ export const BASE_FEE_LAMPORTS = 5_000n;
  * Recoverable if the account is later closed.
  */
 export const ATA_RENT_LAMPORTS = 2_039_280n;
+
+// ─── SweeFi Anchor program IDs ────────────────────────────────────────────────
+
+/**
+ * SweeFi Prepaid program ID (deployed on devnet).
+ * Used for anti-spoofing verification — ensures events came from our program.
+ */
+export const SWEEFI_PREPAID_PROGRAM_ID = 'FsdmgrStNw43ib6UXL4CPJ2cPHXwoSiGoMAYKppcgAxC';
+
+/**
+ * SweeFi Stream program ID (deployed on devnet).
+ */
+export const SWEEFI_STREAM_PROGRAM_ID = 'HMTeFyU4yXf7QB3D1WE7vQqPrZSecmeD1f5gqCauDL7M';
+
+/**
+ * SweeFi Escrow program ID (deployed on devnet).
+ */
+export const SWEEFI_ESCROW_PROGRAM_ID = 'AbH1dHyrGjE8P6Ti4QLSWp9zVzZZfAg26uK5DqLY12Gt';
+
+/**
+ * SweeFi Upto program ID (deployed on devnet).
+ */
+export const SWEEFI_UPTO_PROGRAM_ID = '7H1iJSgBnFC7fgVje5EjXHRQs9XHCFDpcFQ2aXHaovsD';

@@ -7,6 +7,18 @@ import {
   EscrowSuiFacilitatorScheme,
   UptoSuiFacilitatorScheme,
 } from "@sweefi/sui";
+import {
+  ExactSolanaFacilitatorScheme,
+  PrepaidSolanaFacilitatorScheme,
+  StreamSolanaFacilitatorScheme,
+  EscrowSolanaFacilitatorScheme,
+  UptoSolanaFacilitatorScheme,
+  toFacilitatorSolanaSigner,
+  SWEEFI_PREPAID_PROGRAM_ID,
+  SWEEFI_STREAM_PROGRAM_ID,
+  SWEEFI_ESCROW_PROGRAM_ID,
+  SWEEFI_UPTO_PROGRAM_ID,
+} from "@sweefi/solana";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { decodeSuiPrivateKey } from "@mysten/sui/cryptography";
 import type { Config } from "./config";
@@ -99,6 +111,43 @@ export function createFacilitator(config: Config): FacilitatorBundle {
       "require SWEEFI_PACKAGE_ID for event anti-spoofing verification."
     );
   }
+
+  // ─── Solana Schemes ─────────────────────────────────────────────────────────
+  // Register Solana payment schemes for devnet and mainnet-beta.
+  // Solana schemes use transaction simulation for verification (no on-chain events).
+
+  const solanaRpcUrls: Record<string, string> = {};
+  if (config.SOLANA_MAINNET_RPC) solanaRpcUrls["solana:mainnet-beta"] = config.SOLANA_MAINNET_RPC;
+  if (config.SOLANA_DEVNET_RPC) solanaRpcUrls["solana:devnet"] = config.SOLANA_DEVNET_RPC;
+
+  const solanaSigner = toFacilitatorSolanaSigner(
+    Object.keys(solanaRpcUrls).length > 0 ? { rpcUrls: solanaRpcUrls } : undefined,
+  );
+
+  const solanaNetworks = ["solana:devnet", "solana:mainnet-beta"];
+
+  // Resolve Solana program IDs from config (with devnet defaults)
+  const prepaidProgramId = config.SOLANA_PREPAID_PROGRAM_ID ?? SWEEFI_PREPAID_PROGRAM_ID;
+  const streamProgramId = config.SOLANA_STREAM_PROGRAM_ID ?? SWEEFI_STREAM_PROGRAM_ID;
+  const escrowProgramId = config.SOLANA_ESCROW_PROGRAM_ID ?? SWEEFI_ESCROW_PROGRAM_ID;
+  const uptoProgramId = config.SOLANA_UPTO_PROGRAM_ID ?? SWEEFI_UPTO_PROGRAM_ID;
+
+  for (const network of solanaNetworks) {
+    // Exact scheme — simple SPL token transfer, no Anchor programs needed
+    facilitator.register(network, new ExactSolanaFacilitatorScheme(solanaSigner));
+
+    // Non-exact schemes — require deployed Anchor programs
+    // Program IDs configured via env vars for anti-spoofing verification
+    facilitator.register(network, new PrepaidSolanaFacilitatorScheme(solanaSigner, prepaidProgramId));
+    facilitator.register(network, new StreamSolanaFacilitatorScheme(solanaSigner, streamProgramId));
+    facilitator.register(network, new EscrowSolanaFacilitatorScheme(solanaSigner, escrowProgramId));
+    facilitator.register(network, new UptoSolanaFacilitatorScheme(solanaSigner, uptoProgramId));
+  }
+
+  console.log(
+    `[sweefi-facilitator] Solana schemes registered: exact, prepaid, stream, escrow, upto ` +
+    `for ${solanaNetworks.join(", ")}`
+  );
 
   // Gas sponsorship service — only when FACILITATOR_KEYPAIR is configured.
   // Uses sui-gas-station's GasSponsor for coin pool management, kind-bytes

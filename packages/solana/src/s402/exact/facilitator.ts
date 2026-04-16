@@ -2,16 +2,15 @@
  * s402 Exact Scheme — Facilitator (Solana)
  *
  * Verifies and settles exact payment transactions.
- * 4-step verification logic:
+ * 5-step verification logic:
  *   1. Scheme validation (is this an 'exact' payload?)
  *   2. Network validation (is this actually a Solana network?)
  *   3. Signature recovery — cryptographic proof payer signed the transaction
  *   4. Simulation — would this transaction succeed if submitted?
  *   5. Balance verification — did the recipient receive the required amount?
  *
- * NOTE: Only Exact scheme is implemented. Prepaid/Stream/Escrow require Anchor
- * programs that don't yet exist for Solana.
- * TODO (future): prepaid, stream, escrow verification once Anchor programs are deployed.
+ * Unlike prepaid/stream/escrow/upto (which use event-based verification),
+ * the exact scheme verifies balance changes directly from simulation results.
  */
 
 import type {
@@ -23,16 +22,8 @@ import type {
   s402ExactPayload,
 } from 's402';
 import type { FacilitatorSolanaSigner, SolanaSimulateResult } from '../../signer.js';
-import { NATIVE_SOL_MINT } from '../../constants.js';
 import type { SolanaNetwork } from '../../constants.js';
-
-// ─── Network guard ────────────────────────────────────────────────────────────
-
-const VALID_SOLANA_NETWORKS: ReadonlySet<string> = new Set([
-  'solana:mainnet-beta',
-  'solana:devnet',
-  'solana:testnet',
-]);
+import { NATIVE_SOL_MINT, isSolanaNetwork } from '../../constants.js';
 
 // ─── ExactSolanaFacilitatorScheme ─────────────────────────────────────────────
 
@@ -52,7 +43,8 @@ export class ExactSolanaFacilitatorScheme implements s402FacilitatorScheme {
     // Guard: reject non-Solana requirements before any parsing attempt.
     // Without this, a misrouted Ethereum payment object would pass the type cast
     // and cause confusing errors inside verifyAndGetPayer or simulateTransaction.
-    if (!VALID_SOLANA_NETWORKS.has(requirements.network)) {
+    // The type guard narrows requirements.network to SolanaNetwork for later use.
+    if (!isSolanaNetwork(requirements.network)) {
       return {
         valid: false,
         invalidReason: `Unsupported network for Solana facilitator: ${requirements.network} (expected solana:mainnet-beta, solana:devnet, or solana:testnet)`,
@@ -66,7 +58,8 @@ export class ExactSolanaFacilitatorScheme implements s402FacilitatorScheme {
       return { valid: false, invalidReason: 'Missing transaction in payload' };
     }
 
-    const network = requirements.network as SolanaNetwork;
+    // Type is narrowed by isSolanaNetwork() guard above
+    const network = requirements.network;
 
     try {
       // Step 1: Cryptographically verify the payer's signature and extract their address
@@ -87,20 +80,18 @@ export class ExactSolanaFacilitatorScheme implements s402FacilitatorScheme {
       const isNative = requirements.asset === NATIVE_SOL_MINT || requirements.asset === 'native';
 
       if (isNative) {
-        if (!verifySolTransfer(simResult, requirements)) {
-          return {
-            valid: false,
-            invalidReason: 'Recipient SOL balance did not increase by the required amount',
-            payerAddress,
-          };
+        const solResult = verifySolTransfer(simResult, requirements);
+        if (!solResult.success) {
+          const reason = solResult.reason
+            ?? `SOL balance delta ${solResult.actual} below required ${solResult.required}`;
+          return { valid: false, invalidReason: reason, payerAddress };
         }
       } else {
-        if (!verifySplTransfer(simResult, requirements)) {
-          return {
-            valid: false,
-            invalidReason: 'Recipient SPL token balance did not increase by the required amount',
-            payerAddress,
-          };
+        const splResult = verifySplTransfer(simResult, requirements);
+        if (!splResult.success) {
+          const reason = splResult.reason
+            ?? `SPL token balance delta ${splResult.actual} below required ${splResult.required}`;
+          return { valid: false, invalidReason: reason, payerAddress };
         }
       }
 
@@ -124,6 +115,7 @@ export class ExactSolanaFacilitatorScheme implements s402FacilitatorScheme {
     }
 
     const exactPayload = payload as s402ExactPayload;
+    // Safe cast: verify() validated network and would have returned early on failure
     const network = requirements.network as SolanaNetwork;
 
     try {
@@ -161,21 +153,37 @@ export class ExactSolanaFacilitatorScheme implements s402FacilitatorScheme {
  * Uses sim.accountKeys to map the account index back to the recipient's address,
  * then compares preBalances[i] vs postBalances[i].
  */
+interface BalanceVerificationResult {
+  success: boolean;
+  actual?: bigint;
+  required?: bigint;
+  reason?: string;
+}
+
 function verifySolTransfer(
   sim: SolanaSimulateResult,
   requirements: s402PaymentRequirements,
-): boolean {
+): BalanceVerificationResult {
   const required = BigInt(requirements.amount);
   const recipientIndex = sim.accountKeys.indexOf(requirements.payTo);
 
   if (recipientIndex === -1) {
-    // Recipient is not in the transaction's account list — transfer can't have happened
-    return false;
+    return { success: false, reason: 'Recipient not in transaction account list' };
+  }
+
+  // Guard against undefined balance arrays (defensive — RPC should always provide these)
+  if (!sim.preBalances || !sim.postBalances) {
+    return { success: false, reason: 'Simulation missing balance data' };
   }
 
   const pre = BigInt(sim.preBalances[recipientIndex] ?? 0);
   const post = BigInt(sim.postBalances[recipientIndex] ?? 0);
-  return post - pre >= required;
+  const delta = post - pre;
+
+  if (delta >= required) {
+    return { success: true, actual: delta, required };
+  }
+  return { success: false, actual: delta, required };
 }
 
 /**
@@ -205,13 +213,18 @@ function verifySolTransfer(
 function verifySplTransfer(
   sim: SolanaSimulateResult,
   requirements: s402PaymentRequirements,
-): boolean {
+): BalanceVerificationResult {
   const required = BigInt(requirements.amount);
   const postTokens = sim.postTokenBalances ?? [];
   const preTokens = sim.preTokenBalances ?? [];
 
+  // Track highest delta found for better error messages
+  let highestDelta = 0n;
+  let foundMatchingMint = false;
+
   for (const post of postTokens) {
     if (post.mint !== requirements.asset) continue;
+    foundMatchingMint = true;
 
     // Conservative guard: owner absent → skip; wrong owner → skip.
     // Do NOT use `post.owner !== undefined && post.owner !== requirements.payTo`
@@ -223,9 +236,19 @@ function verifySplTransfer(
     );
     const preAmount = BigInt(pre?.uiTokenAmount.amount ?? '0');
     const postAmount = BigInt(post.uiTokenAmount.amount);
+    const delta = postAmount - preAmount;
 
-    if (postAmount - preAmount >= required) return true;
+    if (delta >= required) {
+      return { success: true, actual: delta, required };
+    }
+    if (delta > highestDelta) {
+      highestDelta = delta;
+    }
   }
 
-  return false;
+  // Provide specific failure reason
+  if (!foundMatchingMint) {
+    return { success: false, reason: 'No token balance changes for required mint' };
+  }
+  return { success: false, actual: highestDelta, required };
 }

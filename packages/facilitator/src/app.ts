@@ -166,9 +166,13 @@ export function createApp(config: Config) {
     const now = Date.now();
     const origin = new URL(c.req.url).origin;
 
-    // supportedSchemes per network — gather both testnet and mainnet
+    // supportedSchemes per network — gather all supported chains
     const supportedNetworks: Record<string, string[]> = {};
-    for (const network of ["sui:testnet", "sui:mainnet"]) {
+    const allNetworks = [
+      "sui:testnet", "sui:mainnet",
+      "solana:devnet", "solana:mainnet-beta",
+    ];
+    for (const network of allNetworks) {
       const schemes = facilitator.supportedSchemes(network);
       if (schemes.length > 0) supportedNetworks[network] = schemes;
     }

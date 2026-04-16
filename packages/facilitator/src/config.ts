@@ -22,8 +22,22 @@ const envSchema = z.object({
   /** Optional: Custom RPC URL for Sui testnet */
   SUI_TESTNET_RPC: z.string().url().optional(),
 
+  /** Optional: Custom RPC URL for Solana mainnet-beta */
+  SOLANA_MAINNET_RPC: z.string().url().optional(),
+
+  /** Optional: Custom RPC URL for Solana devnet */
+  SOLANA_DEVNET_RPC: z.string().url().optional(),
+
   /** Optional: SweeFi Move package ID for event verification (anti-spoofing) */
   SWEEFI_PACKAGE_ID: z.string().optional(),
+
+  /** Optional: Solana program IDs for event verification (anti-spoofing).
+   *  Defaults to devnet program IDs if not specified.
+   *  Set these to mainnet program IDs when deploying to mainnet. */
+  SOLANA_PREPAID_PROGRAM_ID: z.string().optional(),
+  SOLANA_STREAM_PROGRAM_ID: z.string().optional(),
+  SOLANA_ESCROW_PROGRAM_ID: z.string().optional(),
+  SOLANA_UPTO_PROGRAM_ID: z.string().optional(),
 
   /** Sui address that receives protocol fees (used in /.well-known/s402-facilitator) */
   FEE_RECIPIENT: z.string().optional(),

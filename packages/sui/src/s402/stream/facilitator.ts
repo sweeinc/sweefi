@@ -265,6 +265,9 @@ interface StreamCreatedEventData {
  *
  * When packageId is provided, matches the full event type to prevent spoofing
  * from attacker-deployed contracts. When omitted, falls back to suffix matching.
+ *
+ * SECURITY: Validates all required fields exist before returning. This prevents
+ * silent failures if the Move contract emits a different event schema.
  */
 function extractStreamCreatedEvent(
   events: Array<{ type: string; parsedJson?: unknown }>,
@@ -274,5 +277,21 @@ function extractStreamCreatedEvent(
     ? events.find(e => e.type.startsWith(`${packageId}::`) && e.type.endsWith('::StreamCreated'))
     : events.find(e => e.type.endsWith('::stream::StreamCreated'));
   if (!event?.parsedJson || typeof event.parsedJson !== 'object') return null;
-  return event.parsedJson as StreamCreatedEventData;
+
+  // Explicit field validation — fail fast on schema mismatch
+  const json = event.parsedJson as Record<string, unknown>;
+  if (
+    typeof json.meter_id !== 'string' ||
+    typeof json.payer !== 'string' ||
+    typeof json.recipient !== 'string' ||
+    typeof json.deposit !== 'string' ||
+    typeof json.rate_per_second !== 'string' ||
+    typeof json.budget_cap !== 'string' ||
+    typeof json.fee_micro_pct !== 'string' ||
+    typeof json.token_type !== 'string'
+  ) {
+    return null; // Schema mismatch — will trigger "No event found" error
+  }
+
+  return json as unknown as StreamCreatedEventData;
 }
