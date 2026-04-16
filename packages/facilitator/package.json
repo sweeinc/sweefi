@@ -40,6 +40,8 @@
   "dependencies": {
     "@hono/node-server": "^1.8.0",
     "@mysten/sui": "^2.6.0",
+    "@solana/spl-token": "^0.4.0",
+    "@solana/web3.js": "^1.95.0",
     "@sweefi/solana": "workspace:^",
     "@sweefi/sui": "workspace:^",
     "hono": "^4.0.0",
