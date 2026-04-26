@@ -1,12 +1,16 @@
 # SweeFi — Current Status
 
-> Last updated: 2026-03-21
+> Last updated: 2026-04-16
 
 ## Deployment State
 
 - **Sui Testnet**: `0xb83e50365ba460aaa02e240902a40890bec88cd35bd2fc09afb6c79ec8ea9ac5` (live, v11 deploy — auto-unpause + MC/DC)
 - **Mainnet**: Not yet deployed
 - **SEAL mainnet**: Blocked on Mysten Labs publishing key server addresses
+- **Facilitator**: https://s402.sweefi.com (fly.io, all 5 Sui schemes live)
+  - Wallet: `0x21f1a6d13101fafa2fab7d62a13a2c920867ae13e0c26e3c4317951280147df0` (needs funding ~0.5 SUI)
+  - Fee: 0.5% (50 bps)
+  - CI/CD: Auto-deploy on push to `main` (paths: `packages/facilitator/**`, `packages/sui/**`, `packages/solana/**`)
 
 ## What Is Working (Verified on Testnet)
 
@@ -22,6 +26,11 @@
 - MCP server: 35 tools, all tested
 - Facilitator service: verify, settle, process, discovery, metering
 - s402 npm package published (v0.2.2) with 133 conformance test vectors
+- **npm packages updated (April 16, 2026)**:
+  - `@sweefi/sui@0.4.1` — explicit event field validation (A+ hardening)
+  - `@sweefi/solana@0.2.0` — Solana programs scaffolding
+- **CI/CD automated**: Changesets workflow for npm publishing, fly.io auto-deploy
+- **Solana schemes (April 16, 2026)**: All 4 schemes (upto, stream, escrow, prepaid) have full TypeScript implementations with event-based facilitator verification. Anchor programs compile. See DAN-327 for remaining work.
 
 ## What Is Next
 
@@ -38,7 +47,7 @@
 
 ## Known Limitations
 
-- `@sweefi/solana` is exact-only (prepaid/stream/escrow need Anchor programs)
+- `@sweefi/solana` has all 4 schemes implemented (upto, stream, escrow, prepaid) but settlement requires Anchor IDL generation (blocked by toolchain: Anchor CLI 0.31+ needed). See DAN-327.
 - Identity module only tracks PaymentReceipt (not escrow/stream/prepaid receipts)
 - zkLogin not supported in facilitator signature verification
 - Gas sponsorship is exact-scheme only (stream/escrow/prepaid use shared Move objects)

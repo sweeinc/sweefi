@@ -1,0 +1,21 @@
+[package]
+name = "sweefi-stream"
+version = "0.1.0"
+description = "SweeFi Streaming Micropayments — per-second streaming with budget caps"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "sweefi_stream"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang = { workspace = true }
+anchor-spl = { workspace = true }

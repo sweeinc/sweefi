@@ -15,7 +15,7 @@
     "@hono/node-server": "^1.14.0",
     "@mysten/sui": "^2.6.0",
     "@sweefi/sui": "workspace:*",
-    "hono": "^4.7.0",
+    "hono": "^4.12.15",
     "s402": "^0.5.0"
   },
   "devDependencies": {

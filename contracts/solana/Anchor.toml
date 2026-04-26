@@ -1,0 +1,26 @@
+[toolchain]
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.devnet]
+sweefi_escrow = "AbH1dHyrGjE8P6Ti4QLSWp9zVzZZfAg26uK5DqLY12Gt"
+sweefi_prepaid = "FsdmgrStNw43ib6UXL4CPJ2cPHXwoSiGoMAYKppcgAxC"
+sweefi_stream = "HMTeFyU4yXf7QB3D1WE7vQqPrZSecmeD1f5gqCauDL7M"
+sweefi_upto = "7H1iJSgBnFC7fgVje5EjXHRQs9XHCFDpcFQ2aXHaovsD"
+
+[programs.localnet]
+sweefi_escrow = "3vmb27R62ovX5moiQnM479eU5fPfaLKJFKmdYAMVfhqB"
+sweefi_prepaid = "Vf1dcqmKo9zgNC73BujFcRnbNRj1fAGeYWSUnwYzfjJ"
+sweefi_stream = "AEEnjPx8GGyFq5mbhGd2du47VTWgLXomofgcD3oLi9kN"
+sweefi_upto = "F1bK8wXXkh6E5eYJ6wNtW1xtPR7LBy8te3Gh5njAVTbx"
+
+[provider]
+cluster = "devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "pnpm ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[hooks]

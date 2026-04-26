@@ -30,6 +30,10 @@ contracts/build/
 contracts/*/build/
 *.bcs
 
+# Anchor / Rust build artifacts
+contracts/solana/target/
+contracts/solana/**/target/
+
 # Key files (Sui keypairs)
 *.key
 

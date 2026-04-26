@@ -13,6 +13,12 @@ const data = await client.fetch('https://api.example.com/premium-data');
 // 402 → auto-signs SUI payment → retries → returns data
 ```
 
+## Governing Principle
+
+> **We interop when possible. We superset when wise.**
+
+SweeFi absorbs competing agent-payment protocols as payment-in formats (interop with x402 today, Stripe MPP next) and surpasses them on primitives their business models cannot ship (prepaid batching, streaming with on-chain rate enforcement, escrow with arbiter, Seal-encrypted unlock). Adopters never have to choose "SweeFi or x402/MPP" — they choose "SweeFi plus x402/MPP." See the s402 [ADR-005](https://github.com/s402-protocol/core/blob/main/docs/adr/005-interop-superset-principle.md) for the strategic reasoning.
+
 ## What Is This?
 
 SweeFi is an open-source payment SDK for AI agents on Sui. Agents discover pricing via HTTP 402, pay on-chain, and get data back — autonomously. No API keys. No subscriptions. No human clicking "confirm."
